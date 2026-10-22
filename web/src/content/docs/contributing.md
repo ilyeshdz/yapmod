@@ -26,7 +26,7 @@ yapmod is made by the people who use it. Whether you write code, report what bre
 
 | Check | Command |
 | --- | --- |
-| Types of the injected scripts | `pnpm injection:check` |
+| Types of the injected client | `pnpm client:check` |
 | Types generated from Rust | `pnpm types:generate` |
 | Formatting and lints of the Rust code | `cargo fmt --check` and `cargo clippy` |
 | The Rust unit tests | `cargo test` |

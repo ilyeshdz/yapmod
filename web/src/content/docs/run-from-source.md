@@ -27,24 +27,30 @@ pnpm install
 
 ## Develop
 
-```bash
-# start the app in development mode
-pnpm tauri dev
+Start the desktop app in development mode from the repository root:
 
-# rebuild the injected scripts after editing them
-pnpm injection:build
+```bash
+pnpm tauri dev
 ```
 
-`pnpm tauri dev` builds the injected scripts, then opens the app window. The window loads the live Yapper site, so every edit to a script needs `pnpm injection:build` (or a restart) before you see it.
+This makes a one-time client build, then opens the Yapmod window. The window loads the live Yapper site.
+
+When working on files in `client/`, optionally run this in a second terminal to rebuild the bundle after each edit:
+
+```bash
+pnpm client:dev
+```
+
+Restart the app after an edit to load the rebuilt bundle. The watcher rebuilds files only; it does not hot-swap code into a running app.
 
 ## Build
 
 ```bash
-# check the injected scripts
-pnpm injection:check
+# type-check the injected client
+pnpm client:check
 
-# bundle the injected scripts (also runs automatically for Tauri builds)
-pnpm injection:build
+# bundle the client (also runs automatically for Tauri builds)
+pnpm client:build
 
 # build the installers for your platform
 pnpm tauri build
@@ -55,8 +61,9 @@ pnpm tauri build
 | Command | What it does |
 | --- | --- |
 | `pnpm tauri` | Runs the Tauri CLI. |
-| `pnpm injection:build` | Bundles `src-tauri/injection` into the app. |
-| `pnpm injection:check` | Type-checks the injected code. |
+| `pnpm client:build` | Bundles `client/` into the app's embedded fallback scripts. |
+| `pnpm client:dev` | Watches and rebuilds the client bundle for local development. |
+| `pnpm client:check` | Type-checks the injected client. |
 | `pnpm types:generate` | Regenerates the TypeScript types from the Rust types. |
 
 The website in `web/` is a separate Astro project. Run these commands from that directory:

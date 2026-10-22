@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.svg" alt="yapmod logo" width="180" />
+  <img src="client/assets/icon.svg" alt="yapmod logo" width="180" />
 </p>
 
 <h1 align="center">yapmod</h1>
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/package-json/v/ilyeshdz/yapmod?label=version" alt="Version" /></a>
+  <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?label=app%20version" alt="App version" /></a>
   <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/build.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
 </p>
 
