@@ -9,15 +9,6 @@ on:
       - '.github/workflows/build.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
-      - 'assets/**'
-      - 'scripts/**'
-      - 'src-tauri/**'
-  pull_request:
-    paths:
-      - '.github/workflows/build.yml'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'assets/**'
       - 'scripts/**'
       - 'src-tauri/**'
 
@@ -105,6 +96,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        env:
+          YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
         run: pnpm tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
       - name: (Linux) Create portable archive

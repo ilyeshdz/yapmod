@@ -1,4 +1,4 @@
-name: Check injected scripts
+name: Check client
 
 on:
   workflow_dispatch:
@@ -9,17 +9,15 @@ on:
       - '.github/workflows/frontend.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
-      - 'assets/**'
       - 'scripts/**'
-      - 'src-tauri/injection/**'
+      - 'client/**'
   pull_request:
     paths:
       - '.github/workflows/frontend.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
-      - 'assets/**'
       - 'scripts/**'
-      - 'src-tauri/injection/**'
+      - 'client/**'
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
@@ -29,7 +27,7 @@ permissions:
   contents: read
 
 jobs:
-  tsc-injection:
+  check-client:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,8 +47,8 @@ jobs:
       - name: Install modules
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck injection scripts
-        run: pnpm injection:check
+      - name: Typecheck client scripts
+        run: pnpm client:check
 
-      - name: Build injection bundles
-        run: pnpm injection:build
+      - name: Build client bundles
+        run: pnpm client:build

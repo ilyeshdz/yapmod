@@ -31,12 +31,7 @@ permissions:
 
 jobs:
   rustfmt:
-    runs-on: ${{ matrix.platform }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -104,8 +99,8 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
-      - name: Install modules and build injection bundles
-        run: pnpm install --frozen-lockfile && pnpm injection:build
+      - name: Install modules and build client bundles
+        run: pnpm install --frozen-lockfile && pnpm client:build
 
       - name: Clippy check
         run: cargo clippy --manifest-path ./src-tauri/Cargo.toml --locked --all-targets -- -D warnings
