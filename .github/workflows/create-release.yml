@@ -2,10 +2,6 @@ name: Draft release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version number (without the leading "v")'
-        required: true
 
 permissions:
   contents: write
@@ -13,15 +9,22 @@ permissions:
 
 jobs:
   create-release:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read app version from Cargo.toml
+        id: app_version
+        run: |
+          app_version=$(cargo metadata --manifest-path src-tauri/Cargo.toml --no-deps --format-version 1 | jq -er '.packages[] | select(.name == "yapmod") | .version')
+          echo "version=$app_version" >> "$GITHUB_OUTPUT"
+
       # https://github.com/actions/upload-artifact/issues/21#issuecomment-2393490651
       - name: Download latest successful build artifacts
         run: |
-          gh_last_success_run_id=$(gh run list -w $WORKFLOW --json conclusion,headBranch,databaseId --jq 'first(.[] | select(.conclusion | contains("success"))) | .databaseId')
+          gh_last_success_run_id=$(gh run list -w "$WORKFLOW" --branch main --limit 100 --json conclusion,headBranch,databaseId --jq 'first(.[] | select(.conclusion == "success" and .headBranch == "main")) | .databaseId')
           [ -z "$gh_last_success_run_id" ] && echo "No successful run found" && exit 1 || true
           gh run download $gh_last_success_run_id -D $OUTPUT_DIR
         env:
@@ -30,6 +33,8 @@ jobs:
           OUTPUT_DIR: artifacts
 
       - name: Rename artifacts
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
           mkdir -p renamed_artifacts
 
@@ -39,31 +44,31 @@ jobs:
             # Determine the new filename based on the artifact name
             case "$base_name" in
               "yapmod-aarch64-apple-darwin-dmg")
-                new_name="yapmod_${{ inputs.version }}_aarch64.dmg"
+                new_name="yapmod_${APP_VERSION}_aarch64.dmg"
                 ;;
               "yapmod-x86_64-apple-darwin-dmg")
-                new_name="yapmod_${{ inputs.version }}_x64.dmg"
+                new_name="yapmod_${APP_VERSION}_x64.dmg"
                 ;;
               "yapmod-x86_64-pc-windows-msvc-nsis")
-                new_name="yapmod_${{ inputs.version }}_x64-setup.exe"
+                new_name="yapmod_${APP_VERSION}_x64-setup.exe"
                 ;;
               "yapmod-x86_64-pc-windows-msvc-msi")
-                new_name="yapmod_${{ inputs.version }}_x64_en-US.msi"
+                new_name="yapmod_${APP_VERSION}_x64_en-US.msi"
                 ;;
               "yapmod-x86_64-pc-windows-msvc-portable")
-                new_name="yapmod_${{ inputs.version }}_win64_portable.zip"
+                new_name="yapmod_${APP_VERSION}_win64_portable.zip"
                 ;;
               "yapmod-x86_64-unknown-linux-gnu-appimage")
-                new_name="yapmod_${{ inputs.version }}_amd64.AppImage"
+                new_name="yapmod_${APP_VERSION}_amd64.AppImage"
                 ;;
               "yapmod-x86_64-unknown-linux-gnu-deb")
-                new_name="yapmod_${{ inputs.version }}_amd64.deb"
+                new_name="yapmod_${APP_VERSION}_amd64.deb"
                 ;;
               "yapmod-x86_64-unknown-linux-gnu-rpm")
-                new_name="yapmod_${{ inputs.version }}-1.x86_64.rpm"
+                new_name="yapmod_${APP_VERSION}-1.x86_64.rpm"
                 ;;
               "yapmod-x86_64-unknown-linux-gnu-portable")
-                new_name="yapmod_${{ inputs.version }}_amd64_portable.tar.gz"
+                new_name="yapmod_${APP_VERSION}_amd64_portable.tar.gz"
                 ;;
               *)
                 # Skip unknown artifacts
@@ -83,8 +88,10 @@ jobs:
 
       - name: Load release notes
         id: notes
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
-          notes_file=".github/release-notes/v${{ inputs.version }}.md"
+          notes_file=".github/release-notes/v$APP_VERSION.md"
 
           if [ -f "$notes_file" ]; then
             {
@@ -99,8 +106,8 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
-          name: v${{ inputs.version }}
+          tag_name: v${{ steps.app_version.outputs.version }}
+          name: v${{ steps.app_version.outputs.version }}
           body: ${{ steps.notes.outputs.body }}
           files: renamed_artifacts/*
           draft: true
