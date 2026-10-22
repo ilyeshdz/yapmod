@@ -208,6 +208,8 @@ export type YapmodGlobal = {
   config?: Config;
   os?: string;
   internalHost?: string;
+  /** Version of the injected client bundle, independent from the desktop app. */
+  clientVersion?: string;
   release?: ReleaseInfo;
   changelog?: () => Promise<ReleaseEntry[]>;
   applyCss?: (css: string) => void;

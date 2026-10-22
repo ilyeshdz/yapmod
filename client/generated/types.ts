@@ -14,7 +14,12 @@ export type Config = { last_seen_version: string | null, settings: { [key in str
  * Everything the injected code needs to know about the app is in here, so
  * there is a single global to look at.
  */
-export type Payload = { config: Config, os: string, internalHost: string, release: ReleaseInfo, 
+export type Payload = { config: Config, os: string, internalHost: string, 
+/**
+ * Version of the injected client bundle. This is distinct from the
+ * desktop application's release version.
+ */
+clientVersion: string, release: ReleaseInfo, 
 /**
  * The theme the user picked, already loaded so it can be applied
  * before the first frame is painted.
@@ -44,7 +49,7 @@ export type ReleaseNotesSection = { heading: string | null, items: Array<string>
 /**
  * A theme, ready to be applied.
  */
-export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, mode: ThemeMode, tags: Array<string>, css: string, 
+export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, 
 /**
  * A picture of the theme, as a data address.
  */

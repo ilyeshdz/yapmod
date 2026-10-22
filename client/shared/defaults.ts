@@ -5,7 +5,7 @@ import type {
 } from "./types";
 import {
   createReleaseBody,
-  createReleaseHeader,
+  formatReleaseDate,
   getChangelog,
 } from "./release";
 import { createElement } from "./ui";
@@ -74,14 +74,39 @@ function renderChangelog(
   }
 
   for (const release of releases) {
+    const date = formatReleaseDate(release.notes?.date);
+    const metadata = [
+      date
+        ? createElement("span", {
+            className: "hint",
+            text: date,
+          })
+        : null,
+      release.version === installedVersion
+        ? createElement("span", {
+            className: "hint",
+            text: "Current version",
+          })
+        : null,
+    ].filter((item): item is HTMLElement => item !== null);
+
     const entryChildren: Node[] = [
-      createReleaseHeader(release, {
-        tag: "header",
+      createElement("header", {
         className: "yapmod-changelog-header",
-        versionClassName: "yapmod-changelog-version",
-        dateClassName: "yapmod-changelog-date",
-        current: release.version === installedVersion,
-        currentClassName: "yapmod-changelog-current",
+        children: [
+          createElement("div", {
+            className: "toggle-label",
+            text: `Version ${release.version}`,
+          }),
+          ...(metadata.length
+            ? [
+                createElement("div", {
+                  className: "yapmod-changelog-meta",
+                  children: metadata,
+                }),
+              ]
+            : []),
+        ],
       }),
     ];
 
@@ -114,7 +139,8 @@ function renderChangelog(
  * the page.
  */
 function createChangelogSection(): SettingsSection {
-  const installedVersion = getYapmod().release?.version;
+  const yapmod = getYapmod();
+  const installedVersion = yapmod.release?.version;
 
   return {
     id: CHANGELOG_SECTION_ID,
@@ -221,6 +247,17 @@ export function installDefaultSettings(): void {
     order: 0,
     description: "Options for the yapmod desktop client.",
     items,
+    render: (host) => {
+      const appVersion = yapmod.release?.version ?? "unknown";
+      const clientVersion = yapmod.clientVersion ?? "embedded";
+
+      host.append(
+        createElement("p", {
+          className: "hint yapmod-version",
+          text: `Desktop v${appVersion} · Client v${clientVersion}`,
+        }),
+      );
+    },
   };
 
   yapmod.settings.register(section);

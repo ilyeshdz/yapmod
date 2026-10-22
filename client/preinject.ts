@@ -17,6 +17,7 @@ const payload = scope.__YAPMOD__ ?? {};
 yapmod.config = payload.config;
 yapmod.os = payload.os;
 yapmod.internalHost = payload.internalHost;
+yapmod.clientVersion = payload.clientVersion;
 yapmod.release = payload.release;
 yapmod.changelog = getChangelog;
 

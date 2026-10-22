@@ -1,12 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "yapmod",
-  "version": "0.4.1",
   "identifier": "io.ilyeshdz.yapmod",
   "build": {
-    "beforeDevCommand": "pnpm injection:build",
+    "beforeDevCommand": "pnpm client:build",
     "devUrl": "http://yapper.website/",
-    "beforeBuildCommand": "pnpm injection:build",
+    "beforeBuildCommand": "pnpm client:build",
     "frontendDist": "https://yapper.website/"
   },
   "app": {

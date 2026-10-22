@@ -50,6 +50,10 @@ html[data-yapmod-os="macos"] #yapmod-drag-region {
   align-self: flex-start;
 }
 
+.yapmod-settings-panel .yapmod-version {
+  margin: 4px 0 0;
+}
+
 .yapmod-settings-panel .yapmod-setting {
   margin-bottom: 12px;
 }
@@ -63,47 +67,72 @@ html[data-yapmod-os="macos"] #yapmod-drag-region {
 
 .yapmod-changelog-release {
   padding: 16px 0;
-  border-top: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-bottom: 1px solid var(--border);
 }
 
-.yapmod-changelog-release:first-child {
-  padding-top: 0;
-  border-top: none;
+.yapmod-changelog-release:last-child {
+  border-bottom: 0;
 }
 
 .yapmod-changelog-header {
+  margin-bottom: 8px;
+}
+
+.yapmod-changelog-meta {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 4px;
-}
-
-.yapmod-changelog-version {
-  font-weight: 600;
-}
-
-.yapmod-changelog-date {
-  font-size: 0.85em;
-  opacity: 0.65;
-}
-
-.yapmod-changelog-current {
-  font-size: 0.75em;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--ym-brand-soft, rgba(246, 117, 103, 0.15));
-  color: var(--ym-brand, #f67567);
+  margin-top: 2px;
 }
 
 .yapmod-changelog-title {
+  margin: 0 0 6px;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+/* The changelog intentionally uses Yapper's plain list treatment rather
+   than the richer release-modal presentation below. */
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-summary {
   margin: 0 0 8px;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-section + .yapmod-release-section {
+  margin-top: 10px;
+}
+
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-section h3 {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list {
+  display: block;
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+}
+
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list li {
+  padding-left: 0;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list li::before {
+  content: none;
 }
 
 .yapmod-changelog-empty {
-  opacity: 0.65;
+  color: var(--text-muted);
 }
 
 /* Release notes modal */

@@ -4,6 +4,8 @@ use std::{
 };
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=YAPMOD_CLIENT_UPDATE_PUBLIC_KEY");
+
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
 
     ensure_injection_bundles(&manifest_dir.join("gen").join("injection"));
@@ -18,6 +20,7 @@ fn main() {
             "notify",
             "request_notification_permission",
             "check_for_update",
+            "confirm_client_update",
             "get_changelog",
             "list_themes",
             "themes_folder",
@@ -36,7 +39,7 @@ fn ensure_injection_bundles(dir: &Path) {
 
         if !path.exists() {
             panic!(
-                "missing injection bundle `{}`\nrun `pnpm injection:build` before building",
+                "missing injection bundle `{}`\nrun `pnpm client:build` before building",
                 path.display()
             );
         }

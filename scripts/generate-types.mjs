@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const generated = "src-tauri/injection/generated";
+const generated = "client/generated";
 const generatedDir = resolve(root, generated);
 const check = process.argv.includes("--check");
 
@@ -46,7 +46,7 @@ function normalizeGenerated(dir) {
  * Regenerates the TypeScript bindings of the Rust types.
  *
  * The `ts-rs` export runs as part of the test suite, so the tests are run
- * with the export folder pointed at the injection bundle.
+ * with the export folder pointed at the injected client source.
  */
 const child = spawn(
   "cargo",
@@ -56,7 +56,7 @@ const child = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
-      TS_RS_EXPORT_DIR: "injection/generated",
+      TS_RS_EXPORT_DIR: resolve(root, generated),
     },
   },
 );

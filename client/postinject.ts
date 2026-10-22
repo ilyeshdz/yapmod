@@ -1,4 +1,4 @@
-import logoSvg from "../../assets/icon.svg";
+import logoSvg from "./assets/icon.svg";
 import type { ReleaseInfo, YapmodModal } from "./shared/types";
 import { createReleaseBody, createReleaseHeader } from "./shared/release";
 import { checkForUpdate, showUpdateAvailableModal } from "./shared/update";

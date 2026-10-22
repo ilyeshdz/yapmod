@@ -1,12 +1,12 @@
 {
   "name": "yapmod",
   "private": true,
-  "version": "0.4.1",
   "type": "module",
   "scripts": {
     "tauri": "tauri",
-    "injection:build": "node scripts/build-injection.mjs",
-    "injection:check": "tsc -p src-tauri/injection/tsconfig.json",
+    "client:build": "node client/build.mjs",
+    "client:dev": "node client/build.mjs --watch",
+    "client:check": "tsc -p client/tsconfig.json",
     "types:generate": "node scripts/generate-types.mjs"
   },
   "dependencies": {
