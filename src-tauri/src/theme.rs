@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Mutex,
 };
 
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,9 @@ pub const THEME_API: u32 = 1;
 
 const MANIFEST_FILE: &str = "manifest.json";
 const DEFAULT_CSS_FILE: &str = "theme.css";
+
+/// A theme folder can only be installed after the native picker selected it.
+static PICKED_THEME_FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 /// The `manifest.json` of a theme.
 ///
@@ -186,6 +190,12 @@ fn copy_folder(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::E
         let path = entry.path();
         let destination = target.join(entry.file_name());
 
+        if fs::symlink_metadata(&path)?.file_type().is_symlink() {
+            return Err(
+                format!("theme folder contains a symbolic link: {}", path.display()).into(),
+            );
+        }
+
         if path.is_dir() {
             copy_folder(&path, &destination)?;
         } else {
@@ -307,7 +317,7 @@ pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, String>
 
     fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
 
-    tauri::async_runtime::spawn_blocking(move || {
+    let selected = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
             .set_title("Import a theme")
@@ -316,13 +326,34 @@ pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, String>
             .map(|path| path.to_string())
     })
     .await
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+
+    let canonical = selected
+        .as_deref()
+        .and_then(|path| expand_home(path).canonicalize().ok());
+    *PICKED_THEME_FOLDER
+        .lock()
+        .map_err(|_| "theme folder selection is unavailable".to_string())? = canonical;
+
+    Ok(selected)
 }
 
 /// Installs a theme from a folder somewhere else on the disk.
 #[tauri::command]
 pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, String> {
-    let source = expand_home(&source);
+    let source = expand_home(&source)
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+
+    let picked = PICKED_THEME_FOLDER
+        .lock()
+        .map_err(|_| "theme folder selection is unavailable".to_string())?
+        .take()
+        .ok_or_else(|| "choose a theme folder using the native picker first".to_string())?;
+
+    if source != picked {
+        return Err("the selected theme folder does not match the native picker".to_string());
+    }
 
     if !source.is_dir() {
         return Err(format!(
@@ -363,6 +394,10 @@ pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, Stri
         .map_err(|error| error.to_string())?
         .join(&manifest.id);
 
+    if target.exists() {
+        return Err("a theme with this id is already installed; remove it first".to_string());
+    }
+
     // Installing a theme that already sits in the themes folder would copy
     // the folder onto itself, and take the theme with it.
     if let (Ok(source), Ok(target)) = (source.canonicalize(), target.canonicalize())
@@ -371,11 +406,10 @@ pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, Stri
         return Err("this theme is already installed".to_string());
     }
 
-    if target.exists() {
-        fs::remove_dir_all(&target).map_err(|error| error.to_string())?;
+    if let Err(error) = copy_folder(&source, &target) {
+        let _ = fs::remove_dir_all(&target);
+        return Err(error.to_string());
     }
-
-    copy_folder(&source, &target).map_err(|error| error.to_string())?;
 
     read_bundle(&target).ok_or_else(|| "the theme could not be read back".to_string())
 }

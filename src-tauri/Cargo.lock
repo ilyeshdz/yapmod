@@ -5409,6 +5409,8 @@ dependencies = [
  "base64 0.22.1",
  "include-flate",
  "reqwest 0.12.28",
+ "ring",
+ "semver",
  "serde",
  "serde_json",
  "tauri",

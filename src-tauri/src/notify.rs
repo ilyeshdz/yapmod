@@ -22,6 +22,13 @@ pub fn notify(
     tag: Option<String>,
     silent: Option<bool>,
 ) -> Result<(), String> {
+    if title.len() > 256
+        || body.as_ref().is_some_and(|body| body.len() > 4096)
+        || tag.as_ref().is_some_and(|tag| tag.len() > 256)
+    {
+        return Err("notification content exceeds the permitted size".to_string());
+    }
+
     let mut builder = app.notification().builder().title(title);
 
     if let Some(body) = body {

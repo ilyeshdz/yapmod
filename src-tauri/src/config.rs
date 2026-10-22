@@ -189,11 +189,45 @@ fn config_path(app: &AppHandle) -> ConfigResult<PathBuf> {
     Ok(app.path().app_config_dir()?.join("config.json"))
 }
 
+fn valid_setting(key: &str, value: &Value) -> bool {
+    if key.len() > 64 {
+        return false;
+    }
+
+    match key {
+        "use_native_titlebar"
+        | "start_maximized"
+        | "keep_in_tray"
+        | "auto_update"
+        | "notifications"
+        | "unread_badge" => value.is_boolean(),
+        "theme_id" => value.as_str().is_some_and(|id| {
+            id.len() <= 100
+                && !id.starts_with('.')
+                && id
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || "-_.".contains(ch))
+        }),
+        "theme_mode" => value
+            .as_str()
+            .is_some_and(|mode| matches!(mode, "system" | "dark" | "light")),
+        _ => false,
+    }
+}
+
 #[tauri::command]
 pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(), String> {
+    if values.len() > 32 {
+        return Err("too many settings were provided".to_string());
+    }
+
     let mut config = Config::load(&app).map_err(|error| error.to_string())?;
 
     for (key, value) in values {
+        if !valid_setting(&key, &value) {
+            return Err(format!("unsupported or invalid setting `{key}`"));
+        }
+
         config.settings.insert(key, value);
     }
 
@@ -208,7 +242,8 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::Config;
+    use super::{Config, valid_setting};
+    use serde_json::json;
 
     #[test]
     fn moves_the_legacy_settings_into_the_map() {
@@ -246,5 +281,14 @@ mod tests {
         assert_eq!(config.setting_bool("use_native_titlebar"), Some(false));
         assert_eq!(config.setting_bool("start_maximized"), Some(false));
         assert_eq!(config.setting_bool("keep_in_tray"), Some(true));
+    }
+
+    #[test]
+    fn setting_updates_are_allowlisted_and_type_checked() {
+        assert!(valid_setting("notifications", &json!(false)));
+        assert!(valid_setting("theme_id", &json!("my-theme_1")));
+        assert!(!valid_setting("arbitrary", &json!(true)));
+        assert!(!valid_setting("notifications", &json!("yes")));
+        assert!(!valid_setting("theme_id", &json!("../config")));
     }
 }

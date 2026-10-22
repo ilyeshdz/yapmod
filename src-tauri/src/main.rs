@@ -8,6 +8,7 @@ use tauri::{
 use tauri_plugin_opener::OpenerExt;
 
 mod badge;
+mod client_update;
 mod config;
 mod hosts;
 mod injection;
@@ -29,6 +30,7 @@ fn main() {
             notify::notify,
             notify::request_notification_permission,
             update::check_for_update,
+            client_update::confirm_client_update,
             injection::release::get_changelog,
             theme::list_themes,
             theme::themes_folder,
@@ -48,12 +50,14 @@ fn main() {
             let url = WebviewUrl::External("https://www.yapper.website/?auth=in".parse()?);
             let title = format!("Yapmod - v{}", app.package_info().version);
             let active_theme = theme::active_theme(app.handle(), &config);
+            let client_bundle = client_update::for_launch(app.handle(), &version);
             let preinject = injection::preinject(
                 &config,
                 first_run,
                 &version,
                 previous_version.as_deref(),
                 active_theme,
+                client_bundle.as_ref().map(|(bundle, _)| bundle),
             );
             let win = WebviewWindowBuilder::new(app, "main", url)
                 .title(title)
@@ -85,29 +89,40 @@ fn main() {
                     }
                 })
                 .on_permission_request(|webview, kind| {
-                    let internal = webview
-                        .url()
-                        .map(|url| hosts::is_internal_url(&url))
-                        .unwrap_or(false);
+                    let approved_origin =
+                        webview.url().is_ok_and(|url| hosts::is_injection_url(&url));
 
                     // Voice and video need the microphone and camera. Only
-                    // grant them to the app itself, never to a page that
+                    // grant them to an approved Yapper origin, never a page that
                     // somehow navigated the webview elsewhere.
-                    match (internal, kind) {
+                    match (approved_origin, kind) {
                         (true, PermissionKind::Microphone | PermissionKind::Camera) => {
                             PermissionResponse::Allow
                         }
-                        (false, PermissionKind::Microphone | PermissionKind::Camera) => {
+                        (_, PermissionKind::Microphone | PermissionKind::Camera) => {
                             PermissionResponse::Deny
                         }
                         _ => PermissionResponse::Default,
                     }
                 })
-                .on_page_load(|webview, payload| {
-                    if payload.event() == PageLoadEvent::Finished
-                        && let Err(error) = webview.eval(injection::postinject())
-                    {
-                        eprintln!("failed to inject postinject script: {error}");
+                .on_page_load({
+                    let client_bundle = client_bundle.clone();
+                    move |webview, payload| {
+                        if payload.event() != PageLoadEvent::Finished
+                            || !hosts::is_injection_url(payload.url())
+                        {
+                            return;
+                        }
+
+                        let bundle = client_bundle.as_ref().map(|(bundle, _)| bundle);
+                        let confirm_trial = client_bundle
+                            .as_ref()
+                            .is_some_and(|(_, is_trial)| *is_trial);
+                        if let Err(error) =
+                            webview.eval(injection::postinject(bundle, confirm_trial))
+                        {
+                            eprintln!("failed to inject postinject script: {error}");
+                        }
                     }
                 });
 
@@ -122,6 +137,16 @@ fn main() {
             let win = win.build()?;
             window::install_close_handler(&win);
             tray::install(app.handle(), &config);
+
+            let app_handle = app.handle().clone();
+            let app_version = version.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) =
+                    client_update::check_for_client_update(app_handle, app_version).await
+                {
+                    eprintln!("client update check failed: {error}");
+                }
+            });
 
             Ok(())
         })
