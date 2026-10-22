@@ -72,23 +72,40 @@ child.on("exit", (code) => {
     process.exit(0);
   }
 
-  const status = spawnSync("git", ["status", "--porcelain", "--", generated], {
-    cwd: root,
-    encoding: "utf8",
-  });
-
-  if (status.stdout.trim()) {
-    const diff = spawnSync("git", ["diff", "--", generated], {
+  const diff = spawnSync(
+    "git",
+    ["diff", "--quiet", "--ignore-space-at-eol", "--", generated],
+    {
+      cwd: root,
+    },
+  );
+  const untracked = spawnSync(
+    "git",
+    ["ls-files", "--others", "--exclude-standard", "--", generated],
+    {
       cwd: root,
       encoding: "utf8",
-    });
+    },
+  );
 
-    console.error(
-      `The generated types are out of date, run \`pnpm types:generate\`:\n${status.stdout}`,
+  if (diff.status !== 0 || untracked.stdout.trim()) {
+    const renderedDiff = spawnSync(
+      "git",
+      ["diff", "--ignore-space-at-eol", "--", generated],
+      {
+        cwd: root,
+        encoding: "utf8",
+      },
     );
 
-    if (diff.stdout.trim()) {
-      console.error(diff.stdout);
+    console.error("The generated types are out of date, run `pnpm types:generate`.");
+
+    if (untracked.stdout.trim()) {
+      console.error(`Untracked generated files:\n${untracked.stdout}`);
+    }
+
+    if (renderedDiff.stdout.trim()) {
+      console.error(renderedDiff.stdout);
     }
 
     process.exit(1);
