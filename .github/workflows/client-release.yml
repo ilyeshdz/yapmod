@@ -1,0 +1,130 @@
+name: Publish injected client
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sequence:
+        description: Monotonically increasing release number
+        required: true
+        type: number
+      min_app_version:
+        description: Minimum compatible Yapmod version
+        required: true
+        type: string
+      expires_at:
+        description: Manifest expiry as Unix seconds
+        required: true
+        type: number
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install and build the website
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm client:build
+          cd web
+          pnpm install --frozen-lockfile --ignore-workspace
+          pnpm build
+
+      - name: Package and sign client release
+        env:
+          RELEASE_SEQUENCE: ${{ inputs.release_sequence }}
+          MIN_APP_VERSION: ${{ inputs.min_app_version }}
+          EXPIRES_AT: ${{ inputs.expires_at }}
+          CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
+          CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+        run: |
+          CLIENT_VERSION=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/version.json", "utf8")).version)')
+          export CLIENT_VERSION
+          test -n "$CLIENT_UPDATE_SIGNING_KEY" || { echo "CLIENT_UPDATE_SIGNING_KEY secret is required"; exit 1; }
+          test -n "$CLIENT_UPDATE_PUBLIC_KEY" || { echo "CLIENT_UPDATE_PUBLIC_KEY repository variable is required"; exit 1; }
+          if curl --fail --silent --show-error \
+            https://ilyeshdz.github.io/yapmod/client-updates/manifest.json \
+            --output "$RUNNER_TEMP/previous-client-manifest.json"; then
+            previous_sequence=$(jq -r '.releaseSequence' "$RUNNER_TEMP/previous-client-manifest.json")
+            test "$RELEASE_SEQUENCE" -gt "$previous_sequence" \
+              || { echo "release_sequence must exceed the published sequence $previous_sequence"; exit 1; }
+          fi
+          mkdir -p web/dist/client-updates
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const sequence = Number(process.env.RELEASE_SEQUENCE);
+            const expiresAt = Number(process.env.EXPIRES_AT);
+            const now = Math.floor(Date.now() / 1000);
+            if (!Number.isSafeInteger(sequence) || sequence < 1) throw new Error("release_sequence must be a positive integer");
+            if (!Number.isSafeInteger(expiresAt) || expiresAt <= now || expiresAt - now > 90 * 24 * 60 * 60) throw new Error("expires_at must be within the next 90 days");
+            const versionPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+            if (!versionPattern.test(process.env.MIN_APP_VERSION)) throw new Error("min_app_version must be a semantic version");
+            if (!versionPattern.test(process.env.CLIENT_VERSION) || process.env.CLIENT_VERSION.length > 64) throw new Error("client_version must be a semantic version of at most 64 characters");
+            const read = (path) => readFileSync(path, "utf8");
+            const bundle = {
+              clientVersion: process.env.CLIENT_VERSION,
+              releaseSequence: sequence,
+              bridgeApiVersion: 1,
+              minAppVersion: process.env.MIN_APP_VERSION,
+              preinject: read("src-tauri/gen/injection/preinject.js"),
+              postinject: read("src-tauri/gen/injection/postinject.js"),
+              minimumCss: read("client/assets/css/minimum.css"),
+            };
+            writeFileSync("web/dist/client-updates/bundle.json", JSON.stringify(bundle));
+          '
+          bundle_hash=$(sha256sum web/dist/client-updates/bundle.json | cut -d ' ' -f 1)
+          jq -n \
+            --arg clientVersion "$CLIENT_VERSION" \
+            --argjson releaseSequence "$RELEASE_SEQUENCE" \
+            --argjson bridgeApiVersion 1 \
+            --arg minAppVersion "$MIN_APP_VERSION" \
+            --argjson expiresAt "$EXPIRES_AT" \
+            --arg bundleSha256 "$bundle_hash" \
+            '{clientVersion:$clientVersion,releaseSequence:$releaseSequence,bridgeApiVersion:$bridgeApiVersion,minAppVersion:$minAppVersion,expiresAt:$expiresAt,bundleSha256:$bundleSha256}' \
+            > web/dist/client-updates/manifest.json
+          umask 077
+          printf '%s' "$CLIENT_UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/client-update-key.pem"
+          trap 'rm -f "$RUNNER_TEMP/client-update-key.pem" "$RUNNER_TEMP/manifest.sig.raw"' EXIT
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout -outform DER \
+            | tail -c 32 | base64 -w0 > "$RUNNER_TEMP/derived-public-key.txt"
+          test "$(cat "$RUNNER_TEMP/derived-public-key.txt")" = "$CLIENT_UPDATE_PUBLIC_KEY" \
+            || { echo "signing key does not match CLIENT_UPDATE_PUBLIC_KEY"; exit 1; }
+          openssl pkeyutl -sign -rawin -inkey "$RUNNER_TEMP/client-update-key.pem" \
+            -in web/dist/client-updates/manifest.json \
+            -out "$RUNNER_TEMP/manifest.sig.raw"
+          base64 -w0 "$RUNNER_TEMP/manifest.sig.raw" > web/dist/client-updates/manifest.sig
+          rm -f "$RUNNER_TEMP/client-update-key.pem" "$RUNNER_TEMP/manifest.sig.raw"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+      - name: Deploy client release and website
+        id: deployment
+        uses: actions/deploy-pages@v4
