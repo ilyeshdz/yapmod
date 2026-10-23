@@ -41,4 +41,7 @@ chmod +x yapmod*.AppImage
 ./yapmod*.AppImage
 ```
 
+> **AppImage on recent Wayland distributions**
+> The AppImage may crash or display a blank window on recent Fedora releases and some other Wayland-based distributions because of a conflict between bundled Wayland libraries and the system graphics stack. Use the `.rpm` package on Fedora or the `.deb` package on Debian and Ubuntu. See [Troubleshooting](/docs/troubleshooting/#it-crashes-or-shows-a-blank-window-on-fedora-or-another-recent-wayland-distribution) for details.
+
 To update, install a newer build over the existing one. Your settings are kept.

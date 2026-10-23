@@ -32,6 +32,12 @@ yapmod keeps running in the menu bar on macOS or the system tray on Windows and 
 
 Make it executable with `chmod +x`. Some distributions also need FUSE installed to run AppImages.
 
+### It crashes or shows a blank window on Fedora or another recent Wayland distribution
+
+This is a known limitation of the AppImage build. On recent Fedora releases and some other modern Wayland-based distributions, the AppImage can load its bundled Wayland client libraries alongside the system EGL and Wayland stack. Those versions may be incompatible, which can prevent EGL from creating a display and make the app exit or show a blank window.
+
+The practical fix would be to remove the bundled Wayland libraries while building the AppImage so it uses the system copies. That is not currently part of the release process. Use the `.rpm` package on Fedora or the `.deb` package on Debian and Ubuntu instead; those packages use the libraries provided by your distribution and are unaffected by this AppImage issue.
+
 ## Links open inside the app
 
 Recent builds open external links in your browser. Update to the latest release if yours does not.
