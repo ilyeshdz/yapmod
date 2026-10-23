@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-const [version] = process.argv.slice(2);
+const version = process.env.APP_VERSION ?? process.argv[2];
 
 if (
   !version ||
   !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)
 ) {
-  throw new Error("Pass a valid semantic version as the only argument.");
+  throw new Error("Set APP_VERSION or pass a valid semantic version as the first argument.");
 }
 
 const manifestPath = "src-tauri/Cargo.toml";

@@ -102,7 +102,7 @@ jobs:
       - name: Set app version
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
-        run: node scripts/set-app-version.mjs "$APP_VERSION"
+        run: node scripts/set-app-version.mjs
 
       - name: Prepare apt archive cache
         if: matrix.platform == 'ubuntu-22.04'
