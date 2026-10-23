@@ -1,3 +1,21 @@
+:root {
+  --yapmod-titlebar-height: 28px;
+}
+
+html[data-yapmod-os="macos"] .app,
+html[data-yapmod-os="macos"] .auth-wrap {
+  padding-top: var(--yapmod-titlebar-height);
+}
+
+html[data-yapmod-os="macos"] #yapmod-drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--yapmod-titlebar-height);
+  z-index: 2147483647;
+}
+
 /* Settings sections */
 
 .settings.yapmod-section-active > .settings-main:not(.yapmod-settings-panel) {

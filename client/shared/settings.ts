@@ -196,24 +196,16 @@ function mountNav(): void {
     return;
   }
 
-  const entries = [...groups.values()].flatMap((group) => [
-    group.label,
-    ...group.entries.map((entry) => entry.button),
-  ]);
-  let reference: Element | null = nav.querySelector<HTMLElement>(
-    ":scope > .plus-nav",
-  );
+  const anchor = nav.querySelector<HTMLElement>(":scope > .plus-nav");
 
-  // Reinsert only nodes React removed or moved. Avoiding remove/insert churn
-  // keeps the observer quiet during normal section registration.
-  for (let index = entries.length - 1; index >= 0; index -= 1) {
-    const entry = entries[index];
+  for (const group of groups.values()) {
+    group.label.remove();
+    nav.insertBefore(group.label, anchor);
 
-    if (entry.parentElement !== nav || entry.nextElementSibling !== reference) {
-      nav.insertBefore(entry, reference);
+    for (const entry of group.entries) {
+      entry.button.remove();
+      nav.insertBefore(entry.button, anchor);
     }
-
-    reference = entry;
   }
 }
 
@@ -249,7 +241,7 @@ function bindNav(element: HTMLElement): void {
 function observeNav(element: HTMLElement): void {
   navObserver?.disconnect();
 
-  navObserver = new MutationObserver((records) => {
+  navObserver = new MutationObserver(() => {
     if (!nav) {
       return;
     }
@@ -289,20 +281,8 @@ function observeNav(element: HTMLElement): void {
       return;
     }
 
-    for (const record of records) {
-      if (
-        record.type !== "attributes" ||
-        record.attributeName !== "class" ||
-        !(record.target instanceof HTMLButtonElement)
-      ) {
-        continue;
-      }
-
-      const button = record.target;
-
-      if (button === entry.button) {
-        button.classList.add("active");
-      } else if (button.classList.contains("active")) {
+    for (const button of nav.querySelectorAll<HTMLElement>("button.active")) {
+      if (button !== entry.button) {
         button.classList.remove("active");
       }
     }

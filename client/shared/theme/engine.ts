@@ -1,8 +1,9 @@
 import type { ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
-import { mountThemeStyles } from "./styles";
 import { getYapmod } from "../scope";
 import { invokeCommand } from "../tauri";
+
+const THEME_STYLE_ID = "yapmod-theme-styles";
 
 /**
  * The keys the wrapped app keeps its own theme in.
@@ -31,7 +32,6 @@ let activeTheme: ThemeBundle | null = null;
 const listeners = new Set<ThemeListener>();
 
 let savedHostTheme: string | null = null;
-let savedHostThemeAttribute: string | null = null;
 let hostStateSaved = false;
 
 function readStorage(key: string): string | null {
@@ -103,7 +103,6 @@ function saveHostState(): void {
     return;
   }
 
-  savedHostThemeAttribute = document.documentElement.getAttribute("data-theme");
   hostStateSaved = true;
   savedHostTheme = readStorage(HOST_THEME_KEY);
 }
@@ -117,12 +116,6 @@ function restoreHostState(): void {
   }
 
   hostStateSaved = false;
-
-  if (savedHostThemeAttribute === null) {
-    document.documentElement.removeAttribute("data-theme");
-  } else {
-    document.documentElement.setAttribute("data-theme", savedHostThemeAttribute);
-  }
 
   if (savedHostTheme === null) {
     removeStorage(HOST_THEME_KEY);
@@ -140,12 +133,30 @@ function restoreHostState(): void {
 function applyToHost(mode: ResolvedMode): void {
   const root = document.documentElement;
 
-  saveHostState();
-
   if (root.dataset.theme !== mode) {
     root.dataset.theme = mode;
   }
   writeStorage(HOST_THEME_KEY, mode);
+
+  saveHostState();
+}
+
+/**
+ * Puts the stylesheet of a theme on the page.
+ *
+ * The stylesheet is always the last one in the head, so a theme can style
+ * the app it is applied to with plain CSS.
+ */
+function mount(css: string): void {
+  document.getElementById(THEME_STYLE_ID)?.remove();
+
+  const style = document.createElement("style");
+  style.id = THEME_STYLE_ID;
+  style.textContent = css;
+
+  const parent = document.head ?? document.documentElement;
+
+  parent?.appendChild(style);
 }
 
 /**
@@ -157,7 +168,7 @@ function render(theme: ThemeBundle | null): void {
   if (!theme) {
     delete root.dataset.yapmodTheme;
     delete root.dataset.yapmodMode;
-    mountThemeStyles("");
+    mount("");
     restoreHostState();
     return;
   }
@@ -167,9 +178,26 @@ function render(theme: ThemeBundle | null): void {
   root.dataset.yapmodTheme = theme.id;
   root.dataset.yapmodMode = mode;
 
-  mountThemeStyles(`${buildTokenLayer(theme.id, theme.css)}\n${theme.css}`);
+  mount(`${buildTokenLayer(theme.id, theme.css)}\n${theme.css}`);
 
   applyToHost(mode);
+}
+
+/**
+ * Moves the stylesheet of the theme behind the stylesheets of the app.
+ *
+ * The theme is applied before the page loads, so the app never shows the
+ * wrong colours. When the page is done loading, the stylesheet is put at
+ * the end of the head, where it can also override plain CSS.
+ */
+export function remountThemeStyles(): void {
+  const style = document.getElementById(THEME_STYLE_ID);
+
+  if (!style) {
+    return;
+  }
+
+  mount(style.textContent ?? "");
 }
 
 function notify(): void {
@@ -235,20 +263,9 @@ function watchSystem(): void {
       const theme = activeTheme;
 
       if (theme) {
-        if (
-          theme.mode !== "both" ||
-          getYapmod().store?.get<string>("theme_mode", "system") !== "system"
-        ) {
-          return;
-        }
-
         render(theme);
-        notify();
-      } else if (
-        getYapmod().store?.get<string>("theme_mode", "system") === "system"
-      ) {
+      } else {
         applyCurrentState();
-        notify();
       }
     });
   } catch {
@@ -266,48 +283,41 @@ function watchStore(): void {
   store?.onChange("theme_mode", () => {
     const theme = activeTheme;
 
-    if (theme?.mode === "both") {
+    if (theme) {
       render(theme);
-    } else if (!theme) {
+    } else {
       applyCurrentState();
     }
-
-    notify();
   });
 
-  let themeRequest = 0;
-
   store?.onChange("theme_id", async () => {
-    const request = ++themeRequest;
+    // When theme_id changes, reload the theme so it renders with the
+    // current mode setting and proper data-theme attribute.
     const id = store?.get<string>("theme_id", "") ?? "";
 
-    // The picker applies the selected bundle before updating the store. This
-    // also avoids a redundant native list call for that normal path.
-    if (id === (activeTheme?.id ?? "")) {
-      return;
-    }
+    if (id) {
+      try {
+        const themes = await invokeCommand<ThemeBundle[]>("list_themes");
+        const theme = themes.find((t) => t.id === id);
 
-    if (!id) {
+        if (theme) {
+          activeTheme = theme;
+          render(theme);
+          notify();
+        } else {
+          // Theme not found, fall back to host state
+          activeTheme = null;
+          render(null);
+          notify();
+        }
+      } catch {
+        // If we can't list themes, keep the current state
+      }
+    } else {
       // No theme selected, restore host state
       activeTheme = null;
       render(null);
       notify();
-      return;
-    }
-
-    try {
-      const themes = await invokeCommand<ThemeBundle[]>("list_themes");
-
-      if (request !== themeRequest || store?.get<string>("theme_id", "") !== id) {
-        return;
-      }
-
-      const theme = themes.find((candidate) => candidate.id === id);
-      activeTheme = theme ?? null;
-      render(activeTheme);
-      notify();
-    } catch {
-      // If we can't list themes, keep the current state.
     }
   });
 }
@@ -320,13 +330,7 @@ function watchStore(): void {
  */
 function watchHost(): void {
   const observer = new MutationObserver(() => {
-    const mode = getYapmod().store?.get<string>("theme_mode", "system");
-
-    // With no custom theme and system mode, Yapper owns this attribute. In
-    // other modes, keep the selected mode in place as the host updates it.
-    if (activeTheme || mode !== "system") {
-      applyCurrentState();
-    }
+    applyCurrentState();
   });
 
   observer.observe(document.documentElement, {

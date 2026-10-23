@@ -1,5 +1,3 @@
-import postcss from "postcss";
-
 /**
  * The colour tokens of a theme.
  *
@@ -64,10 +62,6 @@ export const TOKENS: TokenDefinition[] = [...COLOR_TOKENS, ...OWN_TOKENS];
  * The names a theme may use, so previews can be built from a stylesheet.
  */
 const TOKEN_NAMES = new Set(TOKENS.map((token) => token.name));
-const MODE_SELECTORS = {
-  dark: /\[\s*data-yapmod-mode\s*=\s*(?:"dark"|'dark'|dark)\s*\]/i,
-  light: /\[\s*data-yapmod-mode\s*=\s*(?:"light"|'light'|light)\s*\]/i,
-} as const;
 
 /**
  * Variables of the wrapped app that are fed by a token as well.
@@ -95,12 +89,7 @@ function declarations(tokens: TokenDefinition[], mode: "dark" | "light"): string
  * the app, so its own palette keeps working.
  */
 export function buildTokenLayer(themeId: string, css = ""): string {
-  const { tokens, variables, modes } = readDeclarations(css);
-  const definedTokens = {
-    ...tokens,
-    ...modes.dark,
-    ...modes.light,
-  };
+  const { tokens, variables } = readDeclarations(css);
 
   const mapped: string[] = [];
 
@@ -114,7 +103,7 @@ export function buildTokenLayer(themeId: string, css = ""): string {
       continue;
     }
 
-    if (definedTokens[token.name] === undefined) {
+    if (tokens[token.name] === undefined) {
       continue;
     }
 
@@ -164,13 +153,50 @@ export function readTokens(
   css: string,
   mode?: "dark" | "light",
 ): Record<string, string> {
-  const { tokens, modes } = readDeclarations(css);
+  const found = readDeclarations(css).tokens;
 
   if (!mode) {
-    return tokens;
+    return found;
   }
 
-  return { ...tokens, ...modes[mode] };
+  const scoped = readModeTokens(css, mode);
+
+  return { ...found, ...scoped };
+}
+
+/**
+ * Reads the tokens of the rules that belong to one mode.
+ */
+function readModeTokens(
+  css: string,
+  mode: "dark" | "light",
+): Record<string, string> {
+  // Collect the CSS bodies of all rules scoped to the target mode.
+  let combined = "";
+  const pattern = /([^{}]+)\{([^{}]*)\}/g;
+
+  let match = pattern.exec(css);
+
+  while (match !== null) {
+    const selector = match[1];
+    const body = match[2];
+
+    if (selector.includes(`data-yapmod-mode="${mode}"`)) {
+      combined += body + ";";
+    }
+
+    match = pattern.exec(css);
+  }
+
+  // Delegate token extraction to the shared parser.
+  return readDeclarations(combined).tokens;
+}
+
+/**
+ * Reads the variables of the app a stylesheet sets directly.
+ */
+export function readVariables(css: string): Record<string, string> {
+  return readDeclarations(css).variables;
 }
 
 /**
@@ -221,69 +247,27 @@ type Declarations = {
   tokens: Record<string, string>;
   /** The variables of the app, set by their own name. */
   variables: Record<string, string>;
-  /** Token values scoped to each yapmod color mode. */
-  modes: Record<"dark" | "light", Record<string, string>>;
 };
 
 function readDeclarations(css: string): Declarations {
   const tokens: Record<string, string> = {};
   const variables: Record<string, string> = {};
-  const modes: Declarations["modes"] = { dark: {}, light: {} };
-  let root: ReturnType<typeof postcss.parse>;
+  const pattern = /--([a-zA-Z0-9-]+)\s*:\s*([^;{}]+);/g;
 
-  try {
-    root = postcss.parse(css, { from: undefined });
-  } catch {
-    // Leave malformed CSS to the browser's stylesheet parser. Token mapping
-    // is optional, so one bad declaration should not stop theme injection.
-    return { tokens, variables, modes };
+  let match = pattern.exec(css);
+
+  while (match !== null) {
+    const name = match[1];
+    const value = match[2].trim();
+
+    if (name.startsWith("ym-") && TOKEN_NAMES.has(name.slice(3))) {
+      tokens[name.slice(3)] = value;
+    } else if (TOKEN_NAMES.has(name)) {
+      variables[name] = value;
+    }
+
+    match = pattern.exec(css);
   }
 
-  root.walkDecls((declaration) => {
-    const name = declaration.prop.startsWith("--")
-      ? declaration.prop.slice(2)
-      : "";
-    const value = declaration.value.trim();
-    const tokenName = name.startsWith("ym-") ? name.slice(3) : name;
-
-    if (!TOKEN_NAMES.has(tokenName)) {
-      return;
-    }
-
-    if (name.startsWith("ym-")) {
-      const mode = modeForDeclaration(declaration);
-
-      if (mode) {
-        modes[mode][tokenName] = value;
-      } else {
-        tokens[tokenName] = value;
-      }
-    } else {
-      variables[tokenName] = value;
-    }
-  });
-
-  return { tokens, variables, modes };
-}
-
-function modeForDeclaration(
-  declaration: postcss.Declaration,
-): "dark" | "light" | null {
-  let parent = declaration.parent;
-
-  while (parent && parent.type !== "root") {
-    if (parent.type === "rule") {
-      const selector = parent.selector;
-
-      for (const mode of ["dark", "light"] as const) {
-        if (MODE_SELECTORS[mode].test(selector)) {
-          return mode;
-        }
-      }
-    }
-
-    parent = parent.parent;
-  }
-
-  return null;
+  return { tokens, variables };
 }
