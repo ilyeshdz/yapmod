@@ -3,7 +3,7 @@ import type { ReleaseInfo, YapmodModal } from "./shared/types";
 import { createReleaseBody, createReleaseHeader } from "./shared/release";
 import { checkForUpdate, showUpdateAvailableModal } from "./shared/update";
 import { upsertStyle, createElement } from "./shared/ui";
-import { remountThemeStyles } from "./shared/theme/engine";
+import { remountThemeStyles } from "./shared/theme/styles";
 import { getYapmod } from "./shared/scope";
 
 const STYLE_ELEMENT_ID = "yapmod-injected-styles";
@@ -241,14 +241,6 @@ try {
   ensureDragRegion();
 } catch (error) {
   console.error("[yapmod] failed to ensure drag region", error);
-}
-
-// The stylesheet of the theme is moved behind the stylesheets of the app,
-// so a theme can style the app with plain CSS.
-try {
-  remountThemeStyles();
-} catch (error) {
-  console.error("[yapmod] failed to remount theme styles", error);
 }
 
 getYapmod().applyCss = applyCss;

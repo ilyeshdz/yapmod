@@ -1,5 +1,5 @@
 import type { SettingsSection } from "../types";
-import type { ThemeBundle } from "./types";
+import type { ResolvedMode, ThemeBundle } from "./types";
 import { createElement, ensureStyle } from "../ui";
 import { createDropdown } from "../dropdown";
 import { getYapmod } from "../scope";
@@ -13,6 +13,11 @@ const SECTION_ID = "yapmod-themes";
  */
 const GROUP_LABEL = "Yapmod";
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
+const TOKEN_FALLBACKS = new Map(TOKENS.map((token) => [token.name, token.dark]));
+const previewTokens = new WeakMap<
+  ThemeBundle,
+  Partial<Record<ResolvedMode, Record<string, string>>>
+>();
 
 /**
  * The styles of the theme gallery.
@@ -220,22 +225,7 @@ const THEME_UI_CSS = `
  * The colour a token falls back to.
  */
 function fallback(name: string): string {
-  return TOKENS.find((token) => token.name === name)?.dark ?? "transparent";
-}
-
-/**
- * The value the app uses for one of its variables right now.
- */
-function appValue(name: string, fallbackValue: string): string {
-  try {
-    const value = getComputedStyle(document.documentElement)
-      .getPropertyValue(`--${name}`)
-      .trim();
-
-    return value || fallbackValue;
-  } catch {
-    return fallbackValue;
-  }
+  return TOKEN_FALLBACKS.get(name) ?? "transparent";
 }
 
 /**
@@ -263,39 +253,98 @@ type Swatches = {
   radius: number;
 };
 
+type PreviewContext = {
+  mode: ResolvedMode;
+  palette: Record<string, string>;
+  variables: Record<string, string>;
+};
+
+function createPreviewContext(): PreviewContext {
+  const mode = appMode();
+  const variables: Record<string, string> = {};
+
+  try {
+    const computed = getComputedStyle(document.documentElement);
+
+    for (const token of TOKENS) {
+      if (token.variable) {
+        variables[token.name] = computed
+          .getPropertyValue(token.variable)
+          .trim();
+      }
+    }
+  } catch {
+    // The defaults below keep previews usable if computed styles are blocked.
+  }
+
+  return {
+    mode,
+    palette: appPalette(mode),
+    variables,
+  };
+}
+
+function appValue(
+  context: PreviewContext,
+  name: string,
+  fallbackValue: string,
+): string {
+  return context.variables[name] || fallbackValue;
+}
+
+function themeTokens(
+  theme: ThemeBundle,
+  mode: ResolvedMode,
+): Record<string, string> {
+  let byMode = previewTokens.get(theme);
+
+  if (!byMode) {
+    byMode = {};
+    previewTokens.set(theme, byMode);
+  }
+
+  return (byMode[mode] ??= readTokens(theme.css, mode));
+}
+
 /**
  * The colours of a theme, or of the app when there is no theme.
  */
-function swatchesOf(theme: ThemeBundle | null): Swatches {
-  const mode = theme ? resolveMode(theme) : appMode();
+function swatchesOf(
+  theme: ThemeBundle | null,
+  context: PreviewContext,
+): Swatches {
+  const mode = theme ? resolveMode(theme) : context.mode;
 
   if (!theme) {
     // The card of the app's own theme shows the palette of the app, even
     // while another theme is applied.
-    const palette = appPalette(mode);
+    const palette = context.palette;
 
     return {
-      rail: palette["bg-rail"] ?? appValue("bg-rail", fallback("bg-rail")),
-      side: palette["bg-side"] ?? appValue("bg-side", fallback("bg-side")),
-      main: palette["bg-main"] ?? appValue("bg-main", fallback("bg-main")),
-      elev: palette["bg-elev"] ?? appValue("bg-elev", fallback("bg-elev")),
-      active: palette["bg-active"] ?? appValue("bg-active", fallback("bg-active")),
-      input: palette["bg-input"] ?? appValue("bg-input", fallback("bg-input")),
-      text: palette["text"] ?? appValue("text", fallback("text")),
+      rail: palette["bg-rail"] ?? appValue(context, "bg-rail", fallback("bg-rail")),
+      side: palette["bg-side"] ?? appValue(context, "bg-side", fallback("bg-side")),
+      main: palette["bg-main"] ?? appValue(context, "bg-main", fallback("bg-main")),
+      elev: palette["bg-elev"] ?? appValue(context, "bg-elev", fallback("bg-elev")),
+      active:
+        palette["bg-active"] ?? appValue(context, "bg-active", fallback("bg-active")),
+      input:
+        palette["bg-input"] ?? appValue(context, "bg-input", fallback("bg-input")),
+      text: palette["text"] ?? appValue(context, "text", fallback("text")),
       muted:
-        palette["text-muted"] ?? appValue("text-muted", fallback("text-muted")),
-      border: palette["border"] ?? appValue("border", fallback("border")),
-      accent: palette["accent"] ?? appValue("accent", fallback("accent")),
+        palette["text-muted"] ?? appValue(context, "text-muted", fallback("text-muted")),
+      border: palette["border"] ?? appValue(context, "border", fallback("border")),
+      accent: palette["accent"] ?? appValue(context, "accent", fallback("accent")),
       accentSoft:
-        palette["accent-soft"] ??
-        appValue("accent-soft", fallback("accent-soft")),
-      radius: radiusOf(palette["radius"] ?? appValue("radius", fallback("radius"))),
+        palette["accent-soft"] ?? appValue(context, "accent-soft", fallback("accent-soft")),
+      radius: radiusOf(
+        palette["radius"] ?? appValue(context, "radius", fallback("radius")),
+      ),
     };
   }
 
-  const tokens = readTokens(theme.css, mode);
+  const tokens = themeTokens(theme, mode);
   const pick = (name: string, variable: string): string =>
-    tokens[name] ?? appValue(variable, fallback(name));
+    tokens[name] ?? appValue(context, variable, fallback(name));
 
   return {
     rail: pick("bg-rail", "bg-rail"),
@@ -348,7 +397,10 @@ function block(
  * can never be out of date. A theme that ships a picture of its own uses
  * that instead.
  */
-function createPreview(theme: ThemeBundle | null): HTMLElement {
+function createPreview(
+  theme: ThemeBundle | null,
+  context: PreviewContext,
+): HTMLElement {
   if (theme?.preview) {
     return createElement("span", {
       className: "yapmod-theme-preview",
@@ -363,7 +415,7 @@ function createPreview(theme: ThemeBundle | null): HTMLElement {
     });
   }
 
-  const colors = swatchesOf(theme);
+  const colors = swatchesOf(theme, context);
 
   const rail = block("yapmod-theme-preview-rail", {
     background: colors.rail,
@@ -494,9 +546,8 @@ function createThemeSection(): SettingsSection {
       const activeId = (): string => store?.get<string>("theme_id", "") ?? "";
 
       const select = (theme: ThemeBundle | null): void => {
-        store?.set("theme_id", theme?.id ?? "");
         themeApi?.apply(theme);
-        renderGallery();
+        store?.set("theme_id", theme?.id ?? "");
       };
 
       const removeTheme = async (theme: ThemeBundle): Promise<void> => {
@@ -508,8 +559,8 @@ function createThemeSection(): SettingsSection {
           await themeApi?.remove(theme.id);
 
           if (activeId() === theme.id) {
-            store?.set("theme_id", "");
             themeApi?.apply(null);
+            store?.set("theme_id", "");
           }
 
           await refresh();
@@ -522,6 +573,7 @@ function createThemeSection(): SettingsSection {
         theme: ThemeBundle | null,
         name: string,
         meta: string,
+        previewContext: PreviewContext,
       ): HTMLElement => {
         const isActive = theme ? activeId() === theme.id : activeId() === "";
 
@@ -532,7 +584,7 @@ function createThemeSection(): SettingsSection {
             "aria-pressed": isActive ? "true" : "false",
           },
           children: [
-            createPreview(theme),
+            createPreview(theme, previewContext),
             createElement("span", {
               className: "yapmod-theme-card-name",
               text: name,
@@ -586,9 +638,16 @@ function createThemeSection(): SettingsSection {
         });
       };
 
-      const galleryItems = (): HTMLElement[] => {
+      const galleryItems = (
+        previewContext: PreviewContext,
+      ): HTMLElement[] => {
         const items = [
-          createCard(null, "Yapper's theme", "the look the app ships with"),
+          createCard(
+            null,
+            "Yapper's theme",
+            "the look the app ships with",
+            previewContext,
+          ),
         ];
 
         for (const theme of installedThemes) {
@@ -596,14 +655,14 @@ function createThemeSection(): SettingsSection {
             .filter(Boolean)
             .join(" · ");
 
-          items.push(createCard(theme, theme.name, meta));
+          items.push(createCard(theme, theme.name, meta, previewContext));
         }
 
         return items;
       };
 
       const renderGallery = (): void => {
-        gallery.replaceChildren(...galleryItems());
+        gallery.replaceChildren(...galleryItems(createPreviewContext()));
       };
 
       const refresh = async (): Promise<void> => {
@@ -614,9 +673,15 @@ function createThemeSection(): SettingsSection {
         try {
           installedThemes = await themeApi.list();
 
+          if (cancelled) {
+            return;
+          }
+
           renderGallery();
         } catch (error) {
-          setStatus(String(error), true);
+          if (!cancelled) {
+            setStatus(String(error), true);
+          }
         }
       };
 
@@ -651,6 +716,11 @@ function createThemeSection(): SettingsSection {
           store?.set("theme_mode", value);
         },
         ariaLabel: "Mode",
+      });
+      const unsubscribeMode = store?.onChange("theme_mode", (value) => {
+        if (value === "system" || value === "dark" || value === "light") {
+          modeDropdown.setValue(value);
+        }
       });
 
       // The buttons live in the top right of the section.
@@ -719,6 +789,7 @@ function createThemeSection(): SettingsSection {
       return () => {
         cancelled = true;
         unsubscribe?.();
+        unsubscribeMode?.();
         modeDropdown.destroy();
       };
     },
