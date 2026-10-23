@@ -47,7 +47,7 @@ fn main() {
             notify::listen(app.handle())
                 .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
 
-            let url = WebviewUrl::External("https://www.yapper.website/?auth=in".parse()?);
+            let url = WebviewUrl::External("https://www.yapin.gg/?auth=in".parse()?);
             let title = format!("Yapmod - v{}", app.package_info().version);
             let active_theme = theme::active_theme(app.handle(), &config);
             let client_bundle = client_update::for_launch(app.handle(), &version);

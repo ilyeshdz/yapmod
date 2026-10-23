@@ -4,9 +4,9 @@
   "identifier": "io.ilyeshdz.yapmod",
   "build": {
     "beforeDevCommand": "pnpm client:build",
-    "devUrl": "http://yapper.website/",
+    "devUrl": "http://www.yapin.gg/",
     "beforeBuildCommand": "pnpm client:build",
-    "frontendDist": "https://yapper.website/"
+    "frontendDist": "https://www.yapin.gg/"
   },
   "app": {
     "security": {

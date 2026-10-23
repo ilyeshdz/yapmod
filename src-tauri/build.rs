@@ -10,7 +10,7 @@ fn main() {
 
     ensure_injection_bundles(&manifest_dir.join("gen").join("injection"));
 
-    // The webview runs on a remote origin (yapper.website), so every command
+    // The webview runs on a remote origin (yapin.gg), so every command
     // the injected code calls has to be part of the app ACL. Without this
     // manifest the runtime rejects them with "not allowed by ACL".
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(

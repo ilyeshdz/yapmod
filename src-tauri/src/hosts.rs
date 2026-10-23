@@ -2,12 +2,12 @@
 ///
 /// The injected code gets the same host, so both sides agree on what counts
 /// as an internal link.
-pub const INTERNAL_HOST: &str = "yapper.website";
+pub const INTERNAL_HOST: &str = "yapin.gg";
 
 /// Origins allowed to host the Yapper page and use its native bridge. Keep
 /// this list exact: a wildcard subdomain would grant every subdomain the
 /// same Tauri command surface.
-pub const INJECTION_ORIGINS: [&str; 2] = ["https://yapper.website", "https://www.yapper.website"];
+pub const INJECTION_ORIGINS: [&str; 2] = ["https://yapin.gg", "https://www.yapin.gg"];
 
 /// Whether a host belongs to the app.
 pub fn is_internal_host(host: &str) -> bool {
@@ -30,28 +30,31 @@ pub fn is_injection_url(url: &tauri::Url) -> bool {
     url.scheme() == "https"
         && url.port().is_none_or(|port| port == 443)
         && url.host_str().is_some_and(|host| {
-            host.eq_ignore_ascii_case("yapper.website")
-                || host.eq_ignore_ascii_case("www.yapper.website")
+            host.eq_ignore_ascii_case("yapin.gg") || host.eq_ignore_ascii_case("www.yapin.gg")
         })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_injection_url;
+    use super::{is_injection_url, is_internal_host};
+
+    #[test]
+    fn recognizes_only_the_new_internal_host_family() {
+        assert!(is_internal_host("www.yapin.gg"));
+        assert!(is_internal_host("chat.yapin.gg"));
+        assert!(!is_internal_host("yapper.website"));
+    }
 
     #[test]
     fn permits_only_the_expected_secure_origins() {
-        assert!(is_injection_url(
+        assert!(is_injection_url(&"https://www.yapin.gg/".parse().unwrap()));
+        assert!(is_injection_url(&"https://yapin.gg/".parse().unwrap()));
+        assert!(!is_injection_url(
+            &"https://chat.yapin.gg/".parse().unwrap()
+        ));
+        assert!(!is_injection_url(&"http://www.yapin.gg/".parse().unwrap()));
+        assert!(!is_injection_url(
             &"https://www.yapper.website/".parse().unwrap()
-        ));
-        assert!(is_injection_url(
-            &"https://yapper.website/".parse().unwrap()
-        ));
-        assert!(!is_injection_url(
-            &"https://chat.yapper.website/".parse().unwrap()
-        ));
-        assert!(!is_injection_url(
-            &"http://www.yapper.website/".parse().unwrap()
         ));
     }
 }

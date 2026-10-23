@@ -45,4 +45,4 @@ fix(injection): hide the previous settings panel when switching sections
 
 ## Community
 
-Ask questions and follow along on the official Yapper server: [yapper.website/invite/develop](https://yapper.website/invite/develop).
+Ask questions and follow along on the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop).

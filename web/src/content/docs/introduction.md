@@ -6,7 +6,7 @@ eyebrow: Start here
 description: An unofficial desktop app for Yapper.
 ---
 
-yapmod is a free, open-source desktop app for [Yapper](https://yapper.website). It uses the Yapper web app, so you sign in with the same account and keep the same servers, channels and messages.
+yapmod is a free, open-source desktop app for [Yapper](https://www.yapin.gg). It uses the Yapper web app, so you sign in with the same account and keep the same servers, channels and messages.
 
 yapmod is an independent community project. It is not made by, endorsed by or affiliated with Yapper.
 

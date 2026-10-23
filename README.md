@@ -5,7 +5,7 @@
 <h1 align="center">yapmod</h1>
 
 <p align="center">
-  A free, open-source, lightweight desktop client for <a href="https://yapper.website">Yapper</a>.
+  A free, open-source, lightweight desktop client for <a href="https://www.yapin.gg">Yapper</a>.
 </p>
 
 <p align="center">
@@ -43,7 +43,7 @@ macOS builds are ad-hoc signed but not notarized. On first launch, right-click t
 
 ## Community
 
-Join the official Yapper server: [yapper.website/invite/develop](https://yapper.website/invite/develop)
+Join the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
 
 ## Contributing
 
