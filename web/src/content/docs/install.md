@@ -8,6 +8,8 @@ description: Download and install the build for your platform.
 
 Download the latest build from the [Releases page](https://github.com/ilyeshdz/yapmod/releases).
 
+To try changes before they ship, install the [latest nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). Nightly builds may be unstable and are replaced each day.
+
 | System | Formats |
 | --- | --- |
 | Windows | `.msi` installer, NSIS `.exe` installer, or a portable `.zip` |

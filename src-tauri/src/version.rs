@@ -1,6 +1,7 @@
+use semver::Version;
 use std::cmp::Ordering;
 
-/// Splits a version into its numeric parts, so they can be compared.
+/// Splits legacy version strings into numeric parts as a fallback.
 fn parse_version(version: &str) -> Vec<u64> {
     version
         .trim()
@@ -10,8 +11,15 @@ fn parse_version(version: &str) -> Vec<u64> {
         .collect()
 }
 
-/// Compares two versions.
+/// Compares semantic versions, with a numeric fallback for legacy strings.
 pub fn compare_versions(left: &str, right: &str) -> Ordering {
+    let left_semver = Version::parse(left.trim().trim_start_matches('v'));
+    let right_semver = Version::parse(right.trim().trim_start_matches('v'));
+
+    if let (Ok(left), Ok(right)) = (&left_semver, &right_semver) {
+        return left.cmp_precedence(right);
+    }
+
     let left = parse_version(left);
     let right = parse_version(right);
 

@@ -1,0 +1,82 @@
+name: Nightly release
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: yapmod-nightly-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-app.yml
+    with:
+      nightly: true
+
+  publish:
+    if: github.repository == 'ilyeshdz/yapmod' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename nightly artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p nightly-artifacts
+
+          while IFS='|' read -r artifact_name new_name; do
+            artifact_dir="artifacts/$artifact_name"
+            artifact_file=$(find "$artifact_dir" -type f -print -quit)
+            if [ -z "$artifact_file" ]; then
+              echo "Missing artifact: $artifact_name" >&2
+              exit 1
+            fi
+            cp "$artifact_file" "nightly-artifacts/$new_name"
+          done <<'ARTIFACTS'
+          yapmod-aarch64-apple-darwin-dmg|yapmod_nightly_aarch64.dmg
+          yapmod-x86_64-apple-darwin-dmg|yapmod_nightly_x64.dmg
+          yapmod-x86_64-pc-windows-msvc-nsis|yapmod_nightly_x64-setup.exe
+          yapmod-x86_64-pc-windows-msvc-msi|yapmod_nightly_x64_en-US.msi
+          yapmod-x86_64-pc-windows-msvc-portable|yapmod_nightly_win64_portable.zip
+          yapmod-x86_64-unknown-linux-gnu-appimage|yapmod_nightly_amd64.AppImage
+          yapmod-x86_64-unknown-linux-gnu-deb|yapmod_nightly_amd64.deb
+          yapmod-x86_64-unknown-linux-gnu-rpm|yapmod_nightly-1.x86_64.rpm
+          yapmod-x86_64-unknown-linux-gnu-portable|yapmod_nightly_amd64_portable.tar.gz
+          ARTIFACTS
+
+      - name: Move rolling nightly tag to this commit
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          git tag --force nightly "$GITHUB_SHA"
+          git push --force origin refs/tags/nightly
+
+      - name: Publish rolling nightly prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly v${{ needs.build.outputs.app_version }}
+          body: |
+            Automated nightly prerelease built from commit ${{ github.sha }}.
+
+            App version: `${{ needs.build.outputs.app_version }}`
+
+            Nightly builds may be unstable. Install them only if you want to try changes that have not shipped in a stable release.
+          files: nightly-artifacts/*
+          overwrite_files: true
+          prerelease: true
+          make_latest: false
