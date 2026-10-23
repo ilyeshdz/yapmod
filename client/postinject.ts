@@ -7,7 +7,7 @@ import { remountThemeStyles } from "./shared/theme/engine";
 import { getYapmod } from "./shared/scope";
 
 const STYLE_ELEMENT_ID = "yapmod-injected-styles";
-const DRAG_REGION_ID = "yapmod-drag-region";
+const TOPBAR_SELECTOR = ".topbar";
 const RELEASE_SEEN_KEY = "yapmod-release-seen";
 const RELEASE_LOGO = logoSvg.replace(/fill="#F67567"/g, 'fill="currentColor"');
 
@@ -31,19 +31,35 @@ function applyOsAttribute(): void {
   }
 }
 
-function ensureDragRegion(): void {
-  if (
-    getYapmod().os !== "macos" ||
-    document.getElementById(DRAG_REGION_ID)
-  ) {
+function markTopbarDraggable(topbar: HTMLElement): void {
+  // `deep` makes the whole topbar draggable while its buttons and links still
+  // receive their clicks.
+  if (topbar.getAttribute("data-tauri-drag-region") !== "deep") {
+    topbar.setAttribute("data-tauri-drag-region", "deep");
+  }
+}
+
+/**
+ * Yapper's topbar is the titlebar on macOS, so it has to drag the window.
+ * The topbar is painted after the app boots, hence the observer.
+ */
+function ensureTopbarDraggable(): void {
+  if (getYapmod().os !== "macos") {
     return;
   }
 
-  const region = createElement("div", {
-    props: { id: DRAG_REGION_ID },
-    attrs: { "data-tauri-drag-region": "" },
+  const markTopbars = (): void => {
+    document
+      .querySelectorAll<HTMLElement>(TOPBAR_SELECTOR)
+      .forEach(markTopbarDraggable);
+  };
+
+  markTopbars();
+
+  new MutationObserver(markTopbars).observe(document.documentElement, {
+    childList: true,
+    subtree: true,
   });
-  document.body.appendChild(region);
 }
 
 function createReleaseHero(release: ReleaseInfo): HTMLElement {
@@ -238,9 +254,9 @@ try {
 }
 
 try {
-  ensureDragRegion();
+  ensureTopbarDraggable();
 } catch (error) {
-  console.error("[yapmod] failed to ensure drag region", error);
+  console.error("[yapmod] failed to make the topbar draggable", error);
 }
 
 // The stylesheet of the theme is moved behind the stylesheets of the app,

@@ -100,7 +100,7 @@ Use regular CSS for anything tokens do not cover, such as a font or a component-
 A few things to keep in mind:
 
 - The stylesheet runs in the page, so relative `url()` paths point to the web app, not your theme folder. Use a full address or a `data:` URI for images and fonts.
-- The drag region at the top of the window and the scroll lock of a dialog are functional. Leave them alone.
+- The topbar doubles as the macOS window drag region, and the scroll lock of a dialog is functional. Leave them alone.
 - A theme is plain CSS and can break the layout. Pick **Yapper's theme** in the gallery to restore the usual look.
 
 ## A complete example
