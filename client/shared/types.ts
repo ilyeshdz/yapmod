@@ -186,7 +186,7 @@ export type SettingsItem =
 export type SettingsSection = {
   id: string;
   label: string;
-  icon?: "monitor" | "palette" | "history";
+  icon?: "monitor" | "palette" | "history" | "puzzle";
   group?: string;
   order?: number;
   description?: string;
@@ -216,6 +216,90 @@ export type YapmodStoreApi = {
   flush(): Promise<void>;
 };
 
+/** Metadata supplied by an installed plugin package. */
+export type PluginManifest = {
+  id: string;
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  license?: string;
+  tags?: string[];
+  /** The plugin format this package targets. Version 1 supports CSS and optional DOM scripts. */
+  api: 1;
+  settings: PluginSetting[];
+  stylesheet: string;
+  script?: string;
+};
+
+export type PluginSetting = {
+  id: string;
+  label: string;
+  description?: string;
+  type: "toggle";
+  default: boolean;
+};
+
+export type PluginBundle = {
+  manifest: PluginManifest;
+  css: string;
+  script: string | null;
+};
+
+export type PluginCleanup = () => void | Promise<void>;
+
+export type PluginActivation = void | PluginCleanup | Promise<void | PluginCleanup>;
+
+export type YapmodPluginApi = {
+  readonly id: string;
+  readonly manifest: Readonly<PluginManifest>;
+  readonly storage: {
+    get<T>(key: string, fallback?: T): T;
+    set(key: string, value: unknown): void;
+  };
+  readonly settings: {
+    get(id: string): boolean;
+    onChange(id: string, listener: (value: boolean) => void): () => void;
+  };
+  readonly styles: {
+    add(css: string): PluginCleanup;
+  };
+  banner(message: string): void;
+};
+
+export type YapmodPluginModule = {
+  activate(api: YapmodPluginApi): PluginActivation;
+};
+
+export type PluginDiagnostic = {
+  operation: "load" | "activate" | "deactivate" | "cleanup";
+  message: string;
+  at: string;
+};
+
+export type CommunityPlugin = PluginManifest & { tags: string[] };
+
+export type YapmodPluginsApi = {
+  list(): YapmodPluginInfo[];
+  setEnabled(id: string, enabled: boolean): Promise<boolean>;
+  onChange(listener: () => void): () => void;
+  importLocal(): Promise<PluginManifest | null>;
+  listCommunity(): Promise<CommunityPlugin[]>;
+  installCommunity(id: string): Promise<PluginManifest>;
+  remove(id: string): Promise<void>;
+  refreshInstalled(): Promise<void>;
+  openFolder(): Promise<void>;
+};
+
+export type YapmodPluginInfo = {
+  manifest: PluginManifest;
+  source: "installed";
+  enabled: boolean;
+  busy: boolean;
+  error: string | null;
+  diagnostic: PluginDiagnostic | null;
+};
+
 export type YapmodGlobal = {
   config?: Config;
   os?: string;
@@ -228,6 +312,7 @@ export type YapmodGlobal = {
   banner?: YapmodBannerApi;
   modal?: YapmodModalApi;
   settings?: YapmodSettingsApi;
+  plugins?: YapmodPluginsApi;
   store?: YapmodStoreApi;
   theme?: YapmodThemeApi;
 };

@@ -27,7 +27,15 @@
     "allow-pick-theme-folder",
     "allow-install-theme",
     "allow-install-community-theme",
-    "allow-remove-theme"
+    "allow-remove-theme",
+    "allow-pick-plugin-folder",
+    "allow-install-picked-plugin",
+    "allow-list-plugins",
+    "allow-list-community-plugins",
+    "allow-preview-community-plugin",
+    "allow-install-community-plugin",
+    "allow-open-plugins-folder",
+    "allow-remove-plugin"
   ],
   "remote": {
     "urls": ["https://yapin.gg", "https://www.yapin.gg"]

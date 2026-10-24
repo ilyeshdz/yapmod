@@ -1,4 +1,9 @@
 import { installModalApi } from "./shared/modal";
+import {
+  initializePluginManager,
+  installPluginApi,
+  installPluginSettings,
+} from "./shared/plugins";
 import { installBannerApi } from "./shared/banner";
 import { installSettingsApi } from "./shared/settings";
 import { installStore } from "./shared/store";
@@ -29,6 +34,12 @@ try {
 }
 
 try {
+  installPluginApi();
+} catch (error) {
+  console.error("[yapmod] failed to install plugin API", error);
+}
+
+try {
   installBannerApi();
 } catch (error) {
   console.error("[yapmod] failed to install banner API", error);
@@ -44,6 +55,18 @@ try {
   installSettingsApi();
 } catch (error) {
   console.error("[yapmod] failed to install settings API", error);
+}
+
+try {
+  initializePluginManager();
+} catch (error) {
+  console.error("[yapmod] failed to initialize plugins", error);
+}
+
+try {
+  installPluginSettings();
+} catch (error) {
+  console.error("[yapmod] failed to install plugin settings", error);
 }
 
 // The theme is applied before anything else, so the app never shows the

@@ -1,0 +1,20 @@
+{
+  "id": "compact-threads",
+  "name": "Compact Threads",
+  "version": "1.0.0",
+  "author": "Yapmod Community",
+  "description": "Tighten message spacing in conversation views. The selector is intentionally broad; review the stylesheet before installing.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["layout", "compact", "messages"],
+  "settings": [
+    {
+      "id": "tight-spacing",
+      "label": "Use compact message spacing",
+      "description": "Reduce vertical margins on elements whose class includes “message”.",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "stylesheet": "plugin.css"
+}

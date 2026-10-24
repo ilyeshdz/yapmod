@@ -25,6 +25,9 @@ const SECTION_ICON_SHAPES: Record<SettingsSectionIcon, string[]> = {
     "M16 8.5h.01",
   ],
   history: ["M3 12a9 9 0 1 0 2.64-6.36L3 8", "M3 3v5h5", "M12 7v5l3 2"],
+  puzzle: [
+    "M20 13.2a2.8 2.8 0 1 0-3.2-3.2V4h-4.2a2.8 2.8 0 1 0-5.6 0H3v5.8a2.8 2.8 0 1 1 0 5.6V21h6.2a2.8 2.8 0 1 1 5.6 0H21v-4.2a2.8 2.8 0 0 1-1-3.6Z",
+  ],
 };
 
 function createSectionIcon(name: SettingsSectionIcon): SVGElement {

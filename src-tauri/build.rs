@@ -34,6 +34,14 @@ fn main() {
             "pick_theme_folder",
             "install_theme",
             "remove_theme",
+            "pick_plugin_folder",
+            "install_picked_plugin",
+            "list_plugins",
+            "list_community_plugins",
+            "preview_community_plugin",
+            "install_community_plugin",
+            "open_plugins_folder",
+            "remove_plugin",
         ]),
     ))
     .expect("failed to run tauri-build");

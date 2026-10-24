@@ -1,0 +1,20 @@
+{
+  "id": "calm-motion",
+  "name": "Calm Motion",
+  "version": "1.0.0",
+  "author": "Yapmod Community",
+  "description": "Reduce decorative motion in the Yapper interface with one simple toggle.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["accessibility", "motion", "comfort"],
+  "settings": [
+    {
+      "id": "reduce-motion",
+      "label": "Reduce interface motion",
+      "description": "Turn off decorative transitions and animations while this plugin is enabled.",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "stylesheet": "plugin.css"
+}

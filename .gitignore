@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 web/public/community-themes/
+web/public/community-plugins/
 
 # Editor directories and files
 .vscode/*

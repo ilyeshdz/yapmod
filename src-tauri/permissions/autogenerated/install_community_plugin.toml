@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-install-community-plugin"
+description = "Enables the install_community_plugin command without any pre-configured scope."
+commands.allow = ["install_community_plugin"]
+
+[[permission]]
+identifier = "deny-install-community-plugin"
+description = "Denies the install_community_plugin command without any pre-configured scope."
+commands.deny = ["install_community_plugin"]

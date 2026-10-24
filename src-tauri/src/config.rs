@@ -194,6 +194,27 @@ fn valid_setting(key: &str, value: &Value) -> bool {
         return false;
     }
 
+    if matches!(key, "plugin_enabled" | "plugin_consents") {
+        return value.is_object()
+            && serde_json::to_vec(value).is_ok_and(|bytes| bytes.len() <= 65_536);
+    }
+
+    if let Some(rest) = key.strip_prefix("plugin:") {
+        let Some((plugin_id, storage_key)) = rest.split_once(':') else {
+            return false;
+        };
+        let valid_part = |part: &str| {
+            !part.is_empty()
+                && part.len() <= 32
+                && part
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || "-_".contains(ch))
+        };
+        return valid_part(plugin_id)
+            && valid_part(storage_key)
+            && serde_json::to_vec(value).is_ok_and(|bytes| bytes.len() <= 65_536);
+    }
+
     match key {
         "use_native_titlebar"
         | "start_maximized"
@@ -240,9 +261,27 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
     Ok(())
 }
 
+/// Deletes every persisted value owned by a removed plugin. Plugin IDs are
+/// validated by the caller before this operation reaches the config file.
+pub fn remove_plugin_data(app: &AppHandle, id: &str) -> ConfigResult<()> {
+    let mut config = Config::load(app)?;
+    purge_plugin_data(&mut config, id);
+    Config::save(app, &config)
+}
+
+fn purge_plugin_data(config: &mut Config, id: &str) {
+    for key in ["plugin_enabled", "plugin_consents"] {
+        if let Some(Value::Object(values)) = config.settings.get_mut(key) {
+            values.remove(id);
+        }
+    }
+    let prefix = format!("plugin:{id}:");
+    config.settings.retain(|key, _| !key.starts_with(&prefix));
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Config, valid_setting};
+    use super::{Config, purge_plugin_data, valid_setting};
     use serde_json::json;
 
     #[test]
@@ -287,8 +326,42 @@ mod tests {
     fn setting_updates_are_allowlisted_and_type_checked() {
         assert!(valid_setting("notifications", &json!(false)));
         assert!(valid_setting("theme_id", &json!("my-theme_1")));
+        assert!(valid_setting("plugin_enabled", &json!({"sample": true})));
+        assert!(valid_setting(
+            "plugin_consents",
+            &json!({"sample": {"version": "1"}})
+        ));
+        assert!(valid_setting("plugin:sample:opt_compact", &json!(true)));
         assert!(!valid_setting("arbitrary", &json!(true)));
         assert!(!valid_setting("notifications", &json!("yes")));
         assert!(!valid_setting("theme_id", &json!("../config")));
+        assert!(!valid_setting("plugin:../sample:option", &json!(true)));
+        assert!(!valid_setting("plugin:sample:invalid.key", &json!(true)));
+        assert!(!valid_setting("plugin:sample", &json!(true)));
+    }
+
+    #[test]
+    fn purges_all_data_owned_by_a_plugin() {
+        let mut config = Config::from_str(
+            r#"{
+            "settings": {
+              "plugin_enabled": {"sample": true, "other": true},
+              "plugin_consents": {"sample": {"version": "1"}, "other": {"version": "1"}},
+              "plugin:sample:data_token": "stale",
+              "plugin:sample:opt_compact": true,
+              "plugin:other:data_token": "keep"
+            }
+        }"#,
+        )
+        .unwrap();
+        purge_plugin_data(&mut config, "sample");
+        assert_eq!(config.settings["plugin_enabled"], json!({"other": true}));
+        assert_eq!(
+            config.settings["plugin_consents"],
+            json!({"other": {"version": "1"}})
+        );
+        assert!(!config.settings.contains_key("plugin:sample:data_token"));
+        assert!(!config.settings.contains_key("plugin:sample:opt_compact"));
+        assert_eq!(config.settings["plugin:other:data_token"], json!("keep"));
     }
 }

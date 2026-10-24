@@ -1,0 +1,11 @@
+{
+  "pluginApi": 1,
+  "maxCatalogBytes": 1048576,
+  "maxManifestBytes": 65536,
+  "maxCssBytes": 524288,
+  "maxScriptBytes": 524288,
+  "maxPlugins": 200,
+  "maxSettings": 12,
+  "maxTags": 12,
+  "maxNameLength": 100
+}
