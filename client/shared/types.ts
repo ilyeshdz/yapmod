@@ -315,9 +315,25 @@ export type WebSocketMessage = {
 export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
 
 /**
+ * Interceptor for outgoing WebSocket messages.
+ * Receives the message data and connection metadata, and returns the payload
+ * to send. Returning the original data leaves the message unchanged.
+ *
+ * Interceptors run synchronously before the original `send()` call.
+ * If an interceptor throws, the error is logged and the original payload
+ * is sent unchanged — message delivery is never suppressed.
+ *
+ * The returned value must be compatible with `WebSocket.send()`:
+ * a string, ArrayBuffer, or ArrayBufferView.
+ */
+export type WebSocketOutgoingInterceptor = (
+  message: WebSocketMessage,
+) => string | ArrayBuffer | ArrayBufferView | void;
+
+/**
  * Inspects WebSocket messages flowing through the application.
- * Provides access to observed incoming and outgoing messages without
- * modifying or suppressing any traffic.
+ * Provides access to observed incoming and outgoing messages.
+ * Outgoing messages can be modified before transmission using interceptors.
  */
 export type WebSocketInspector = {
   /** Messages received by the application from a WebSocket server. */
@@ -333,6 +349,17 @@ export type WebSocketInspector = {
     messages(): WebSocketMessage[];
     /** Subscribes to outgoing messages; returns a cleanup function to unsubscribe. */
     subscribe(handler: WebSocketMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs synchronously before each outgoing
+     * WebSocket message is sent. Interceptors execute in registration order.
+     *
+     * If an interceptor returns a value, it replaces the message payload.
+     * If it returns void (undefined), the message passes through unchanged.
+     * If an interceptor throws, the original payload is sent and the error is logged.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: WebSocketOutgoingInterceptor): () => void;
   };
 };
 

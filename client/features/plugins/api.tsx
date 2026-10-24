@@ -418,6 +418,7 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           outgoing: Object.freeze({
             messages: () => [],
             subscribe: () => () => {},
+            use: () => () => {},
           }),
         }),
       banner(message: string): void {

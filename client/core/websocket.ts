@@ -1,5 +1,10 @@
 import { getYapmod } from "./scope";
-import type { WebSocketInspector, WebSocketMessage, WebSocketMessageHandler } from "../shared/types";
+import type {
+  WebSocketInspector,
+  WebSocketMessage,
+  WebSocketMessageHandler,
+  WebSocketOutgoingInterceptor,
+} from "../shared/types";
 
 const MAX_MESSAGES = 5000;
 
@@ -7,6 +12,7 @@ const incomingMessages: WebSocketMessage[] = [];
 const outgoingMessages: WebSocketMessage[] = [];
 const incomingHandlers: WebSocketMessageHandler[] = [];
 const outgoingHandlers: WebSocketMessageHandler[] = [];
+const outgoingInterceptors: WebSocketOutgoingInterceptor[] = [];
 
 function notifyHandlers(handlers: WebSocketMessageHandler[], message: WebSocketMessage): void {
   for (const handler of handlers) {
@@ -89,9 +95,33 @@ export function installWebSocketInspector(): void {
     socket.send = function (data: string | ArrayBuffer | ArrayBufferView | Blob): void {
       const observed = normalizeMessageData(data);
       addMessage(outgoingMessages, outgoingHandlers, resolvedUrl, observed);
+
+      // Run outgoing interceptors to allow message modification before transmission.
+      let sendData: string | ArrayBuffer | ArrayBufferView | Blob = data;
+      const message: WebSocketMessage = { url: resolvedUrl, data: observed, timestamp: Date.now() };
+      for (const interceptor of outgoingInterceptors) {
+        try {
+          const result = interceptor(message);
+          if (result !== undefined && result !== void 0) {
+            // Interceptor returned a replacement payload.
+            sendData = result as string | ArrayBuffer | ArrayBufferView | Blob;
+            // Update the observed data for subsequent interceptors and the buffer.
+            const updatedObserved = normalizeMessageData(sendData);
+            // Replace the last added message with the modified version.
+            if (outgoingMessages.length > 0) {
+              outgoingMessages[outgoingMessages.length - 1].data = updatedObserved;
+            }
+          }
+        } catch (error) {
+          console.error("[yapmod] WebSocket outgoing interceptor threw an error, sending original payload", error);
+          // Send the original payload — never suppress message delivery.
+          break;
+        }
+      }
+
       // originalSend expects the native WebSocket.send signature; cast to avoid
       // TS strict SharedArrayBuffer issues with newer lib types.
-      originalSend(data as Parameters<WebSocket["send"]>[0]);
+      originalSend(sendData as Parameters<WebSocket["send"]>[0]);
     };
 
     // Observe incoming messages (onmessage).
@@ -183,6 +213,15 @@ export function installWebSocketInspector(): void {
           const index = outgoingHandlers.indexOf(handler);
           if (index !== -1) {
             outgoingHandlers.splice(index, 1);
+          }
+        };
+      },
+      use(interceptor: WebSocketOutgoingInterceptor): () => void {
+        outgoingInterceptors.push(interceptor);
+        return () => {
+          const index = outgoingInterceptors.indexOf(interceptor);
+          if (index !== -1) {
+            outgoingInterceptors.splice(index, 1);
           }
         };
       },
