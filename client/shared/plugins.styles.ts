@@ -1,6 +1,5 @@
 /** Card layout for the plugin manager. */
 export const PLUGIN_UI_CSS = `
-.yapmod-plugin-tabs,
 .yapmod-plugin-toolbar {
   display: flex;
   align-items: center;
@@ -128,6 +127,10 @@ export const PLUGIN_UI_CSS = `
   align-items: center;
   min-width: 0;
   gap: 6px;
+}
+
+.yapmod-plugin-install {
+  width: 100%;
 }
 
 .yapmod-plugin-icon-button {

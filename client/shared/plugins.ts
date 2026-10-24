@@ -20,8 +20,8 @@ const CONSENTS_KEY = "plugin_consents";
 const PLUGINS_SECTION_ID = "yapmod-plugins";
 const PLUGIN_ICON_PATHS = {
   settings: [
-    "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
-    "M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08A1.7 1.7 0 0 0 10.68 18.66a1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.02 15a1.7 1.7 0 0 0-1.56-1.03h-.08v-3h.08A1.7 1.7 0 0 0 7.02 9.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56v-.08h3v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.08v3h-.08A1.7 1.7 0 0 0 19.4 15Z",
+    "M4 6h16M4 12h16M4 18h16",
+    "M9 4v4M15 10v4M11 16v4",
   ],
   files: [
     "M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5Z",
@@ -333,7 +333,7 @@ function showPluginSettings(entry: InstalledEntry): void {
       { label: "Cancel", variant: "secondary" },
       {
         label: "Save",
-        variant: "secondary",
+        variant: "primary",
         onClick: async () => {
           for (const setting of manifest.settings) {
             const value = draft.get(setting.id) ?? setting.default;
@@ -559,7 +559,7 @@ function createCard(
               createElement("span", { className: plugin.enabled ? "yapmod-plugin-state yapmod-plugin-state-active" : "yapmod-plugin-state", text: plugin.enabled ? "Enabled" : "Disabled" }),
             ],
           }),
-          createElement("p", { className: "yapmod-plugin-card-meta", text: [manifest.author, manifest.version ? `v${manifest.version}` : null, `API ${manifest.api}`].filter(Boolean).join(" · ") }),
+          createElement("p", { className: "yapmod-plugin-card-meta", text: [manifest.author, manifest.version ? `v${manifest.version}` : null].filter(Boolean).join(" · ") }),
           createElement("p", { className: "yapmod-plugin-card-description", text: manifest.description ?? "No description provided." }),
           ...(manifest.script ? [createElement("p", { className: "yapmod-plugin-warning", text: "Trusted JavaScript plugin — runs in the Yapper page." })] : []),
           ...(plugin.error ? [createElement("p", { className: "yapmod-plugin-error", text: plugin.error })] : []),
@@ -679,12 +679,12 @@ export function installPluginSettings(): void {
         status.textContent = message;
         status.classList.toggle("yapmod-plugin-status-error", isError);
       };
-      const installedTab = createElement("button", { className: "btn small ghost yapmod-plugin-tab yapmod-plugin-tab-active", text: "Installed", attrs: { type: "button", role: "tab", "aria-selected": "true" }, on: { click: () => setView("installed") } });
-      const communityTab = createElement("button", { className: "btn small ghost yapmod-plugin-tab", text: "Community", attrs: { type: "button", role: "tab", "aria-selected": "false" }, on: { click: () => setView("community") } });
-      const tabs = createElement("div", { className: "yapmod-plugin-tabs", attrs: { role: "tablist", "aria-label": "Plugin collection" }, children: [installedTab, communityTab] });
+      const installedTab = createElement("button", { className: "btn small ghost yapmod-theme-tab-active", text: "Installed", attrs: { type: "button", role: "tab", "aria-selected": "true" }, on: { click: () => setView("installed") } });
+      const communityTab = createElement("button", { className: "btn small ghost", text: "Community", attrs: { type: "button", role: "tab", "aria-selected": "false" }, on: { click: () => setView("community") } });
+      const tabs = createElement("div", { className: "yapmod-theme-tabs", attrs: { role: "tablist", "aria-label": "Plugin collection" }, children: [installedTab, communityTab] });
 
       const refreshInstalled = async (): Promise<void> => {
-        try { await pluginApi.refreshInstalled(); setStatus(`${pluginApi.list().length} plugin${pluginApi.list().length === 1 ? "" : "s"} installed.`); }
+        try { await pluginApi.refreshInstalled(); }
         catch (error) { setStatus(`Could not refresh installed plugins: ${String(error)}`, true); }
       };
       const loadCommunity = async (force = false): Promise<void> => {
@@ -754,20 +754,20 @@ export function installPluginSettings(): void {
           className: "yapmod-plugin-card",
           children: [
             createElement("div", { className: "yapmod-plugin-card-body", children: [
-              createElement("div", { className: "yapmod-plugin-card-title-row", children: [createElement("h3", { className: "yapmod-plugin-card-name", text: plugin.name }), createElement("span", { className: "yapmod-plugin-state", text: `API ${plugin.api}` })] }),
+              createElement("div", { className: "yapmod-plugin-card-title-row", children: [createElement("h3", { className: "yapmod-plugin-card-name", text: plugin.name })] }),
               createElement("p", { className: "yapmod-plugin-card-meta", text: [plugin.author, plugin.version ? `v${plugin.version}` : null, plugin.license].filter(Boolean).join(" · ") }),
               createElement("p", { className: "yapmod-plugin-card-description", text: plugin.description ?? "No description provided." }),
               ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-tags", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-tag", text: tag })) })] : []),
             ] }),
-            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small ghost", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
+            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small yapmod-plugin-install", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
           ],
         })));
       }
       function setView(next: "installed" | "community"): void {
         view = next;
         const installed = next === "installed";
-        installedTab.classList.toggle("yapmod-plugin-tab-active", installed);
-        communityTab.classList.toggle("yapmod-plugin-tab-active", !installed);
+        installedTab.classList.toggle("yapmod-theme-tab-active", installed);
+        communityTab.classList.toggle("yapmod-theme-tab-active", !installed);
         installedTab.setAttribute("aria-selected", String(installed));
         communityTab.setAttribute("aria-selected", String(!installed));
         installedGrid.hidden = !installed;
@@ -786,7 +786,7 @@ export function installPluginSettings(): void {
       const communityToolbar = createElement("div", { className: "yapmod-plugin-toolbar", props: { hidden: true }, children: [
         search,
         createElement("button", { className: "btn small ghost", text: "Refresh", props: { type: "button" }, on: { click: () => void loadCommunity(true) } }),
-        createElement("button", { className: "btn small ghost", text: "Submit a plugin", props: { type: "button" }, on: { click: () => window.open("https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/", "_blank", "noopener") } }),
+        createElement("button", { className: "btn small", text: "Submit a plugin", props: { type: "button" }, on: { click: () => window.open("https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/", "_blank", "noopener") } }),
       ] });
 
       host.append(tabs, installedToolbar, communityToolbar, installedGrid, communityGrid, status);
