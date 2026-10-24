@@ -8,8 +8,6 @@ import type {
   PluginDiagnostic,
   PluginManifest,
   PluginSetting,
-  SettingsItem,
-  SettingsSection,
   YapmodPluginInfo,
   YapmodPluginApi,
   YapmodPluginModule,
@@ -17,9 +15,9 @@ import type {
 } from "./types";
 import { PLUGIN_UI_CSS } from "./plugins.styles";
 
-const SECTION_ID = "yapmod-plugins";
 const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";
+const PLUGINS_SECTION_ID = "yapmod-plugins";
 
 type ConsentRecord = { version: string; contentHash: string };
 type InstalledEntry = {
@@ -245,42 +243,108 @@ function setOptionAttribute(manifest: PluginManifest, setting: PluginSetting, va
   else document.documentElement.removeAttribute(attribute);
 }
 
-function renderOptionSection(entry: InstalledEntry): (() => void) | null {
+function applyStoredSettings(entry: InstalledEntry): void {
+  for (const setting of entry.bundle.manifest.settings) {
+    const value = getYapmod().store?.get<boolean>(
+      pluginStorageKey(entry.bundle.manifest.id, setting.id),
+      setting.default,
+    ) ?? setting.default;
+    setOptionAttribute(entry.bundle.manifest, setting, value);
+  }
+}
+
+function removeSettingAttributes(entry: InstalledEntry): void {
+  for (const setting of entry.bundle.manifest.settings) {
+    document.documentElement.removeAttribute(
+      `data-yapmod-plugin-${entry.bundle.manifest.id}-${setting.id}`,
+    );
+  }
+}
+
+function showPluginSettings(entry: InstalledEntry): void {
+  const modalApi = getYapmod().modal;
+  if (!modalApi || entry.bundle.manifest.settings.length === 0) return;
   const { manifest } = entry.bundle;
-  const settingsApi = getYapmod().settings;
-  if (!settingsApi || manifest.settings.length === 0) return null;
-
-  const items: SettingsItem[] = manifest.settings.map((setting) => {
-    const initial = getYapmod().store?.get<boolean>(pluginStorageKey(manifest.id, setting.id), setting.default) ?? setting.default;
-    setOptionAttribute(manifest, setting, initial);
-    const item: Extract<SettingsItem, { type: "toggle" }> = {
-      type: "toggle",
-      id: setting.id,
-      label: setting.label,
-      description: setting.description,
-      value: initial,
-      onChange: (value) => {
-        item.value = value;
-        setOptionAttribute(manifest, setting, value);
-        getYapmod().store?.set(pluginStorageKey(manifest.id, setting.id), value);
+  const draft = new Map<string, boolean>();
+  const controls = manifest.settings.map((setting) => {
+    const current = getYapmod().store?.get<boolean>(
+      pluginStorageKey(manifest.id, setting.id),
+      setting.default,
+    ) ?? setting.default;
+    draft.set(setting.id, current);
+    const input = createElement("input", {
+      attrs: { type: "checkbox", "aria-label": setting.label },
+      props: { checked: current },
+      on: { change: (event) => draft.set(setting.id, (event.currentTarget as HTMLInputElement).checked) },
+    });
+    return createElement("label", {
+      className: "yapmod-plugin-setting-row",
+      children: [
+        createElement("span", {
+          children: [
+            createElement("span", { className: "yapmod-plugin-setting-label", text: setting.label }),
+            ...(setting.description ? [createElement("span", { className: "yapmod-plugin-setting-description", text: setting.description })] : []),
+          ],
+        }),
+        input,
+      ],
+    });
+  });
+  const content = createElement("div", { className: "yapmod-plugin-settings-modal", children: controls });
+  modalApi.show({
+    title: `${manifest.name} settings`,
+    description: entry.enabled
+      ? "Changes are applied when you save."
+      : "Changes are saved now and applied the next time you enable this plugin.",
+    content,
+    buttons: [
+      { label: "Cancel", variant: "secondary" },
+      {
+        label: "Save",
+        variant: "primary",
+        onClick: async () => {
+          for (const setting of manifest.settings) {
+            const value = draft.get(setting.id) ?? setting.default;
+            getYapmod().store?.set(pluginStorageKey(manifest.id, setting.id), value);
+            if (entry.enabled) setOptionAttribute(manifest, setting, value);
+          }
+          await getYapmod().store?.flush();
+        },
       },
-    };
-    return item;
+    ],
   });
+}
 
-  const unregister = settingsApi.register({
-    id: `plugin-${manifest.id}-options`,
-    label: manifest.name,
-    group: "Plugins",
-    description: "Options provided by this plugin.",
-    items,
+function appendSourceFile(container: HTMLElement, filename: string, source: string): void {
+  const code = createElement("pre", {
+    className: "yapmod-plugin-source-code",
+    children: [createElement("code", { text: source })],
   });
-  return () => {
-    unregister();
-    for (const setting of manifest.settings) {
-      document.documentElement.removeAttribute(`data-yapmod-plugin-${manifest.id}-${setting.id}`);
-    }
-  };
+  container.append(createElement("details", {
+    className: "yapmod-plugin-source-file",
+    children: [createElement("summary", { text: filename }), code],
+  }));
+}
+
+function showPluginFiles(entry: InstalledEntry): void {
+  const modalApi = getYapmod().modal;
+  if (!modalApi) return;
+  const { bundle } = entry;
+  const content = createElement("div", { className: "yapmod-plugin-source-viewer" });
+  content.append(createElement("p", {
+    className: "yapmod-plugin-source-note",
+    text: "These are the package contents loaded by Yapmod. Community plugins are copied to this local installation and can be reviewed here.",
+  }));
+  appendSourceFile(content, "manifest.json", JSON.stringify(bundle.manifest, null, 2));
+  appendSourceFile(content, "plugin.css", bundle.css);
+  if (bundle.script !== null) appendSourceFile(content, "plugin.js", bundle.script);
+  modalApi.show({
+    title: `${bundle.manifest.name} files`,
+    description: "Review the installed package source.",
+    content,
+    size: "xl",
+    buttons: [{ label: "Close", variant: "secondary" }],
+  });
 }
 
 function errorMessage(error: unknown): string {
@@ -311,27 +375,27 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
   entry.cleanup = [];
   try {
     upsertStyle(styleId, entry.bundle.css);
-    const removeOptions = renderOptionSection(entry);
+    applyStoredSettings(entry);
     entry.cleanup = [
       () => document.getElementById(styleId)?.remove(),
-      ...(removeOptions ? [removeOptions] : []),
+      () => removeSettingAttributes(entry),
     ];
     if (entry.bundle.script !== null) {
       const manifest = entry.bundle.manifest;
       const scriptStyleIds: string[] = [];
       const api: YapmodPluginApi = Object.freeze({
-      id: manifest.id,
-      manifest: Object.freeze({ ...manifest }),
-      storage: Object.freeze({
-        get<T>(key: string, fallback?: T): T {
-          if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-          return getYapmod().store?.get<T>(`plugin:${manifest.id}:data_${key}`, fallback) as T;
-        },
-        set(key: string, value: unknown): void {
-          if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-          getYapmod().store?.set(`plugin:${manifest.id}:data_${key}`, value);
-        },
-      }),
+        id: manifest.id,
+        manifest: Object.freeze({ ...manifest }),
+        storage: Object.freeze({
+          get<T>(key: string, fallback?: T): T {
+            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
+            return getYapmod().store?.get<T>(`plugin:${manifest.id}:data_${key}`, fallback) as T;
+          },
+          set(key: string, value: unknown): void {
+            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
+            getYapmod().store?.set(`plugin:${manifest.id}:data_${key}`, value);
+          },
+        }),
         settings: Object.freeze({
           get(id: string): boolean {
             const setting = manifest.settings.find((item) => item.id === id);
@@ -359,13 +423,13 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
+      entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
       const module = new Function("api", "document", "window", entry.bundle.script)(api, document, window) as unknown;
       if (!module || typeof module !== "object" || typeof (module as YapmodPluginModule).activate !== "function") {
         throw new Error("plugin.js must return an object with an activate(api) function.");
       }
       const cleanup = await (module as YapmodPluginModule).activate(api);
       if (typeof cleanup === "function") entry.cleanup.push(cleanup);
-      entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
     }
   } catch (error) {
     await runCleanup(entry);
@@ -442,7 +506,13 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
   }
 }
 
-function createCard(plugin: YapmodPluginInfo, onToggle: () => void, onRemove: () => void): HTMLElement {
+function createCard(
+  plugin: YapmodPluginInfo,
+  onToggle: () => void,
+  onRemove: () => void,
+  onSettings: () => void,
+  onInspect: () => void,
+): HTMLElement {
   const { manifest } = plugin;
   return createElement("article", {
     className: ["yapmod-plugin-card", plugin.enabled ? "yapmod-plugin-active" : ""].filter(Boolean).join(" "),
@@ -466,6 +536,8 @@ function createCard(plugin: YapmodPluginInfo, onToggle: () => void, onRemove: ()
       createElement("div", {
         className: "yapmod-plugin-card-foot",
         children: [
+          ...(manifest.settings.length ? [createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", text: "⚙", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, on: { click: onSettings } })] : []),
+          createElement("button", { className: "btn small ghost", text: "View files", props: { type: "button" }, on: { click: onInspect } }),
           createElement("button", { className: "btn small ghost", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
           createElement("button", { className: plugin.enabled ? "btn small ghost" : "btn small yapmod-plugin-enable", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
         ],
@@ -549,7 +621,7 @@ export function installPluginSettings(): void {
 
   upsertStyle("yapmod-plugin-ui-styles", PLUGIN_UI_CSS);
   yapmod.settings.register({
-    id: SECTION_ID,
+    id: PLUGINS_SECTION_ID,
     label: "Plugins",
     icon: "puzzle",
     group: "Yapmod",
@@ -625,7 +697,13 @@ export function installPluginSettings(): void {
             if (!success && !plugin.enabled) setStatus("The plugin was not enabled. Review the warning or check the error on its card.", true);
             renderInstalled();
           });
-        }, () => void removePlugin(plugin))));
+        }, () => void removePlugin(plugin), () => {
+          const entry = registry.get(plugin.manifest.id);
+          if (entry) showPluginSettings(entry);
+        }, () => {
+          const entry = registry.get(plugin.manifest.id);
+          if (entry) showPluginFiles(entry);
+        })));
       }
       function renderCommunity(): void {
         const installed = new Set(pluginApi.list().map((plugin) => plugin.manifest.id));
@@ -642,7 +720,7 @@ export function installPluginSettings(): void {
               createElement("div", { className: "yapmod-plugin-card-title-row", children: [createElement("h3", { className: "yapmod-plugin-card-name", text: plugin.name }), createElement("span", { className: "yapmod-plugin-state", text: `API ${plugin.api}` })] }),
               createElement("p", { className: "yapmod-plugin-card-meta", text: [plugin.author, plugin.version ? `v${plugin.version}` : null, plugin.license].filter(Boolean).join(" · ") }),
               createElement("p", { className: "yapmod-plugin-card-description", text: plugin.description ?? "No description provided." }),
-              ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-capabilities", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-capability", text: tag })) })] : []),
+              ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-tags", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-tag", text: tag })) })] : []),
             ] }),
             createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small yapmod-plugin-enable", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
           ],

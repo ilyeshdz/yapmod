@@ -98,14 +98,14 @@ export const PLUGIN_UI_CSS = `
   line-height: 1.4;
 }
 
-.yapmod-plugin-capabilities {
+.yapmod-plugin-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 2px;
 }
 
-.yapmod-plugin-capability {
+.yapmod-plugin-tag {
   padding: 3px 6px;
   border-radius: 5px;
   background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
@@ -122,9 +122,16 @@ export const PLUGIN_UI_CSS = `
 
 .yapmod-plugin-card-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 7px;
   padding: 0 10px 10px;
+}
+
+.yapmod-plugin-icon-button {
+  min-width: 34px;
+  padding-inline: 7px;
+  font-size: 1.05em;
 }
 
 .yapmod-plugin-enable {
@@ -139,5 +146,67 @@ export const PLUGIN_UI_CSS = `
 
 .yapmod-plugin-status-error {
   color: var(--ym-danger, var(--danger, #d9485f));
+}
+
+.yapmod-plugin-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.2)));
+  cursor: pointer;
+}
+
+.yapmod-plugin-setting-row:last-child {
+  border-bottom: 0;
+}
+
+.yapmod-plugin-setting-label,
+.yapmod-plugin-setting-description {
+  display: block;
+}
+
+.yapmod-plugin-setting-label {
+  font-weight: 600;
+}
+
+.yapmod-plugin-setting-description,
+.yapmod-plugin-source-note {
+  margin-top: 4px;
+  font-size: 0.85em;
+  opacity: 0.72;
+}
+
+.yapmod-plugin-setting-row input {
+  flex: none;
+}
+
+.yapmod-plugin-source-file {
+  margin-top: 10px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.yapmod-plugin-source-file summary {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.yapmod-plugin-source-code {
+  max-height: 48vh;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--ym-bg-elev, var(--bg-elev, rgba(127, 127, 127, 0.06)));
+  font-size: 0.78em;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.yapmod-plugin-source-code code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 `;
