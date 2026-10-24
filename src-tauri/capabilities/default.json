@@ -6,6 +6,7 @@
   "permissions": [
     "core:window:allow-start-dragging",
     "opener:allow-open-url",
+    "opener:allow-default-urls",
     "allow-set-settings",
     "allow-set-badge-count",
     "allow-notify",
