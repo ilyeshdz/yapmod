@@ -3,10 +3,11 @@ import { JSX } from "solid-js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 export type IconProps = {
-  name: string;
+  name?: string;
   class?: string;
   size?: number;
-  paths: string[][];
+  paths: readonly (readonly string[])[];
+  strokeWidth?: number;
 };
 
 /**
@@ -25,7 +26,7 @@ export function Icon(props: IconProps): JSX.Element {
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
-      stroke-width="2"
+      stroke-width={props.strokeWidth ?? 2}
     >
       {props.paths.flatMap((group) =>
         group.map((d) => (
