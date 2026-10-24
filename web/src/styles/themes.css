@@ -1,0 +1,47 @@
+.themes-section h1 {
+  font-size: clamp(38px, 6vw, 64px);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.theme-card {
+  overflow: hidden;
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  background: var(--s);
+}
+
+.theme-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.theme-card div {
+  padding: 16px 18px;
+}
+
+.theme-card h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.theme-card p {
+  margin: 4px 0 0;
+  color: var(--m);
+  font-size: 14px;
+}
+
+.empty-themes {
+  color: var(--m);
+}
+
+.empty-themes a {
+  color: var(--accent-ink);
+}

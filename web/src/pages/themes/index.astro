@@ -1,0 +1,50 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Nav from "../../components/Nav.astro";
+import Footer from "../../components/Footer.astro";
+import { getCommunityThemes } from "../../lib/community-themes";
+import "../../styles/themes.css";
+
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+const themes = getCommunityThemes();
+const previewUrl = (themeId: string, fileName: string) =>
+  `${base}/community-themes/themes/${encodeURIComponent(themeId)}/${encodeURIComponent(fileName)}`;
+---
+
+<BaseLayout
+  title="Themes — yapmod"
+  description="Browse community-made themes for yapmod."
+>
+  <div class="wrap">
+    <Nav />
+  </div>
+
+  <main id="main">
+    <section class="sec themes-section">
+      <div class="wrap">
+        <h1>Community themes</h1>
+        <p class="sub">Themes made by the yapmod community.</p>
+
+        {themes.length > 0 ? (
+          <div class="theme-grid">
+            {themes.map((theme) => (
+              <article class="theme-card">
+                <img src={previewUrl(theme.id, theme.preview)} alt={`${theme.name} preview`} loading="lazy" />
+                <div>
+                  <h2>{theme.name}</h2>
+                  {theme.author && <p>by {theme.author}</p>}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p class="empty-themes">
+            No community themes yet. <a href={`${base}/docs/submit-a-theme/`}>Submit the first one.</a>
+          </p>
+        )}
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>
