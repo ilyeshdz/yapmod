@@ -2,10 +2,9 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use ts_rs::TS;
 
-use crate::version::is_newer;
+use crate::{http, version::is_newer};
 
 const RELEASES_API: &str = "https://api.github.com/repos/ilyeshdz/yapmod/releases/latest";
-const USER_AGENT: &str = concat!("yapmod/", env!("CARGO_PKG_VERSION"));
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// The update information the injected UI needs.
@@ -33,14 +32,9 @@ struct GithubRelease {
 pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
     let current_version = app.package_info().version.to_string();
 
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .timeout(REQUEST_TIMEOUT)
-        .build()
-        .map_err(|error| error.to_string())?;
-
-    let response = client
+    let response = http::client()
         .get(RELEASES_API)
+        .timeout(REQUEST_TIMEOUT)
         .send()
         .await
         .map_err(|error| error.to_string())?;

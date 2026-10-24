@@ -11,6 +11,7 @@ mod badge;
 mod client_update;
 mod config;
 mod hosts;
+mod http;
 mod injection;
 mod notify;
 mod theme;

@@ -10,12 +10,11 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use crate::injection::ClientBundle;
+use crate::{http, injection::ClientBundle};
 
 const MANIFEST_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/manifest.json";
 const SIGNATURE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/manifest.sig";
 const BUNDLE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/bundle.json";
-const USER_AGENT: &str = concat!("yapmod/", env!("CARGO_PKG_VERSION"));
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_MANIFEST_SIZE: usize = 16 * 1024;
 const MAX_SIGNATURE_SIZE: usize = 1024;
@@ -370,6 +369,7 @@ async fn download_limited(
 ) -> Result<Vec<u8>, String> {
     let mut response = client
         .get(url)
+        .timeout(REQUEST_TIMEOUT)
         .send()
         .await
         .map_err(|error| error.to_string())?;
@@ -417,15 +417,11 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         return Ok(());
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent(USER_AGENT)
-        .timeout(REQUEST_TIMEOUT)
-        .build()
-        .map_err(|error| error.to_string())?;
+    let client = http::client();
 
-    let manifest_bytes = download_limited(&client, MANIFEST_URL, MAX_MANIFEST_SIZE).await?;
+    let manifest_bytes = download_limited(client, MANIFEST_URL, MAX_MANIFEST_SIZE).await?;
     let signature_bytes = STANDARD
-        .decode(download_limited(&client, SIGNATURE_URL, MAX_SIGNATURE_SIZE).await?)
+        .decode(download_limited(client, SIGNATURE_URL, MAX_SIGNATURE_SIZE).await?)
         .map_err(|_| "the client update signature is not valid base64".to_string())?;
     if !verify_manifest(&manifest_bytes, &signature_bytes, &public_key) {
         return Err("the client update manifest signature is invalid".to_string());
@@ -439,7 +435,7 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         .as_secs();
     validate_manifest(&manifest, state.highest_sequence, &app_version, now)?;
 
-    let bundle_bytes = download_limited(&client, BUNDLE_URL, MAX_BUNDLE_SIZE).await?;
+    let bundle_bytes = download_limited(client, BUNDLE_URL, MAX_BUNDLE_SIZE).await?;
     if verified_bundle(
         &manifest_bytes,
         &signature_bytes,

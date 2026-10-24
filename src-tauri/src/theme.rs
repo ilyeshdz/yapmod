@@ -14,7 +14,7 @@ use ts_rs::TS;
 
 use base64::Engine as _;
 
-use crate::config::Config;
+use crate::{config::Config, http};
 
 const MANIFEST_FILE: &str = "manifest.json";
 const DEFAULT_CSS_FILE: &str = "theme.css";
@@ -42,13 +42,6 @@ static THEME_RULES: LazyLock<ThemeRules> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../../community-themes/rules.json"))
         .expect("community theme rules must be valid JSON")
 });
-static COMMUNITY_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
-    reqwest::Client::builder()
-        .timeout(Duration::from_secs(20))
-        .build()
-        .expect("the community theme HTTP client must be configurable")
-});
-
 /// A theme folder can only be installed after the native picker selected it.
 static PICKED_THEME_FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
 
@@ -207,8 +200,9 @@ fn is_valid_community_preview_name(name: &str) -> bool {
 /// Downloads one file from the fixed static theme host with a size limit.
 async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let url = format!("{COMMUNITY_THEMES_BASE}/{path}");
-    let response = COMMUNITY_HTTP_CLIENT
+    let response = http::client()
         .get(&url)
+        .timeout(Duration::from_secs(20))
         .send()
         .await
         .map_err(|error| format!("could not download the community theme: {error}"))?
