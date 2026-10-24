@@ -1,16 +1,14 @@
+import { render } from "solid-js/web";
+
 import type {
   ReleaseEntry,
   SettingsItem,
   SettingsSection,
 } from "./types";
-import {
-  createReleaseBody,
-  formatReleaseDate,
-  getChangelog,
-} from "./release";
-import { createElement } from "./ui";
+import { getChangelog } from "./release";
 import { getYapmod } from "../core/scope";
 import { requestNotificationPermission } from "../core/notify";
+import { ChangelogList } from "../features/settings/changelog";
 
 const SECTION_ID = "yapmod";
 const CHANGELOG_SECTION_ID = "yapmod-changelog";
@@ -55,81 +53,20 @@ function createToggle(
   return item;
 }
 
-/**
- * Renders one entry per release, newest first.
- */
-function renderChangelog(
+function mountChangelog(
   host: HTMLElement,
   releases: ReleaseEntry[],
   installedVersion: string | undefined,
-): void {
-  if (releases.length === 0) {
-    host.appendChild(
-      createElement("p", {
-        className: "yapmod-changelog-empty",
-        text: "No releases yet.",
-      }),
-    );
-    return;
-  }
-
-  for (const release of releases) {
-    const date = formatReleaseDate(release.notes?.date);
-    const metadata = [
-      date
-        ? createElement("span", {
-            className: "hint",
-            text: date,
-          })
-        : null,
-      release.version === installedVersion
-        ? createElement("span", {
-            className: "hint",
-            text: "Current version",
-          })
-        : null,
-    ].filter((item): item is HTMLElement => item !== null);
-
-    const entryChildren: Node[] = [
-      createElement("header", {
-        className: "yapmod-changelog-header",
-        children: [
-          createElement("div", {
-            className: "toggle-label",
-            text: `Version ${release.version}`,
-          }),
-          ...(metadata.length
-            ? [
-                createElement("div", {
-                  className: "yapmod-changelog-meta",
-                  children: metadata,
-                }),
-              ]
-            : []),
-        ],
-      }),
-    ];
-
-    const title = release.notes?.title;
-
-    if (title) {
-      entryChildren.push(
-        createElement("h3", {
-          className: "yapmod-changelog-title",
-          text: title,
-        }),
-      );
-    }
-
-    entryChildren.push(createReleaseBody(release.notes));
-
-    host.appendChild(
-      createElement("article", {
-        className: "yapmod-changelog-release",
-        children: entryChildren,
-      }),
-    );
-  }
+): () => void {
+  return render(
+    () => (
+      <ChangelogList
+        releases={releases}
+        installedVersion={installedVersion}
+      />
+    ),
+    host,
+  );
 }
 
 /**
@@ -151,12 +88,15 @@ function createChangelogSection(): SettingsSection {
     description: "Every yapmod release, newest first.",
     render: (host) => {
       let cancelled = false;
+      let dispose: (() => void) | null = null;
 
       void getChangelog()
         .then((releases) => {
-          if (!cancelled) {
-            renderChangelog(host, releases, installedVersion);
+          if (cancelled) {
+            return;
           }
+
+          dispose = mountChangelog(host, releases, installedVersion);
         })
         .catch((error: unknown) => {
           console.error("[yapmod] could not load the changelog", error);
@@ -164,6 +104,7 @@ function createChangelogSection(): SettingsSection {
 
       return () => {
         cancelled = true;
+        dispose?.();
       };
     },
   };
@@ -253,11 +194,13 @@ export function installDefaultSettings(): void {
       const appVersion = yapmod.release?.version ?? "unknown";
       const clientVersion = yapmod.clientVersion ?? "embedded";
 
-      host.append(
-        createElement("p", {
-          className: "hint yapmod-version",
-          text: `Desktop v${appVersion} · Client v${clientVersion}`,
-        }),
+      return render(
+        () => (
+          <p class="hint yapmod-version">
+            Desktop v{appVersion} · Client v{clientVersion}
+          </p>
+        ),
+        host,
       );
     },
   };

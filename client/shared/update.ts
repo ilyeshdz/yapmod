@@ -5,9 +5,9 @@ import type {
 } from "./types";
 import { invokeCommand } from "../core/tauri";
 import { openExternally } from "../core/links";
-import { createElement } from "./ui";
 import { getYapmod } from "../core/scope";
 import { showBanner } from "./banner";
+import { mountUpdateContent } from "../features/updates/update-content";
 
 const WEBSITE_URL = "https://ilyeshdz.github.io/yapmod";
 const UPDATE_MODAL_ID = "yapmod-update-available";
@@ -42,45 +42,11 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
   }
 }
 
-function createVersionRow(
-  label: string,
-  version: string,
-  className: string,
-): HTMLElement {
-  return createElement("div", {
-    className: `yapmod-update-version ${className}`,
-    children: [
-      createElement("span", {
-        className: "yapmod-update-version-label",
-        text: label,
-      }),
-      createElement("span", {
-        className: "yapmod-update-version-number",
-        text: version ? `v${version}` : "unknown",
-      }),
-    ],
-  });
-}
-
-/**
- * Builds the body of the update modal: just the two versions.
- */
-export function createUpdateContent(info: UpdateInfo): HTMLElement {
-  return createElement("div", {
-    className: "yapmod-update-content",
-    children: [
-      createVersionRow(
-        "Installed",
-        info.current_version,
-        "yapmod-update-version-installed",
-      ),
-      createVersionRow(
-        "Latest",
-        info.latest_version,
-        "yapmod-update-version-latest",
-      ),
-    ],
-  });
+/** Builds the body of the update modal: just the two versions. */
+export function createUpdateContent(
+  info: UpdateInfo,
+): { element: HTMLElement; dispose: () => void } {
+  return mountUpdateContent(info);
 }
 
 /**
@@ -96,13 +62,16 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
     return null;
   }
 
+  const content = createUpdateContent(info);
+
   return modal.show({
     id: UPDATE_MODAL_ID,
     title: UPDATE_MODAL_TITLE,
     description: `yapmod v${info.latest_version} is out. Download it from the website.`,
-    content: createUpdateContent(info),
+    content: content.element,
     size: "sm",
     className: "yapmod-update-modal",
+    onClose: () => content.dispose(),
     buttons: [
       {
         label: "Go to website",

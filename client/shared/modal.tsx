@@ -1,3 +1,6 @@
+import { createSignal, JSX } from "solid-js";
+import { render } from "solid-js/web";
+
 import type {
   ModalButton,
   ModalCloseReason,
@@ -7,7 +10,7 @@ import type {
   YapmodModal,
   YapmodModalApi,
 } from "./types";
-import { createElement, ensureStyle } from "./ui";
+import { ensureStyle } from "./ui";
 import { getYapmod } from "../core/scope";
 import modalCSS from "../styles/modal.css";
 
@@ -27,22 +30,22 @@ function ensureModalStyles(): void {
 }
 
 function htmlToNode(html: string): Node {
-  const template = createElement("template", { html });
+  const template = document.createElement("template");
+  template.innerHTML = html;
   return template.content;
 }
 
 function syncScrollLock(): void {
-  const shouldLock = activeModals.some(
-    (modal) => modal.shouldLockScroll,
-  );
+  const shouldLock = activeModals.some((modal) => modal.shouldLockScroll);
   document.documentElement.classList.toggle(SCROLL_LOCK_CLASS, shouldLock);
+}
+
+function classNames(values: Array<string | null | undefined>): string {
+  return values.filter(Boolean).join(" ");
 }
 
 class YapmodModalImpl implements YapmodModal {
   readonly id: string;
-  readonly element: HTMLElement;
-  readonly dialog: HTMLElement;
-  readonly body: HTMLElement;
   readonly closed: Promise<ModalCloseReason>;
 
   private readonly options: ModalOptions;
@@ -50,19 +53,27 @@ class YapmodModalImpl implements YapmodModal {
   private readonly closeOnBackdrop: boolean;
   private readonly closeOnEscape: boolean;
   private readonly autoFocus: boolean;
+  private readonly size: ModalSize;
+
+  private readonly openSignal = createSignal(false);
+  private readonly titleSignal = createSignal<string | null>(null);
+  private readonly descriptionSignal = createSignal<string | null>(null);
+  private readonly footerSignal = createSignal(false);
+
+  private elementRef!: HTMLElement;
+  private dialogRef!: HTMLElement;
+  private bodyRef!: HTMLElement;
+  private footerRef: HTMLElement | null = null;
+
+  private readonly buttonRoots: Array<() => void> = [];
   private hasAutofocusButton = false;
   private previousFocus: HTMLElement | null = null;
 
-  private headElement: HTMLElement | null = null;
-  private titleElement: HTMLHeadingElement | null = null;
-  private descriptionElement: HTMLParagraphElement | null = null;
-  private footerElement: HTMLElement | null = null;
-
-  private openState = false;
   private mounted = false;
   private destroyed = false;
   private pendingMount = false;
   private closedResolve: ((reason: ModalCloseReason) => void) | null = null;
+  private readonly dispose: () => void;
 
   constructor(options: ModalOptions = {}) {
     this.options = options;
@@ -71,43 +82,22 @@ class YapmodModalImpl implements YapmodModal {
     this.closeOnBackdrop = options.closeOnBackdrop ?? this.dismissible;
     this.closeOnEscape = options.closeOnEscape ?? this.dismissible;
     this.autoFocus = options.autoFocus === true;
+    this.size = options.size ?? "md";
 
     this.closed = new Promise((resolve) => {
       this.closedResolve = resolve;
     });
 
-    this.element = createElement("div", {
-      className: "overlay yapmod-modal-overlay",
-      dataset: { yapmodModal: this.id },
-      props: { hidden: true },
-    });
+    this.titleSignal[1](options.title?.trim() ? options.title : null);
+    this.descriptionSignal[1](
+      options.description?.trim() ? options.description : null,
+    );
 
-    this.dialog = createElement("div", {
-      className: [
-        "modal",
-        "yapmod-modal",
-        `yapmod-modal--${options.size ?? "md"}`,
-        options.className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" "),
-      dataset: { yapmodModalDialog: "" },
-      attrs: { role: "dialog", "aria-modal": "true" },
-      props: { tabIndex: -1 },
-    });
+    const host = document.createElement("div");
+    this.dispose = render(() => this.render(), host);
+    this.elementRef = host.firstElementChild as HTMLElement;
+    this.bodyRef.replaceChildren();
 
-    this.body = createElement("div", {
-      className: "modal-body yapmod-modal-body",
-    });
-
-    if (this.dismissible) {
-      this.dialog.appendChild(this.createCloseButton());
-    }
-
-    this.dialog.appendChild(this.body);
-
-    this.setTitle(options.title ?? null);
-    this.setDescription(options.description ?? null);
     this.setContent(
       options.html != null ? htmlToNode(options.html) : options.content,
     );
@@ -115,21 +105,32 @@ class YapmodModalImpl implements YapmodModal {
     for (const button of options.buttons ?? []) {
       this.addButton(button);
     }
-
-    this.element.appendChild(this.dialog);
-    this.element.addEventListener("click", this.handleBackdropClick);
   }
 
-  get isOpen(): boolean {
-    return this.openState;
+  get element(): HTMLElement {
+    return this.elementRef;
+  }
+
+  get dialog(): HTMLElement {
+    return this.dialogRef;
+  }
+
+  get body(): HTMLElement {
+    return this.bodyRef;
   }
 
   get head(): HTMLElement | null {
-    return this.headElement;
+    return this.titleSignal[0]() || this.descriptionSignal[0]()
+      ? this.dialogRef.querySelector<HTMLElement>(":scope > .yapmod-modal-head")
+      : null;
   }
 
   get footer(): HTMLElement | null {
-    return this.footerElement;
+    return this.footerSignal[0]() ? this.footerRef : null;
+  }
+
+  get isOpen(): boolean {
+    return this.openSignal[0]();
   }
 
   get shouldLockScroll(): boolean {
@@ -141,20 +142,17 @@ class YapmodModalImpl implements YapmodModal {
       throw new Error("yapmod: cannot open a destroyed modal");
     }
 
-    if (this.openState) {
+    if (this.isOpen) {
       return this;
     }
 
-    this.openState = true;
-
-    // The focus is left where it is unless the modal explicitly asks for it.
     this.previousFocus = this.shouldFocus()
       ? document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
       : null;
 
-    this.element.hidden = false;
+    this.openSignal[1](true);
     this.mount();
     activeModals.push(this);
 
@@ -171,11 +169,11 @@ class YapmodModalImpl implements YapmodModal {
   }
 
   close(reason: ModalCloseReason = "api"): void {
-    if (!this.openState) {
+    if (!this.isOpen) {
       return;
     }
 
-    this.openState = false;
+    this.openSignal[1](false);
 
     const index = activeModals.indexOf(this);
     if (index !== -1) {
@@ -183,7 +181,6 @@ class YapmodModalImpl implements YapmodModal {
     }
 
     document.removeEventListener("keydown", this.handleDocumentKeyDown, true);
-    this.element.hidden = true;
 
     if (this.pendingMount) {
       document.removeEventListener("DOMContentLoaded", this.handleDomReady);
@@ -191,7 +188,7 @@ class YapmodModalImpl implements YapmodModal {
     }
 
     if (this.mounted) {
-      this.element.remove();
+      this.elementRef.remove();
       this.mounted = false;
     }
 
@@ -206,67 +203,33 @@ class YapmodModalImpl implements YapmodModal {
       return;
     }
 
-    if (this.openState) {
+    if (this.isOpen) {
       this.close("destroy");
     } else {
       this.settle("destroy");
     }
 
     this.destroyed = true;
+
+    for (const disposeButton of this.buttonRoots.splice(0)) {
+      disposeButton();
+    }
+
+    this.dispose();
   }
 
   setTitle(title: string | null): void {
-    const value = title?.trim() ? title : null;
-
-    if (!value) {
-      this.titleElement?.remove();
-      this.titleElement = null;
-      this.cleanupHead();
-      this.updateAria();
-      return;
-    }
-
-    const head = this.ensureHead();
-
-    if (!this.titleElement) {
-      const element = createElement("h2", {
-        attrs: { id: `${this.id}-title` },
-      });
-      head.insertBefore(element, head.firstChild);
-      this.titleElement = element;
-    }
-
-    this.titleElement.textContent = value;
-    this.updateAria();
+    this.titleSignal[1](title?.trim() ? title : null);
   }
 
   setDescription(description: string | null): void {
-    const value = description?.trim() ? description : null;
-
-    if (!value) {
-      this.descriptionElement?.remove();
-      this.descriptionElement = null;
-      this.cleanupHead();
-      this.updateAria();
-      return;
-    }
-
-    const head = this.ensureHead();
-
-    if (!this.descriptionElement) {
-      const element = createElement("p", {
-        attrs: { id: `${this.id}-description` },
-      });
-      head.appendChild(element);
-      this.descriptionElement = element;
-    }
-
-    this.descriptionElement.textContent = value;
-    this.updateAria();
+    this.descriptionSignal[1](
+      description?.trim() ? description : null,
+    );
   }
 
   setContent(content?: ModalContent): void {
-    this.body.replaceChildren();
+    this.bodyRef.replaceChildren();
 
     if (content == null) {
       return;
@@ -278,137 +241,163 @@ class YapmodModalImpl implements YapmodModal {
       return;
     }
 
-    this.body.appendChild(
+    this.bodyRef.appendChild(
       typeof value === "string" ? document.createTextNode(value) : value,
     );
   }
 
   addButton(button: ModalButton): HTMLButtonElement {
-    const element = createElement("button", {
-      className: [
-        "btn",
-        button.variant === "secondary" ? "secondary" : "",
-        button.variant === "danger" ? "yapmod-modal-danger" : "",
-        // "native" keeps the styles of the host app, without our own tint.
-        button.className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" "),
-      text: button.label,
-      props: {
-        type: "button",
-        disabled: button.disabled === true,
-      },
-      dataset: button.autofocus ? { yapmodAutofocus: "" } : undefined,
-      on: {
-        click: (event) => {
-          const target = event.currentTarget as HTMLButtonElement;
+    this.footerSignal[1](true);
 
-          if (target.disabled) {
-            return;
-          }
+    const footer = this.footerRef;
 
-          const result = button.onClick?.(this);
-          const closeOnClick = button.closeOnClick !== false;
-
-          if (result instanceof Promise) {
-            target.disabled = true;
-
-            result
-              .then((value) => {
-                target.disabled = false;
-
-                if (closeOnClick && value !== false) {
-                  this.close("button");
-                }
-              })
-              .catch((error: unknown) => {
-                target.disabled = false;
-                console.error("[yapmod] modal button handler failed", error);
-              });
-
-            return;
-          }
-
-          if (closeOnClick && result !== false) {
-            this.close("button");
-          }
-        },
-      },
-    });
+    if (!footer) {
+      throw new Error("yapmod: the modal footer is unavailable");
+    }
 
     if (button.autofocus) {
       this.hasAutofocusButton = true;
     }
 
-    this.ensureFooter().appendChild(element);
+    const disposeButton = render(
+      () => (
+        <button
+          class={classNames([
+            "btn",
+            button.variant === "secondary" ? "secondary" : "",
+            button.variant === "danger" ? "yapmod-modal-danger" : "",
+            // "native" keeps the styles of the host app, without our own tint.
+            button.className ?? "",
+          ])}
+          type="button"
+          disabled={button.disabled === true}
+          data-yapmod-autofocus={button.autofocus ? "" : undefined}
+          onClick={(event) => {
+            const target = event.currentTarget;
+
+            if (target.disabled) {
+              return;
+            }
+
+            const result = button.onClick?.(this);
+            const closeOnClick = button.closeOnClick !== false;
+
+            if (result instanceof Promise) {
+              target.disabled = true;
+
+              result
+                .then((value) => {
+                  target.disabled = false;
+
+                  if (closeOnClick && value !== false) {
+                    this.close("button");
+                  }
+                })
+                .catch((error: unknown) => {
+                  target.disabled = false;
+                  console.error(
+                    "[yapmod] modal button handler failed",
+                    error,
+                  );
+                });
+
+              return;
+            }
+
+            if (closeOnClick && result !== false) {
+              this.close("button");
+            }
+          }}
+        >
+          {button.label}
+        </button>
+      ),
+      footer,
+    );
+
+    this.buttonRoots.push(disposeButton);
+
+    const element = footer.lastElementChild as HTMLButtonElement;
 
     return element;
   }
 
-  private createCloseButton(): HTMLButtonElement {
-    return createElement("button", {
-      className: "yapmod-modal-close",
-      text: "\u00d7",
-      attrs: { "aria-label": "Close dialog" },
-      props: { type: "button" },
-      on: {
-        click: () => this.close("dismiss"),
-      },
-    });
-  }
+  private render(): JSX.Element {
+    const [open] = this.openSignal;
+    const [title] = this.titleSignal;
+    const [description] = this.descriptionSignal;
+    const [hasFooter] = this.footerSignal;
 
-  private ensureHead(): HTMLElement {
-    if (!this.headElement) {
-      const head = createElement("div", {
-        className: "modal-head yapmod-modal-head",
-      });
-      this.dialog.insertBefore(head, this.body);
-      this.headElement = head;
-    }
+    return (
+      <div
+        ref={(element) => {
+          this.elementRef = element;
+        }}
+        class="overlay yapmod-modal-overlay"
+        data-yapmod-modal={this.id}
+        hidden={!open()}
+        onClick={this.handleBackdropClick}
+      >
+        <div
+          ref={(element) => {
+            this.dialogRef = element;
+          }}
+          class={classNames([
+            "modal",
+            "yapmod-modal",
+            `yapmod-modal--${this.size}`,
+            this.options.className,
+          ])}
+          data-yapmod-modal-dialog=""
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title() ? `${this.id}-title` : undefined}
+          aria-label={
+            title() ? undefined : (this.options.ariaLabel ?? "Yapmod dialog")
+          }
+          aria-describedby={
+            description() ? `${this.id}-description` : undefined
+          }
+          tabIndex={-1}
+        >
+          {this.dismissible && (
+            <button
+              class="yapmod-modal-close"
+              type="button"
+              aria-label="Close dialog"
+              onClick={() => this.close("dismiss")}
+            >
+              ×
+            </button>
+          )}
 
-    return this.headElement;
-  }
+          <div
+            class="modal-head yapmod-modal-head"
+            style={{ display: title() || description() ? undefined : "none" }}
+          >
+            {title() ? <h2 id={`${this.id}-title`}>{title()}</h2> : null}
+            {description() ? (
+              <p id={`${this.id}-description`}>{description()}</p>
+            ) : null}
+          </div>
 
-  private cleanupHead(): void {
-    if (this.headElement && !this.titleElement && !this.descriptionElement) {
-      this.headElement.remove();
-      this.headElement = null;
-    }
-  }
+          <div
+            ref={(element) => {
+              this.bodyRef = element;
+            }}
+            class="modal-body yapmod-modal-body"
+          />
 
-  private ensureFooter(): HTMLElement {
-    if (!this.footerElement) {
-      const footer = createElement("div", {
-        className: "modal-foot yapmod-modal-foot",
-      });
-      this.dialog.appendChild(footer);
-      this.footerElement = footer;
-    }
-
-    return this.footerElement;
-  }
-
-  private updateAria(): void {
-    if (this.titleElement) {
-      this.dialog.setAttribute("aria-labelledby", `${this.id}-title`);
-      this.dialog.removeAttribute("aria-label");
-    } else {
-      this.dialog.removeAttribute("aria-labelledby");
-      this.dialog.setAttribute(
-        "aria-label",
-        this.options.ariaLabel ?? "Yapmod dialog",
-      );
-    }
-
-    if (this.descriptionElement) {
-      this.dialog.setAttribute(
-        "aria-describedby",
-        `${this.id}-description`,
-      );
-    } else {
-      this.dialog.removeAttribute("aria-describedby");
-    }
+          <div
+            ref={(element) => {
+              this.footerRef = element;
+            }}
+            class="modal-foot yapmod-modal-foot"
+            style={{ display: hasFooter() ? undefined : "none" }}
+          />
+        </div>
+      </div>
+    );
   }
 
   private mount(): void {
@@ -419,18 +408,16 @@ class YapmodModalImpl implements YapmodModal {
     if (!document.body) {
       if (!this.pendingMount) {
         this.pendingMount = true;
-        document.addEventListener(
-          "DOMContentLoaded",
-          this.handleDomReady,
-          { once: true },
-        );
+        document.addEventListener("DOMContentLoaded", this.handleDomReady, {
+          once: true,
+        });
       }
 
       return;
     }
 
     ensureModalStyles();
-    document.body.appendChild(this.element);
+    document.body.appendChild(this.elementRef);
     this.mounted = true;
   }
 
@@ -439,10 +426,10 @@ class YapmodModalImpl implements YapmodModal {
       return;
     }
 
-    const preferred = this.dialog.querySelector<HTMLElement>(
+    const preferred = this.dialogRef.querySelector<HTMLElement>(
       "[autofocus], [data-yapmod-autofocus]",
     );
-    (preferred ?? this.dialog).focus({ preventScroll: true });
+    (preferred ?? this.dialogRef).focus({ preventScroll: true });
   }
 
   private restoreFocus(): void {
@@ -467,7 +454,7 @@ class YapmodModalImpl implements YapmodModal {
     ].join(",");
 
     return Array.from(
-      this.dialog.querySelectorAll<HTMLElement>(selector),
+      this.dialogRef.querySelectorAll<HTMLElement>(selector),
     ).filter((element) => element.getClientRects().length > 0);
   }
 
@@ -480,7 +467,7 @@ class YapmodModalImpl implements YapmodModal {
 
     if (focusable.length === 0) {
       event.preventDefault();
-      this.dialog.focus({ preventScroll: true });
+      this.dialogRef.focus({ preventScroll: true });
       return;
     }
 
@@ -489,14 +476,14 @@ class YapmodModalImpl implements YapmodModal {
     const active = document.activeElement;
 
     if (event.shiftKey) {
-      if (active === first || active === this.dialog) {
+      if (active === first || active === this.dialogRef) {
         event.preventDefault();
         last.focus({ preventScroll: true });
       }
       return;
     }
 
-    if (active === last || !this.dialog.contains(active)) {
+    if (active === last || !this.dialogRef.contains(active)) {
       event.preventDefault();
       first.focus({ preventScroll: true });
     }
@@ -531,7 +518,7 @@ class YapmodModalImpl implements YapmodModal {
   private handleDomReady = (): void => {
     this.pendingMount = false;
 
-    if (!this.openState) {
+    if (!this.isOpen) {
       return;
     }
 
@@ -540,7 +527,7 @@ class YapmodModalImpl implements YapmodModal {
   };
 
   private handleBackdropClick = (event: MouseEvent): void => {
-    if (event.target !== this.element || !this.closeOnBackdrop) {
+    if (event.target !== this.elementRef || !this.closeOnBackdrop) {
       return;
     }
 

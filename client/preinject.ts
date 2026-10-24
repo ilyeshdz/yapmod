@@ -9,7 +9,7 @@ import { installSettingsApi } from "./shared/settings";
 import { installStore } from "./core/store";
 import { installDefaultSettings } from "./shared/defaults";
 import { installThemeEngine } from "./shared/theme/engine";
-import { installThemeSettings } from "./shared/theme/picker";
+import { installThemeSettings } from "./shared/theme/settings";
 import { installDesktopBridge } from "./core/desktop";
 import { installNotificationApi } from "./core/notify";
 import { installExternalLinks } from "./core/links";

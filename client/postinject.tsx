@@ -5,10 +5,12 @@ import {
   showClientUpdateBanner,
   showUpdateAvailableModal,
 } from "./shared/update";
-import { upsertStyle, createElement } from "./shared/ui";
+import { upsertStyle } from "./shared/ui";
 import { remountThemeStyles } from "./shared/theme/engine";
 import { getYapmod } from "./core/scope";
 import { invokeCommand } from "./core/tauri";
+import { render } from "solid-js/web";
+import { WindowControls } from "./features/window-controls/window-controls";
 import type {
   ClientUpdateInfo,
   ClientUpdateLaunchStatus,
@@ -47,60 +49,14 @@ function markTopbarDraggable(topbar: HTMLElement): void {
   }
 }
 
-type WindowAction = "minimize" | "maximize" | "close";
-
-const WINDOW_ACTIONS: Array<{
-  action: WindowAction;
-  label: string;
-  command: string;
-  icon: string;
-}> = [
-  {
-    action: "minimize",
-    label: "Minimize window",
-    command: "minimize_main_window",
-    icon: '<path d="M5 12h14" />',
-  },
-  {
-    action: "maximize",
-    label: "Maximize or restore window",
-    command: "toggle_main_window_maximize",
-    icon: '<rect x="6.5" y="6.5" width="11" height="11" />',
-  },
-  {
-    action: "close",
-    label: "Close window",
-    command: "close_main_window",
-    icon: '<path d="m7 7 10 10M17 7 7 17" />',
-  },
-];
-
 function createWindowControls(): HTMLElement {
-  const controls = document.createElement("div");
-  controls.className = "yapmod-window-controls";
-  controls.setAttribute(WINDOW_CONTROLS_ATTRIBUTE, "");
-  // The topbar is a deep drag region. Explicitly opt this subtree out so
-  // Tauri does not treat the window buttons as drag gestures on Windows.
-  controls.setAttribute("data-tauri-drag-region", "false");
-  controls.setAttribute("role", "group");
-  controls.setAttribute("aria-label", "Window controls");
+  const host = document.createElement("div");
+  const dispose = render(() => <WindowControls />, host);
+  const controls = host.firstElementChild as HTMLElement;
 
-  for (const { action, label, command, icon } of WINDOW_ACTIONS) {
-    const button = document.createElement("button");
-    button.className = `yapmod-window-control yapmod-window-control-${action}`;
-    button.type = "button";
-    button.title = label;
-    button.setAttribute("aria-label", label);
-    button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${icon}</svg>`;
-    button.addEventListener("pointerdown", (event) => event.stopPropagation());
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      void invokeCommand<void>(command).catch((error: unknown) => {
-        console.error(`[yapmod] could not ${action} the window`, error);
-      });
-    });
-    controls.append(button);
-  }
+  // The component is static; once it is in the DOM there is nothing left to
+  // react to, so the root can be disposed without losing the buttons.
+  dispose();
 
   return controls;
 }

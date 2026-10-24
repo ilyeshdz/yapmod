@@ -22,7 +22,9 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "babel-preset-solid": "^1.9.16",
     "esbuild": "^0.28.2",
+    "esbuild-plugin-solid": "^0.6.0",
     "typescript": "~6.0.3"
   }
 }

@@ -1,5 +1,8 @@
-import { createElement } from "./ui";
+import { createSignal } from "solid-js";
+import { render } from "solid-js/web";
+
 import { getYapmod } from "../core/scope";
+import { BannerView } from "../features/banners/banner";
 
 const BANNER_REGION_ID = "yapmod-banner-region";
 
@@ -54,15 +57,13 @@ function ensureRegion(): HTMLElement | null {
 
   if (!region) {
     region = document.getElementById(BANNER_REGION_ID);
+
     if (!region) {
-      region = createElement("div", {
-        className: "yapmod-banner-region",
-        attrs: {
-          id: BANNER_REGION_ID,
-          role: "region",
-          "aria-label": "yapmod notifications",
-        },
-      });
+      region = document.createElement("div");
+      region.className = "yapmod-banner-region";
+      region.id = BANNER_REGION_ID;
+      region.setAttribute("role", "region");
+      region.setAttribute("aria-label", "yapmod notifications");
     }
   }
 
@@ -78,82 +79,72 @@ function ensureRegion(): HTMLElement | null {
 }
 
 function createBanner(options: BannerOptions): BannerEntry {
-  const message = createElement("span", {
-    className: "yapmod-banner-message",
-    text: options.message,
-  });
+  const [message, setMessageText] = createSignal(options.message);
+  const [tone, setTone] = createSignal<BannerTone>(options.tone ?? "primary");
 
-  const element = createElement("div", {
-    className: "yapmod-banner",
-    attrs: { role: options.tone === "warning" ? "alert" : "status" },
-    dataset: { tone: options.tone ?? "primary" },
-    children: [message],
-  });
+  let entry: BannerEntry;
 
   const banner: YapmodBanner = {
-    setMessage(nextMessage, tone = "primary") {
-      message.textContent = nextMessage;
-      element.dataset.tone = tone;
-      element.setAttribute("role", tone === "warning" ? "alert" : "status");
+    setMessage(nextMessage, nextTone = "primary") {
+      setMessageText(nextMessage);
+      setTone(nextTone);
     },
     dismiss() {
+      entry.dismiss();
+    },
+  };
+
+  const host = document.createElement("div");
+  const dispose = render(
+    () => (
+      <BannerView
+        message={message()}
+        tone={tone()}
+        dismissible={options.dismissible !== false}
+        action={options.action}
+        banner={banner}
+        onDismiss={() => entry.dismiss()}
+      />
+    ),
+    host,
+  );
+
+  const element = host.firstElementChild as HTMLElement;
+
+  entry = {
+    element,
+    setMessage: banner.setMessage,
+    dismiss() {
+      dispose();
       element.remove();
       banners.delete(options.id);
     },
   };
 
-  if (options.action) {
-    const action = createElement("button", {
-      className: "yapmod-banner-action",
-      text: options.action.label,
-      attrs: { type: "button" },
-      on: {
-        click: () => {
-          void Promise.resolve(options.action?.onClick(banner)).catch((error) => {
-            console.error("[yapmod] banner action failed", error);
-          });
-        },
-      },
-    });
-    element.append(action);
-  }
-
-  if (options.dismissible !== false) {
-    element.append(
-      createElement("button", {
-        className: "yapmod-banner-dismiss",
-        text: "×",
-        attrs: {
-          type: "button",
-          "aria-label": "Dismiss notification",
-        },
-        on: { click: () => banner.dismiss() },
-      }),
-    );
-  }
-
-  return {
-    element,
-    setMessage: banner.setMessage,
-    dismiss: banner.dismiss,
-  };
+  return entry;
 }
 
 /** Adds or updates a nonblocking banner directly below Yapper's topbar. */
 export function showBanner(options: BannerOptions): YapmodBanner {
-  let entry = banners.get(options.id);
+  const existing = banners.get(options.id);
 
-  if (entry) {
-    entry.setMessage(options.message, options.tone);
+  if (existing) {
+    existing.setMessage(options.message, options.tone);
     ensureRegion();
-    return { setMessage: entry.setMessage, dismiss: entry.dismiss };
+    return {
+      setMessage: existing.setMessage,
+      dismiss: existing.dismiss,
+    };
   }
 
-  entry = createBanner(options);
+  const entry = createBanner(options);
   banners.set(options.id, entry);
   ensureRegion()?.append(entry.element);
 
-  return { setMessage: entry.setMessage, dismiss: entry.dismiss };
+  return {
+    setMessage: entry.setMessage,
+    dismiss: entry.dismiss,
+  };
 }
 
 const bannerApi: YapmodBannerApi = {

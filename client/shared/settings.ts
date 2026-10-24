@@ -3,54 +3,15 @@ import type {
   SettingsSection,
   YapmodSettingsApi,
 } from "./types";
-import { createElement, safeTeardown, whenBodyReady } from "./ui";
-import { renderSettingsItem } from "./items";
-import { closeAllDropdowns } from "./dropdown";
+import { safeTeardown, whenBodyReady } from "./ui";
+import { closeAllDropdowns } from "../components/dropdown";
 import { getYapmod } from "../core/scope";
-
-type SettingsSectionIcon = NonNullable<SettingsSection["icon"]>;
-
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-const SECTION_ICON_SHAPES: Record<SettingsSectionIcon, string[]> = {
-  monitor: [
-    "M4 4h16a1 1 0 0 1 1 1v11H3V5a1 1 0 0 1 1-1Z",
-    "M8 20h8",
-    "M12 16v4",
-  ],
-  palette: [
-    "M12 3a9 9 0 1 0 0 18h1.5a1.5 1.5 0 0 0 1.1-2.5 1.5 1.5 0 0 1 1.1-2.5H18a3 3 0 0 0 3-3 10 10 0 0 0-9-10Z",
-    "M7.5 10h.01",
-    "M11 7h.01",
-    "M16 8.5h.01",
-  ],
-  history: ["M3 12a9 9 0 1 0 2.64-6.36L3 8", "M3 3v5h5", "M12 7v5l3 2"],
-  puzzle: [
-    "M20 13.2a2.8 2.8 0 1 0-3.2-3.2V4h-4.2a2.8 2.8 0 1 0-5.6 0H3v5.8a2.8 2.8 0 1 1 0 5.6V21h6.2a2.8 2.8 0 1 1 5.6 0H21v-4.2a2.8 2.8 0 0 1-1-3.6Z",
-  ],
-};
-
-function createSectionIcon(name: SettingsSectionIcon): SVGElement {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("class", "yapmod-settings-nav-icon");
-  svg.setAttribute("width", "24");
-  svg.setAttribute("height", "24");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-
-  for (const path of SECTION_ICON_SHAPES[name]) {
-    const shape = document.createElementNS(SVG_NS, "path");
-    shape.setAttribute("d", path);
-    svg.append(shape);
-  }
-
-  return svg;
-}
+import { createSettingsPanel } from "../features/settings/settings-panel";
+import { mountSettingsItems } from "../features/settings/settings-items";
+import {
+  createNavButton,
+  createNavLabel,
+} from "../features/settings/settings-nav";
 
 const ACTIVE_CLASS = "yapmod-section-active";
 const PANEL_CLASS = "yapmod-settings-panel";
@@ -62,8 +23,12 @@ type SectionEntry = {
   section: SettingsSection;
   button: HTMLButtonElement;
   panel: HTMLElement | null;
+  /** Teardown of the custom `render` function of the section. */
   teardowns: (() => void)[];
-  itemTeardowns: (() => void)[];
+  /** Disposes the Solid root that renders the declared items. */
+  itemsDispose: (() => void) | null;
+  /** Disposes the Solid root that renders the panel shell. */
+  panelDispose: (() => void) | null;
 };
 
 type NavGroup = {
@@ -131,72 +96,38 @@ function createContext(entry: SectionEntry): SettingsContext {
   };
 }
 
-function renderItems(
-  entry: SectionEntry,
-  context: SettingsContext,
-): HTMLElement[] {
-  return (entry.section.items ?? []).map((item) =>
-    renderSettingsItem(item, context, entry.itemTeardowns),
-  );
-}
-
 function ensurePanel(entry: SectionEntry): HTMLElement {
   if (entry.panel) {
     return entry.panel;
   }
 
-  const created = createElement("section", {
-    className: `settings-main ${PANEL_CLASS}`,
-    attrs: { "data-yapmod-panel": entry.section.id },
-  });
+  const context = createContext(entry);
+  const handle = createSettingsPanel(entry.section);
 
-  created.hidden = true;
+  entry.panel = handle.element;
+  entry.panelDispose = handle.dispose;
 
-  const body = createElement("div", { className: "yapmod-settings" });
-
-  const title = createElement("h2", {
-    className: entry.section.description ? "yapmod-has-description" : undefined,
-    text: entry.section.label,
-  });
-
-  body.append(title);
-
-  if (entry.section.description) {
-    body.append(
-      createElement("p", {
-        className: "hint yapmod-settings-description",
-        text: entry.section.description,
-      }),
+  if (handle.itemsHost && entry.section.items?.length) {
+    entry.itemsDispose = mountSettingsItems(
+      entry.section.items,
+      handle.itemsHost,
+      context,
     );
   }
 
-  const context = createContext(entry);
-
-  if (entry.section.items?.length) {
-    const host = createElement("div", { className: "yapmod-settings-items" });
-    host.append(...renderItems(entry, context));
-    body.append(host);
-  }
-
-  if (entry.section.render) {
-    const host = createElement("div", { className: "yapmod-settings-body" });
-    body.append(host);
-
-    const teardown = entry.section.render(host, context);
+  if (handle.bodyHost && entry.section.render) {
+    const teardown = entry.section.render(handle.bodyHost, context);
 
     if (typeof teardown === "function") {
       entry.teardowns.push(teardown);
     }
   }
 
-  created.append(body);
-  entry.panel = created;
-
-  return created;
+  return entry.panel;
 }
 
 function refreshSection(entry: SectionEntry): void {
-  const host = entry.panel?.querySelector(
+  const host = entry.panel?.querySelector<HTMLElement>(
     ":scope > .yapmod-settings > .yapmod-settings-items",
   );
 
@@ -204,8 +135,17 @@ function refreshSection(entry: SectionEntry): void {
     return;
   }
 
-  safeTeardown(entry.itemTeardowns.splice(0));
-  host.replaceChildren(...renderItems(entry, createContext(entry)));
+  entry.itemsDispose?.();
+  entry.itemsDispose = null;
+  host.replaceChildren();
+
+  if (entry.section.items?.length) {
+    entry.itemsDispose = mountSettingsItems(
+      entry.section.items,
+      host,
+      createContext(entry),
+    );
+  }
 }
 
 function mountPanel(entry: SectionEntry): HTMLElement {
@@ -226,7 +166,7 @@ function ensureGroup(name: string): NavGroup {
   }
 
   const group: NavGroup = {
-    label: createElement("div", { className: "settings-nav-label", text: name }),
+    label: createNavLabel(name),
     entries: [],
   };
 
@@ -589,24 +529,15 @@ function ensureObserver(): void {
 function register(section: SettingsSection): () => void {
   unregister(section.id);
 
-  const button = createElement("button", {
-    attrs: {
-      type: "button",
-      [NAV_ATTRIBUTE]: section.id,
-      "aria-label": section.label,
-    },
-    children: [
-      ...(section.icon ? [createSectionIcon(section.icon)] : []),
-      document.createTextNode(section.label),
-    ],
-  });
+  const button = createNavButton(section);
 
   const entry: SectionEntry = {
     section,
     button,
     panel: null,
     teardowns: [],
-    itemTeardowns: [],
+    itemsDispose: null,
+    panelDispose: null,
   };
 
   registry.set(section.id, entry);
@@ -645,7 +576,10 @@ function unregister(id: string): void {
   }
 
   safeTeardown(entry.teardowns.splice(0));
-  safeTeardown(entry.itemTeardowns.splice(0));
+  entry.itemsDispose?.();
+  entry.itemsDispose = null;
+  entry.panelDispose?.();
+  entry.panelDispose = null;
 
   entry.panel?.remove();
   entry.panel = null;
