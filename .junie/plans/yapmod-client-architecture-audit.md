@@ -1411,7 +1411,22 @@ Build the reusable component library that all features will depend on.
 - Extract shared CSS patterns into `_components.css`
 - Validate each component renders correctly, events fire, and cleanup works
 
-###   Step 3: Phase 3: Settings Feature Migration
+### ✓ Step 3: Phase 3: CSS Extraction & Settings Preparation
+Extract CSS from TypeScript files into organized styles/ directory, update import paths, and consolidate dropdown styles.
+
+- Created styles/modal.css (extracted from modal.ts MODAL_CSS constant)
+- Created styles/plugins.css (extracted from plugins.styles.ts)
+- Created styles/themes.css (extracted from picker.styles.ts)
+- Created styles/_components.css (shared component styles: cards, toolbar, tabs, grid, dropdown)
+- Updated modal.ts to import from styles/modal.css
+- Updated plugins.ts to import from styles/plugins.css
+- Updated picker.ts to import from styles/themes.css
+- Added dropdown styles to minimum.css (bundled at Rust compile time)
+- Removed old plugins.styles.ts and picker.styles.ts files
+- Fixed Gallery component TypeScript errors
+- Bundle sizes unchanged: preinject 77.9kb, postinject 9.9kb
+
+### * Step 4: Phase 4: Plugins Feature Migration
 Migrate the settings system to SolidJS, splitting API from UI.
 
 - Split settings.ts into `settings-api.ts` (registry, register/unregister, open/refresh) and `settings-panel.tsx` (SolidJS component)

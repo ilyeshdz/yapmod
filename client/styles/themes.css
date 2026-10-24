@@ -1,5 +1,5 @@
-/** Styles for the theme gallery. They use theme tokens to stay consistent. */
-export const THEME_UI_CSS = `
+/* Theme picker styles */
+
 .yapmod-theme-toolbar {
   display: flex;
   align-items: center;
@@ -247,4 +247,3 @@ export const THEME_UI_CSS = `
 .yapmod-theme-status.yapmod-theme-status-error {
   color: var(--ym-danger, var(--danger, #d9485f));
 }
-`;

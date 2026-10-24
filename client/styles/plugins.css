@@ -1,19 +1,14 @@
-/** Card layout for the plugin manager. */
-export const PLUGIN_UI_CSS = `
+/* Plugin gallery styles */
+
 .yapmod-plugin-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
-}
-
-.yapmod-plugin-toolbar {
   justify-content: flex-end;
 }
-
-.yapmod-plugin-toolbar[hidden],
-.yapmod-plugin-grid[hidden] {
+.yapmod-plugin-toolbar[hidden] {
   display: none;
 }
 
@@ -26,6 +21,9 @@ export const PLUGIN_UI_CSS = `
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
+}
+.yapmod-plugin-grid[hidden] {
+  display: none;
 }
 
 .yapmod-plugin-card {
@@ -210,4 +208,3 @@ export const PLUGIN_UI_CSS = `
 .yapmod-plugin-source-code code {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
-`;

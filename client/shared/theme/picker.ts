@@ -5,7 +5,7 @@ import { createDropdown } from "../dropdown";
 import { getYapmod } from "../../core/scope";
 import { openExternally } from "../../core/links";
 import { confirmRemove, createPreview } from "./picker-preview";
-import { THEME_UI_CSS } from "./picker.styles";
+import themeCSS from "../../styles/themes.css";
 
 const SECTION_ID = "yapmod-themes";
 
@@ -495,7 +495,7 @@ export function installThemeSettings(): void {
     return;
   }
 
-  ensureStyle(UI_STYLE_ID, THEME_UI_CSS);
+  ensureStyle(UI_STYLE_ID, themeCSS);
 
   yapmod.settings.register(createThemeSection());
 }

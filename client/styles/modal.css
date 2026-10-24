@@ -1,0 +1,103 @@
+.yapmod-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overscroll-behavior: contain;
+}
+.yapmod-modal-overlay[hidden] {
+  display: none !important;
+}
+.yapmod-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  max-height: min(86vh, 900px);
+  margin: 0;
+}
+.yapmod-modal--sm { width: min(100%, 360px); }
+.yapmod-modal--md { width: min(100%, 440px); }
+.yapmod-modal--lg { width: min(100%, 640px); }
+.yapmod-modal--xl { width: min(100%, 840px); }
+.yapmod-modal-head {
+  padding-right: 44px;
+}
+.yapmod-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.yapmod-modal-body:empty {
+  display: none;
+}
+.yapmod-modal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--ym-border, var(--border, rgba(255, 255, 255, 0.08)));
+}
+.yapmod-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.yapmod-modal-close:hover,
+.yapmod-modal-close:focus-visible {
+  background: var(--ym-bg-elev, var(--bg-elev, rgba(255, 255, 255, 0.08)));
+  opacity: 1;
+}
+.yapmod-modal-danger {
+  border-color: transparent !important;
+  background: var(--ym-danger, var(--danger, #d9485f)) !important;
+  color: var(--ym-on-accent, var(--on-accent, #fff)) !important;
+}
+.yapmod-modal-danger:hover {
+  background: color-mix(in srgb, var(--ym-danger, var(--danger, #d9485f)) 88%, #000) !important;
+}
+html.yapmod-modal-open,
+html.yapmod-modal-open body {
+  overflow: hidden !important;
+}
+@media (max-width: 520px) {
+  .yapmod-modal,
+  .yapmod-modal--sm,
+  .yapmod-modal--md,
+  .yapmod-modal--lg,
+  .yapmod-modal--xl {
+    width: 100%;
+    max-height: 90vh;
+  }
+  .yapmod-modal-foot .btn {
+    flex: 1 1 auto;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .yapmod-modal {
+    animation: yapmod-modal-pop 140ms ease-out;
+  }
+  @keyframes yapmod-modal-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+}

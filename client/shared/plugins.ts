@@ -13,7 +13,7 @@ import type {
   YapmodPluginModule,
   YapmodPluginsApi,
 } from "./types";
-import { PLUGIN_UI_CSS } from "./plugins.styles";
+import pluginCSS from "../styles/plugins.css";
 
 const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";
@@ -656,7 +656,7 @@ export function installPluginSettings(): void {
   if (!plugins || !yapmod.settings) return;
   const pluginApi = plugins;
 
-  upsertStyle("yapmod-plugin-ui-styles", PLUGIN_UI_CSS);
+  upsertStyle("yapmod-plugin-ui-styles", pluginCSS);
   yapmod.settings.register({
     id: PLUGINS_SECTION_ID,
     label: "Plugins",

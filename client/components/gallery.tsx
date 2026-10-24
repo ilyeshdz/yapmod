@@ -6,6 +6,10 @@ export type GalleryTab = {
   label: string;
 };
 
+export type GalleryToolbarProps = {
+  onSearch: (query: string) => void;
+};
+
 export type GalleryProps<T> = {
   tabs: GalleryTab[];
   activeTab: () => string;
@@ -14,7 +18,7 @@ export type GalleryProps<T> = {
   emptyMessage: string;
   searchPlaceholder?: string;
   filter?: (item: T, query: string) => boolean;
-  renderToolbar?: (onSearch: (query: string) => void) => JSX.Element;
+  renderToolbar?: (props: GalleryToolbarProps) => JSX.Element;
   renderItem: (item: T) => JSX.Element;
   renderStatus?: () => JSX.Element;
 };
@@ -58,9 +62,7 @@ export function Gallery<T>(props: GalleryProps<T>): JSX.Element {
         </For>
       </div>
 
-      <Show when={props.renderToolbar}>
-        {(fn) => <>{fn!((query: string) => setSearchQuery(query))}</>}
-      </Show>
+      {props.renderToolbar?.({ onSearch: (query: string) => setSearchQuery(query) })}
 
       <div class="yapmod-theme-grid">
         <Show when={filteredItems().length > 0} fallback={
@@ -72,9 +74,7 @@ export function Gallery<T>(props: GalleryProps<T>): JSX.Element {
         </Show>
       </div>
 
-      <Show when={props.renderStatus}>
-        {(fn) => <>{fn()}</>}
-      </Show>
+      {props.renderStatus?.()}
     </>
   );
 }
