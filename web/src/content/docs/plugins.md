@@ -6,7 +6,7 @@ eyebrow: Plugins
 description: Import and manage trusted local or Community plugins.
 ---
 
-Plugins extend the Yapper interface. Open **Settings → Yapmod → Plugins** to import a local package, enable or disable it, remove it, or browse the Community catalog.
+Plugins extend the Yapper interface. Open **Settings → Yapmod → Plugins** to import a local package, inspect its installed files, enable or disable it, remove it, or browse the Community catalog. A gear button on a plugin card opens its settings in a modal; changes take effect when saved.
 
 ## Package format
 
