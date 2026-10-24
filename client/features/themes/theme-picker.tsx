@@ -8,12 +8,12 @@ import {
   JSX,
 } from "solid-js";
 
-import type { CommunityTheme, ThemeBundle } from "../../shared/theme/types";
-import type { YapmodThemeApi } from "../../shared/theme/engine";
+import type { CommunityTheme, ThemeBundle } from "./types";
+import type { YapmodThemeApi } from "./engine";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
 import { openExternally } from "../../core/links";
-import { confirmRemove } from "../../shared/theme/picker-preview";
+import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
 import { ThemePreview } from "./theme-preview";

@@ -1,5 +1,5 @@
-import type { ReleaseEntry } from "./types";
-import { invokeCommand } from "../core/tauri";
+import type { ReleaseEntry } from "../../shared/types";
+import { invokeCommand } from "../../core/tauri";
 
 let changelogCache: ReleaseEntry[] | null = null;
 

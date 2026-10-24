@@ -5,7 +5,7 @@ import type {
   ReleaseNotes,
   ReleaseNotesSection,
 } from "../../shared/types";
-import { formatReleaseDate } from "../../shared/release";
+import { formatReleaseDate } from "./release";
 
 /** One "Highlights"/"New"/"Fixed" block of a release. */
 export function ReleaseSection(

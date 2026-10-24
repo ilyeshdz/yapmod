@@ -2,16 +2,16 @@ import type {
   SettingsContext,
   SettingsSection,
   YapmodSettingsApi,
-} from "./types";
-import { safeTeardown, whenBodyReady } from "./ui";
-import { closeAllDropdowns } from "../components/dropdown";
-import { getYapmod } from "../core/scope";
-import { createSettingsPanel } from "../features/settings/settings-panel";
-import { mountSettingsItems } from "../features/settings/settings-items";
+} from "../../shared/types";
+import { safeTeardown, whenBodyReady } from "../../shared/ui";
+import { closeAllDropdowns } from "../../components/dropdown";
+import { getYapmod } from "../../core/scope";
+import { createSettingsPanel } from "./settings-panel";
+import { mountSettingsItems } from "./settings-items";
 import {
   createNavButton,
   createNavLabel,
-} from "../features/settings/settings-nav";
+} from "./settings-nav";
 
 const ACTIVE_CLASS = "yapmod-section-active";
 const PANEL_CLASS = "yapmod-settings-panel";

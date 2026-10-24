@@ -1,6 +1,6 @@
 import { Show, JSX } from "solid-js";
 
-import type { BannerTone, YapmodBanner } from "../../shared/banner";
+import type { BannerTone, YapmodBanner } from "./api";
 
 export type BannerViewProps = {
   message: string;

@@ -1,8 +1,8 @@
 import { Show, JSX } from "solid-js";
 
-import type { ThemeBundle } from "../../shared/theme/types";
-import { resolveMode } from "../../shared/theme/engine";
-import { appPalette, readTokens, TOKENS } from "../../shared/theme/tokens";
+import type { ThemeBundle } from "./types";
+import { resolveMode } from "./engine";
+import { appPalette, readTokens, TOKENS } from "./tokens";
 
 /** The colour a token falls back to. */
 function fallback(name: string): string {

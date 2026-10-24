@@ -1,4 +1,4 @@
-import type { YapmodModal } from "../types";
+import type { YapmodModal } from "../../shared/types";
 import { getYapmod } from "../../core/scope";
 
 /** Asks before a theme is deleted. */

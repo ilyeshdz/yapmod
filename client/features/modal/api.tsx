@@ -9,10 +9,10 @@ import type {
   ModalSize,
   YapmodModal,
   YapmodModalApi,
-} from "./types";
-import { ensureStyle } from "./ui";
-import { getYapmod } from "../core/scope";
-import modalCSS from "../styles/modal.css";
+} from "../../shared/types";
+import { ensureStyle } from "../../shared/ui";
+import { getYapmod } from "../../core/scope";
+import modalCSS from "../../styles/modal.css";
 
 const MODAL_STYLE_ID = "yapmod-modal-styles";
 const SCROLL_LOCK_CLASS = "yapmod-modal-open";

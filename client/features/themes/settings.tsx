@@ -1,7 +1,7 @@
 import { render } from "solid-js/web";
-import type { SettingsSection } from "../types";
+import type { SettingsSection } from "../../shared/types";
 import { getYapmod } from "../../core/scope";
-import { ThemePicker } from "../../features/themes/theme-picker";
+import { ThemePicker } from "./theme-picker";
 
 const SECTION_ID = "yapmod-themes";
 

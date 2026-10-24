@@ -4,11 +4,11 @@ import type {
   ReleaseEntry,
   SettingsItem,
   SettingsSection,
-} from "./types";
+} from "../../shared/types";
 import { getChangelog } from "./release";
-import { getYapmod } from "../core/scope";
-import { requestNotificationPermission } from "../core/notify";
-import { ChangelogList } from "../features/settings/changelog";
+import { getYapmod } from "../../core/scope";
+import { requestNotificationPermission } from "../../core/notify";
+import { ChangelogList } from "./changelog";
 
 const SECTION_ID = "yapmod";
 const CHANGELOG_SECTION_ID = "yapmod-changelog";

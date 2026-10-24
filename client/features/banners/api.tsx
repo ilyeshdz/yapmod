@@ -1,8 +1,8 @@
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 
-import { getYapmod } from "../core/scope";
-import { BannerView } from "../features/banners/banner";
+import { getYapmod } from "../../core/scope";
+import { BannerView } from "./banner";
 
 const BANNER_REGION_ID = "yapmod-banner-region";
 

@@ -1,14 +1,14 @@
-import { getYapmod } from "../core/scope";
-import { upsertStyle } from "./ui";
-import { invokeCommand } from "../core/tauri";
+import { getYapmod } from "../../core/scope";
+import { upsertStyle } from "../../shared/ui";
+import { invokeCommand } from "../../core/tauri";
 import { render } from "solid-js/web";
-import { PluginGallery } from "../features/plugins/plugins-gallery";
+import { PluginGallery } from "./plugins-gallery";
 import {
   mountDialogContent,
   PluginConsent,
   PluginSettingsForm,
   PluginSourceViewer,
-} from "../features/plugins/plugin-modals";
+} from "./plugin-modals";
 import type {
   CommunityPlugin,
   PluginBundle,
@@ -20,8 +20,8 @@ import type {
   YapmodPluginApi,
   YapmodPluginModule,
   YapmodPluginsApi,
-} from "./types";
-import pluginCSS from "../styles/plugins.css";
+} from "../../shared/types";
+import pluginCSS from "../../styles/plugins.css";
 
 const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";

@@ -2,12 +2,12 @@ import type {
   ClientUpdateInfo,
   UpdateInfo,
   YapmodModal,
-} from "./types";
-import { invokeCommand } from "../core/tauri";
-import { openExternally } from "../core/links";
-import { getYapmod } from "../core/scope";
-import { showBanner } from "./banner";
-import { mountUpdateContent } from "../features/updates/update-content";
+} from "../../shared/types";
+import { invokeCommand } from "../../core/tauri";
+import { openExternally } from "../../core/links";
+import { getYapmod } from "../../core/scope";
+import { showBanner } from "../banners/api";
+import { mountUpdateContent } from "./update-content";
 
 const WEBSITE_URL = "https://ilyeshdz.github.io/yapmod";
 const UPDATE_MODAL_ID = "yapmod-update-available";

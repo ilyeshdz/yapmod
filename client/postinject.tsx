@@ -4,9 +4,9 @@ import {
   showClientUpdateOutcomeBanner,
   showClientUpdateBanner,
   showUpdateAvailableModal,
-} from "./shared/update";
+} from "./features/updates/api";
 import { upsertStyle } from "./shared/ui";
-import { remountThemeStyles } from "./shared/theme/engine";
+import { remountThemeStyles } from "./features/themes/engine";
 import { getYapmod } from "./core/scope";
 import { invokeCommand } from "./core/tauri";
 import { render } from "solid-js/web";
