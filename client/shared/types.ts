@@ -8,8 +8,8 @@ import type {
   UpdateInfo,
 } from "../generated/types";
 import type { DesktopBridge } from "../core/desktop";
-import type { YapmodBannerApi } from "./banner";
-import type { YapmodThemeApi } from "./theme/engine";
+import type { YapmodBannerApi } from "../features/banners/api";
+import type { YapmodThemeApi } from "../features/themes/engine";
 
 export type {
   Config,

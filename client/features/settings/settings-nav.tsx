@@ -10,7 +10,7 @@ import type { SettingsSection } from "../../shared/types";
 
 type SettingsSectionIcon = NonNullable<SettingsSection["icon"]>;
 
-const SECTION_ICON_SHAPES: Record<SettingsSectionIcon, string[]> = {
+const SECTION_ICON_SHAPES: Record<SettingsSectionIcon, readonly string[]> = {
   monitor,
   palette,
   history,
