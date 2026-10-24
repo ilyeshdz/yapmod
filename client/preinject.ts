@@ -13,6 +13,7 @@ import { installThemeSettings } from "./features/themes/settings";
 import { installDesktopBridge } from "./core/desktop";
 import { installNotificationApi } from "./core/notify";
 import { installExternalLinks } from "./core/links";
+import { installWebSocketInspector } from "./core/websocket";
 import { getChangelog } from "./features/settings/release";
 import { getScope, getYapmod } from "./core/scope";
 
@@ -26,6 +27,14 @@ yapmod.internalHost = payload.internalHost;
 yapmod.clientVersion = payload.clientVersion;
 yapmod.release = payload.release;
 yapmod.changelog = getChangelog;
+
+// Install the WebSocket inspector first, before any other code creates
+// WebSocket connections, so it can capture all traffic from the beginning.
+try {
+  installWebSocketInspector();
+} catch (error) {
+  console.error("[yapmod] failed to install WebSocket inspector", error);
+}
 
 try {
   installModalApi();

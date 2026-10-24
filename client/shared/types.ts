@@ -301,14 +301,43 @@ export type YapmodPluginInfo = {
   diagnostic: PluginDiagnostic | null;
 };
 
-/** A single observed WebSocket message with basic connection metadata. */
+/**
+ * A single observed WebSocket message with basic connection metadata.
+ *
+ * The `data` field is an immutable snapshot of the message payload at the time
+ * it was observed. For binary payloads (ArrayBuffer, ArrayBufferView), the data
+ * is copied so that mutating the original send argument does not corrupt the
+ * inspector's history. For Blob payloads, the data is represented as a
+ * `BlobSnapshot` since Blobs cannot be read synchronously.
+ *
+ * Consumers should treat `data` as read-only.
+ */
 export type WebSocketMessage = {
   /** The URL the WebSocket was created with. */
   url: string;
-  /** The raw message data (string or ArrayBuffer). */
-  data: string | ArrayBuffer;
+  /**
+   * The message payload, captured as an immutable snapshot.
+   * - Strings remain strings.
+   * - ArrayBuffer and ArrayBufferView payloads are copied into a new ArrayBuffer.
+   * - Blob payloads are represented as a BlobSnapshot (cannot be read synchronously).
+   */
+  data: string | ArrayBuffer | BlobSnapshot;
   /** When the message was observed (epoch ms). */
   timestamp: number;
+};
+
+/**
+ * Represents a Blob payload that could not be read synchronously.
+ * Since reading a Blob requires an asynchronous API, the inspector stores
+ * a snapshot describing the blob's metadata instead of its contents.
+ */
+export type BlobSnapshot = {
+  /** Identifies this as a Blob snapshot. */
+  __blob: true;
+  /** The Blob's reported type (MIME type), if available. */
+  type: string;
+  /** The Blob's reported size in bytes. */
+  size: number;
 };
 
 /** Callback invoked when a new WebSocket message is observed. */
@@ -316,19 +345,26 @@ export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
 
 /**
  * Interceptor for outgoing WebSocket messages.
- * Receives the message data and connection metadata, and returns the payload
- * to send. Returning the original data leaves the message unchanged.
+ * Receives the message data and connection metadata, and may return a
+ * replacement payload to send instead.
  *
- * Interceptors run synchronously before the original `send()` call.
- * If an interceptor throws, the error is logged and the original payload
- * is sent unchanged — message delivery is never suppressed.
+ * Interceptors run synchronously in registration order before the original
+ * `send()` call. Each interceptor receives the latest payload produced by
+ * the previous interceptor.
  *
- * The returned value must be compatible with `WebSocket.send()`:
- * a string, ArrayBuffer, or ArrayBufferView.
+ * - Returning `undefined` (void) means no change — the current payload is kept.
+ * - Returning a valid WebSocket payload (`string`, `ArrayBuffer`,
+ *   `ArrayBufferView`, or `Blob`) replaces the current payload.
+ * - If an interceptor throws, all modifications from the entire interception
+ *   chain are discarded and the original payload is sent unchanged.
+ * - If an interceptor returns an invalid type, it is treated as a failure:
+ *   the entire chain is discarded and the original payload is sent.
+ *
+ * Message delivery is never suppressed by an interceptor.
  */
 export type WebSocketOutgoingInterceptor = (
   message: WebSocketMessage,
-) => string | ArrayBuffer | ArrayBufferView | void;
+) => string | ArrayBuffer | ArrayBufferView | Blob | void;
 
 /**
  * Inspects WebSocket messages flowing through the application.

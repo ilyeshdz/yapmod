@@ -1,0 +1,28 @@
+{
+  "id": "websocket-inspector-test",
+  "name": "WebSocket Inspector Test",
+  "version": "1.0.0",
+  "author": "Yapmod",
+  "description": "Test plugin that demonstrates the WebSocket Inspector API by logging incoming and outgoing messages and showing a banner with message counts.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["websocket", "debug", "test"],
+  "settings": [
+    {
+      "id": "show-banner",
+      "label": "Show message count banner",
+      "description": "Display a banner with the number of WebSocket messages observed.",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "log-messages",
+      "label": "Log messages to console",
+      "description": "Log every observed WebSocket message to the browser console.",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "stylesheet": "plugin.css",
+  "script": "plugin.js"
+}
