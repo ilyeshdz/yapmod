@@ -28,6 +28,7 @@ fn main() {
             "toggle_main_window_maximize",
             "close_main_window",
             "get_changelog",
+            "fetch_community_theme_asset",
             "list_themes",
             "themes_folder",
             "open_themes_folder",

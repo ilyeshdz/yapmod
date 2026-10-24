@@ -20,6 +20,7 @@
     "allow-toggle-main-window-maximize",
     "allow-close-main-window",
     "allow-get-changelog",
+    "allow-fetch-community-theme-asset",
     "allow-list-themes",
     "allow-themes-folder",
     "allow-open-themes-folder",

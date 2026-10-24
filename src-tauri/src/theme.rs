@@ -1,4 +1,9 @@
-use std::{fs, path::{Path, PathBuf}, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+    time::Duration,
+};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -23,6 +28,7 @@ pub const COMMUNITY_THEMES_BASE: &str = if cfg!(debug_assertions) {
 } else {
     "https://ilyeshdz.github.io/yapmod/community-themes"
 };
+const MAX_CATALOG_BYTES: usize = 2 * 1024 * 1024;
 const MAX_MANIFEST_BYTES: usize = 64 * 1024;
 const MAX_CSS_BYTES: usize = 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
@@ -112,6 +118,84 @@ fn is_valid_file_name(name: &str) -> bool {
         && !name.contains('/')
         && !name.contains('\\')
         && !name.contains("..")
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommunityThemeAsset {
+    text: Option<String>,
+    base64: Option<String>,
+}
+
+/// Downloads one bounded asset from the fixed community theme host.
+///
+/// This uses the native HTTP client so the remote HTTPS page can read the
+/// local HTTP catalog in development without browser mixed-content or CORS
+/// restrictions. The caller can only select a file within one theme folder.
+#[tauri::command]
+pub async fn fetch_community_theme_asset(
+    id: Option<String>,
+    file: String,
+) -> Result<CommunityThemeAsset, String> {
+    let (path, max_bytes, binary) = match id {
+        None if file == "index.json" => ("index.json".to_string(), MAX_CATALOG_BYTES, false),
+        Some(id) if is_valid_id(&id) && is_valid_file_name(&file) => {
+            let max_bytes = if file == MANIFEST_FILE {
+                MAX_MANIFEST_BYTES
+            } else if has_supported_preview_extension(&file) {
+                MAX_PREVIEW_BYTES
+            } else {
+                MAX_CSS_BYTES
+            };
+            (
+                format!("themes/{id}/{file}"),
+                max_bytes,
+                has_supported_preview_extension(&file),
+            )
+        }
+        _ => return Err("that is not a valid community theme asset".to_string()),
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let response = client
+        .get(format!("{COMMUNITY_THEMES_BASE}/{path}"))
+        .send()
+        .await
+        .map_err(|error| format!("could not download the community theme: {error}"))?
+        .error_for_status()
+        .map_err(|error| format!("could not download the community theme: {error}"))?;
+
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes as u64)
+    {
+        return Err("a community theme file is larger than the allowed size".to_string());
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| format!("could not read the community theme: {error}"))?;
+    if bytes.len() > max_bytes {
+        return Err("a community theme file is larger than the allowed size".to_string());
+    }
+
+    if binary {
+        Ok(CommunityThemeAsset {
+            text: None,
+            base64: Some(base64::engine::general_purpose::STANDARD.encode(bytes)),
+        })
+    } else {
+        let text = String::from_utf8(bytes.to_vec())
+            .map_err(|_| "the community theme file is not valid UTF-8".to_string())?;
+        Ok(CommunityThemeAsset {
+            text: Some(text),
+            base64: None,
+        })
+    }
 }
 
 /// Writes validated theme files into the private themes directory.

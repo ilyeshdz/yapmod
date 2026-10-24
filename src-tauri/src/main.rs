@@ -38,6 +38,7 @@ fn main() {
             window::toggle_main_window_maximize,
             window::close_main_window,
             injection::release::get_changelog,
+            theme::fetch_community_theme_asset,
             theme::list_themes,
             theme::themes_folder,
             theme::open_themes_folder,

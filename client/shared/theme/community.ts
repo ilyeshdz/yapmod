@@ -5,13 +5,14 @@ import type { CommunityTheme, ThemeBundle } from "./types";
 
 const THEME_API = 1;
 const DEFAULT_CSS_FILE = "theme.css";
-const MAX_CATALOG_BYTES = 2 * 1024 * 1024;
-const MAX_MANIFEST_BYTES = 64 * 1024;
-const MAX_CSS_BYTES = 1024 * 1024;
-const MAX_PREVIEW_BYTES = 4 * 1024 * 1024;
 const VALID_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 const VALID_FILE = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 const PREVIEW_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg"]);
+
+type CommunityAsset = {
+  text: string | null;
+  base64: string | null;
+};
 
 type Catalog = {
   api: number;
@@ -65,67 +66,16 @@ function themeAssetUrl(id: string, filename: string): string {
   return `${themesBaseUrl()}/themes/${encodeURIComponent(id)}/${encodeURIComponent(filename)}`;
 }
 
-async function fetchBytes(url: string, maxBytes: number): Promise<Uint8Array> {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 20_000);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`download failed with status ${response.status}`);
-    }
-
-    const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > maxBytes) {
-      throw new Error("a community theme file is larger than the allowed size");
-    }
-
-    if (!response.body) {
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength > maxBytes) {
-        throw new Error("a community theme file is larger than the allowed size");
-      }
-      return bytes;
-    }
-
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let lengthRead = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      lengthRead += value.byteLength;
-      if (lengthRead > maxBytes) {
-        await reader.cancel();
-        throw new Error("a community theme file is larger than the allowed size");
-      }
-      chunks.push(value);
-    }
-
-    const bytes = new Uint8Array(lengthRead);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return bytes;
-  } finally {
-    window.clearTimeout(timeout);
-  }
+async function fetchAsset(id: string | null, file: string): Promise<CommunityAsset> {
+  return invokeCommand<CommunityAsset>("fetch_community_theme_asset", { id, file });
 }
 
-async function fetchText(url: string, maxBytes: number): Promise<string> {
-  const bytes = await fetchBytes(url, maxBytes);
-
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
+async function fetchText(id: string | null, file: string): Promise<string> {
+  const asset = await fetchAsset(id, file);
+  if (asset.text === null) {
     throw new Error("the community theme file is not valid UTF-8");
   }
+  return asset.text;
 }
 
 function parseJson(text: string, description: string): unknown {
@@ -150,7 +100,7 @@ function compareNames(left: CommunityTheme, right: CommunityTheme): number {
 /** Downloads and validates the static community catalog in the client. */
 export async function listCommunityThemes(): Promise<CommunityTheme[]> {
   const raw = parseJson(
-    await fetchText(`${themesBaseUrl()}/index.json`, MAX_CATALOG_BYTES),
+    await fetchText(null, "index.json"),
     "community theme catalog",
   );
 
@@ -201,7 +151,9 @@ export async function listCommunityThemes(): Promise<CommunityTheme[]> {
       throw new Error(`community theme \`${entry.id}\` has an invalid name`);
     }
 
-    const preview = typeof entry.preview === "string" && isValidFileName(entry.preview)
+    const preview = themesBaseUrl().startsWith("https://") &&
+      typeof entry.preview === "string" &&
+      isValidFileName(entry.preview)
       ? themeAssetUrl(entry.id, entry.preview)
       : null;
     const tags = Array.isArray(entry.tags)
@@ -294,13 +246,13 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
   }
 
   const manifestText = await fetchText(
-    themeAssetUrl(id, "manifest.json"),
-    MAX_MANIFEST_BYTES,
+    id,
+    "manifest.json",
   );
   const manifest = parseManifest(parseJson(manifestText, "community theme manifest"), id);
   const css = await fetchText(
-    themeAssetUrl(id, manifest.css ?? DEFAULT_CSS_FILE),
-    MAX_CSS_BYTES,
+    id,
+    manifest.css ?? DEFAULT_CSS_FILE,
   );
 
   let previewBase64: string | null = null;
@@ -309,9 +261,11 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
     if (!PREVIEW_EXTENSIONS.has(extension)) {
       throw new Error("the community theme preview has an unsupported file type");
     }
-    previewBase64 = toBase64(
-      await fetchBytes(themeAssetUrl(id, manifest.preview), MAX_PREVIEW_BYTES),
-    );
+    const preview = await fetchAsset(id, manifest.preview);
+    if (preview.base64 === null) {
+      throw new Error("the community theme preview is invalid");
+    }
+    previewBase64 = preview.base64;
   }
 
   return invokeCommand<ThemeBundle>("install_theme_content", {
