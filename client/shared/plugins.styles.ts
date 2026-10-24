@@ -36,12 +36,6 @@ export const PLUGIN_UI_CSS = `
   background: var(--ym-bg-elev, var(--bg-elev, rgba(127, 127, 127, 0.06)));
   border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
   border-radius: var(--ym-radius, var(--radius, 10px));
-  transition: border-color 0.12s ease;
-}
-
-.yapmod-plugin-card:hover,
-.yapmod-plugin-card.yapmod-plugin-active {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a));
 }
 
 .yapmod-plugin-card-body {
@@ -49,8 +43,8 @@ export const PLUGIN_UI_CSS = `
   flex: 1;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  padding: 12px;
+  gap: 9px;
+  padding: 14px;
 }
 
 .yapmod-plugin-card-title-row {
@@ -122,18 +116,28 @@ export const PLUGIN_UI_CSS = `
 
 .yapmod-plugin-card-foot {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 7px;
-  padding: 0 10px 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.16)));
+}
+
+.yapmod-plugin-card-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
 }
 
 .yapmod-plugin-icon-button {
-  width: 38px;
-  min-width: 38px;
-  height: 36px;
+  display: inline-grid;
+  width: 40px;
+  min-width: 40px;
+  height: 38px;
+  place-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 0;
 }
 
 .yapmod-plugin-action-icon {
@@ -166,16 +170,6 @@ export const PLUGIN_UI_CSS = `
   border-bottom: 0;
 }
 
-.yapmod-plugin-setting-label,
-.yapmod-plugin-setting-description {
-  display: block;
-}
-
-.yapmod-plugin-setting-label {
-  font-weight: 600;
-}
-
-.yapmod-plugin-setting-description,
 .yapmod-plugin-source-note {
   margin-top: 4px;
   font-size: 0.85em;

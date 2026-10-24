@@ -1,5 +1,5 @@
 import { getYapmod } from "./scope";
-import { createElement, createSvgIcon, upsertStyle } from "./ui";
+import { createElement, upsertStyle } from "./ui";
 import { invokeCommand } from "./tauri";
 import type {
   CommunityPlugin,
@@ -19,8 +19,15 @@ const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";
 const PLUGINS_SECTION_ID = "yapmod-plugins";
 const PLUGIN_ICON_PATHS = {
-  settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5a8 8 0 0 0-.1-1.2l1.4-1.1-1.4-2.4-1.7.6a8 8 0 0 0-2.1-1.2L15.8 4h-2.8l-.3 1.8a8 8 0 0 0-2.1 1.2l-1.7-.6-1.4 2.4 1.4 1.1a8 8 0 0 0 0 2.4l-1.4 1.1 1.4 2.4 1.7-.6a8 8 0 0 0 2.1 1.2l.3 1.8h2.8l.3-1.8a8 8 0 0 0 2.1-1.2l1.7.6 1.4-2.4-1.4-1.1A8 8 0 0 0 20 12Z",
-  files: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 1.5L18.5 8H14ZM7 12h10v1.5H7Zm0 3h10v1.5H7Zm0 3h7v1.5H7Z",
+  settings: [
+    "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
+    "M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08A1.7 1.7 0 0 0 10.68 18.66a1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.02 15a1.7 1.7 0 0 0-1.56-1.03h-.08v-3h.08A1.7 1.7 0 0 0 7.02 9.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56v-.08h3v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.08v3h-.08A1.7 1.7 0 0 0 19.4 15Z",
+  ],
+  files: [
+    "M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5Z",
+    "M14 2.5v6h6",
+    "M8 13h8M8 17h6",
+  ],
 } as const;
 
 type ConsentRecord = { version: string; contentHash: string };
@@ -32,6 +39,26 @@ type InstalledEntry = {
   cleanup: PluginCleanup[];
   diagnostic: PluginDiagnostic | null;
 };
+
+function createPluginIcon(name: keyof typeof PLUGIN_ICON_PATHS): SVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "yapmod-plugin-action-icon");
+  svg.setAttribute("width", "22");
+  svg.setAttribute("height", "22");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.9");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  for (const pathData of PLUGIN_ICON_PATHS[name]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", pathData);
+    svg.append(path);
+  }
+  return svg;
+}
 
 const registry = new Map<string, InstalledEntry>();
 const listeners = new Set<() => void>();
@@ -306,7 +333,7 @@ function showPluginSettings(entry: InstalledEntry): void {
       { label: "Cancel", variant: "secondary" },
       {
         label: "Save",
-        variant: "primary",
+        variant: "secondary",
         onClick: async () => {
           for (const setting of manifest.settings) {
             const value = draft.get(setting.id) ?? setting.default;
@@ -541,10 +568,15 @@ function createCard(
       createElement("div", {
         className: "yapmod-plugin-card-foot",
         children: [
-          ...(manifest.settings.length ? [createElement("button", { className: "btn small yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, children: [createSvgIcon("yapmod-plugin-action-icon", 24, PLUGIN_ICON_PATHS.settings)], on: { click: onSettings } })] : []),
-          createElement("button", { className: "btn small yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `View files for ${manifest.name}`, title: "View plugin files" }, children: [createSvgIcon("yapmod-plugin-action-icon", 24, PLUGIN_ICON_PATHS.files)], on: { click: onInspect } }),
-          createElement("button", { className: "btn small", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
-          createElement("button", { className: "btn small", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
+          createElement("div", {
+            className: "yapmod-plugin-card-actions",
+            children: [
+              ...(manifest.settings.length ? [createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, children: [createPluginIcon("settings")], on: { click: onSettings } })] : []),
+              createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `View files for ${manifest.name}`, title: "View plugin files" }, children: [createPluginIcon("files")], on: { click: onInspect } }),
+              createElement("button", { className: "btn small ghost", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
+            ],
+          }),
+          createElement("button", { className: "btn small ghost", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
         ],
       }),
     ],
@@ -727,7 +759,7 @@ export function installPluginSettings(): void {
               createElement("p", { className: "yapmod-plugin-card-description", text: plugin.description ?? "No description provided." }),
               ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-tags", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-tag", text: tag })) })] : []),
             ] }),
-            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
+            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small ghost", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
           ],
         })));
       }
