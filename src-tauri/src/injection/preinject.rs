@@ -19,6 +19,7 @@ pub struct Payload {
     pub config: Config,
     pub os: String,
     pub internal_host: String,
+    pub community_themes_base_url: String,
     /// Version of the injected client bundle. This is distinct from the
     /// desktop application's release version.
     pub client_version: String,
@@ -43,6 +44,7 @@ pub fn preinject(
         config: config.clone(),
         os: std::env::consts::OS.to_string(),
         internal_host: INTERNAL_HOST.to_string(),
+        community_themes_base_url: crate::theme::COMMUNITY_THEMES_BASE.to_string(),
         client_version,
         release: ReleaseInfo {
             version: version.to_string(),

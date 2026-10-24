@@ -1,10 +1,4 @@
-use std::{
-    collections::HashSet,
-    fs,
-    path::{Path, PathBuf},
-    sync::Mutex,
-    time::Duration,
-};
+use std::{fs, path::{Path, PathBuf}, sync::Mutex};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -24,12 +18,11 @@ pub const THEME_API: u32 = 1;
 
 const MANIFEST_FILE: &str = "manifest.json";
 const DEFAULT_CSS_FILE: &str = "theme.css";
-const COMMUNITY_THEMES_BASE: &str = if cfg!(debug_assertions) {
+pub const COMMUNITY_THEMES_BASE: &str = if cfg!(debug_assertions) {
     "http://127.0.0.1:4321/yapmod/community-themes"
 } else {
     "https://ilyeshdz.github.io/yapmod/community-themes"
 };
-const MAX_CATALOG_BYTES: usize = 2 * 1024 * 1024;
 const MAX_MANIFEST_BYTES: usize = 64 * 1024;
 const MAX_CSS_BYTES: usize = 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 4 * 1024 * 1024;
@@ -98,49 +91,6 @@ pub struct ThemeBundle {
     pub preview: Option<String>,
 }
 
-/// A theme listed in the static community catalog.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CommunityTheme {
-    pub id: String,
-    pub name: String,
-    pub description: Option<String>,
-    pub author: Option<String>,
-    pub version: Option<String>,
-    pub license: Option<String>,
-    pub mode: ThemeMode,
-    pub tags: Vec<String>,
-    pub preview_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ThemeCatalog {
-    api: u32,
-    themes: Vec<ThemeCatalogEntry>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ThemeCatalogEntry {
-    id: String,
-    name: String,
-    #[serde(default)]
-    version: Option<String>,
-    #[serde(default)]
-    author: Option<String>,
-    #[serde(default)]
-    description: Option<String>,
-    #[serde(default)]
-    license: Option<String>,
-    #[serde(default)]
-    mode: Option<String>,
-    #[serde(default)]
-    tags: Vec<String>,
-    api: u32,
-    preview: Option<String>,
-}
-
 /// The folder the themes live in.
 fn themes_dir(app: &AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
     Ok(app.path().app_config_dir()?.join("themes"))
@@ -164,127 +114,30 @@ fn is_valid_file_name(name: &str) -> bool {
         && !name.contains("..")
 }
 
-/// Downloads one file from the fixed static theme host with a size limit.
-async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
-    let url = format!("{COMMUNITY_THEMES_BASE}/{path}");
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(20))
-        .build()
-        .map_err(|error| error.to_string())?;
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|error| format!("could not download the community theme: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("could not download the community theme: {error}"))?;
-
-    if response
-        .content_length()
-        .is_some_and(|length| length > max_bytes as u64)
-    {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("could not read the community theme: {error}"))?;
-
-    if bytes.len() > max_bytes {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    Ok(bytes.to_vec())
-}
-
-/// Loads the static catalog used by the community theme browser.
+/// Writes validated theme files into the private themes directory.
+///
+/// The client owns community catalog access and downloads. This command stays
+/// native because the theme must persist outside the remote web page and be
+/// available before the next page's first paint.
 #[tauri::command]
-pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
-    let bytes = fetch_community_asset("index.json", MAX_CATALOG_BYTES).await?;
-    let catalog: ThemeCatalog = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("the community theme catalog is invalid: {error}"))?;
-
-    if catalog.api > THEME_API {
-        return Err(format!(
-            "the community catalog needs theme API {}, this version understands {}",
-            catalog.api, THEME_API
-        ));
+pub fn install_theme_content(
+    app: AppHandle,
+    manifest_json: String,
+    css: String,
+    preview_base64: Option<String>,
+) -> Result<ThemeBundle, String> {
+    if manifest_json.len() > MAX_MANIFEST_BYTES {
+        return Err("the theme manifest is larger than the allowed size".to_string());
     }
+    let manifest: ThemeManifest = serde_json::from_str(&manifest_json)
+        .map_err(|error| format!("the theme manifest is invalid: {error}"))?;
 
-    if catalog.themes.len() > 500 {
-        return Err("the community theme catalog contains too many themes".to_string());
+    if !is_valid_id(&manifest.id) {
+        return Err("the manifest has no usable id".to_string());
     }
-
-    let mut ids = HashSet::new();
-    let mut themes = Vec::new();
-
-    for theme in catalog.themes {
-        if !is_valid_id(&theme.id) || !ids.insert(theme.id.clone()) {
-            return Err(
-                "the community theme catalog contains an invalid or duplicate id".to_string(),
-            );
-        }
-
-        if theme.api > THEME_API {
-            continue;
-        }
-
-        if theme.name.trim().is_empty() || theme.name.len() > 120 {
-            return Err(format!(
-                "community theme `{}` has an invalid name",
-                theme.id
-            ));
-        }
-
-        let preview_url = theme.preview.as_deref().and_then(|preview| {
-            is_valid_file_name(preview)
-                .then(|| format!("{COMMUNITY_THEMES_BASE}/themes/{}/{preview}", theme.id))
-        });
-
-        themes.push(CommunityTheme {
-            id: theme.id,
-            name: theme.name,
-            description: theme.description,
-            author: theme.author,
-            version: theme.version,
-            license: theme.license,
-            mode: normalize_mode(theme.mode.as_deref()),
-            tags: theme.tags,
-            preview_url,
-        });
-    }
-
-    themes.sort_by(|left, right| {
-        left.name
-            .to_lowercase()
-            .cmp(&right.name.to_lowercase())
-            .then(left.id.cmp(&right.id))
-    });
-
-    Ok(themes)
-}
-
-/// Downloads and installs one theme from the static community catalog.
-#[tauri::command]
-pub async fn install_community_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
-    if !is_valid_id(&id) {
-        return Err("that is not a valid theme id".to_string());
-    }
-
-    let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
-    let manifest_bytes = fetch_community_asset(&manifest_path, MAX_MANIFEST_BYTES).await?;
-    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|error| format!("the community theme manifest is invalid: {error}"))?;
-
-    if manifest.id != id {
-        return Err("the downloaded theme id does not match the catalog".to_string());
-    }
-
     if manifest.name.trim().is_empty() || manifest.name.len() > 120 {
-        return Err("the community theme has an invalid name".to_string());
+        return Err("the theme has an invalid name".to_string());
     }
-
     if let Some(api) = manifest.api
         && api > THEME_API
     {
@@ -292,42 +145,48 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
             "the theme was written for theme API {api}, this version understands {THEME_API}"
         ));
     }
+    if css.len() > MAX_CSS_BYTES {
+        return Err("the theme stylesheet is larger than the allowed size".to_string());
+    }
 
     let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
-
     if !is_valid_file_name(css_file) {
         return Err("the theme manifest points at an unusable stylesheet".to_string());
     }
 
-    let css_path = format!("themes/{id}/{css_file}");
-    let css = String::from_utf8(fetch_community_asset(&css_path, MAX_CSS_BYTES).await?)
-        .map_err(|_| "the community theme stylesheet is not valid UTF-8".to_string())?;
-
-    let preview = if let Some(preview_file) = manifest.preview.as_deref() {
-        if !is_valid_file_name(preview_file) {
-            return Err("the theme manifest points at an unusable preview".to_string());
+    let preview = match (manifest.preview.as_deref(), preview_base64) {
+        (Some(name), Some(encoded)) => {
+            if !is_valid_file_name(name) || !has_supported_preview_extension(name) {
+                return Err("the theme manifest points at an unusable preview".to_string());
+            }
+            if encoded.len() > MAX_PREVIEW_BYTES.div_ceil(3) * 4 {
+                return Err("the theme preview is larger than the allowed size".to_string());
+            }
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(encoded)
+                .map_err(|_| "the theme preview is not valid base64".to_string())?;
+            if bytes.len() > MAX_PREVIEW_BYTES {
+                return Err("the theme preview is larger than the allowed size".to_string());
+            }
+            Some((name.to_string(), bytes))
         }
-
-        let preview_path = format!("themes/{id}/{preview_file}");
-        Some(fetch_community_asset(&preview_path, MAX_PREVIEW_BYTES).await?)
-    } else {
-        None
+        (None, None) => None,
+        (Some(_), None) => return Err("the theme preview could not be downloaded".to_string()),
+        (None, Some(_)) => return Err("the theme manifest has no preview file".to_string()),
     };
 
     let target = themes_dir(&app)
         .map_err(|error| error.to_string())?
-        .join(&id);
-
+        .join(&manifest.id);
     if target.exists() {
         return Err("a theme with this id is already installed; remove it first".to_string());
     }
 
     fs::create_dir_all(&target).map_err(|error| error.to_string())?;
     let install_result = (|| {
-        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)?;
+        fs::write(target.join(MANIFEST_FILE), manifest_json)?;
         fs::write(target.join(css_file), css)?;
-
-        if let (Some(preview_file), Some(preview)) = (manifest.preview.as_deref(), preview) {
+        if let Some((preview_file, preview)) = preview {
             fs::write(target.join(preview_file), preview)?;
         }
 
@@ -340,6 +199,13 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
     }
 
     install_result.map_err(|error| error.to_string())
+}
+
+fn has_supported_preview_extension(name: &str) -> bool {
+    matches!(
+        Path::new(name).extension().and_then(|extension| extension.to_str()),
+        Some("png" | "jpg" | "jpeg" | "webp" | "gif" | "svg")
+    )
 }
 
 /// The mode a theme asks for, with everything unknown treated as dark.

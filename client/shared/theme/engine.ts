@@ -2,6 +2,7 @@ import type { CommunityTheme, ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
 import { getYapmod } from "../scope";
 import { invokeCommand } from "../tauri";
+import { installCommunityTheme, listCommunityThemes } from "./community";
 
 const THEME_STYLE_ID = "yapmod-theme-styles";
 
@@ -401,7 +402,7 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
     },
 
     listCommunity(): Promise<CommunityTheme[]> {
-      return invokeCommand<CommunityTheme[]>("list_community_themes");
+      return listCommunityThemes();
     },
 
     pickFolder(): Promise<string | null> {
@@ -413,7 +414,7 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
     },
 
     installCommunity(id: string): Promise<ThemeBundle> {
-      return invokeCommand<ThemeBundle>("install_community_theme", { id });
+      return installCommunityTheme(id);
     },
 
     remove(id: string): Promise<void> {

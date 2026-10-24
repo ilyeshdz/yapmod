@@ -220,6 +220,7 @@ export type YapmodGlobal = {
   config?: Config;
   os?: string;
   internalHost?: string;
+  communityThemesBaseUrl?: string;
   /** Version of the injected client bundle, independent from the desktop app. */
   clientVersion?: string;
   release?: ReleaseInfo;

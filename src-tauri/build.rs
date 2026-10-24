@@ -33,6 +33,7 @@ fn main() {
             "open_themes_folder",
             "pick_theme_folder",
             "install_theme",
+            "install_theme_content",
             "remove_theme",
         ]),
     ))

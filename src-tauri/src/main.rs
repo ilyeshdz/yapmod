@@ -39,12 +39,11 @@ fn main() {
             window::close_main_window,
             injection::release::get_changelog,
             theme::list_themes,
-            theme::list_community_themes,
             theme::themes_folder,
             theme::open_themes_folder,
             theme::pick_theme_folder,
             theme::install_theme,
-            theme::install_community_theme,
+            theme::install_theme_content,
             theme::remove_theme,
         ])
         .setup(|app| {

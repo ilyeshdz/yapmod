@@ -14,7 +14,7 @@ export type Config = { last_seen_version: string | null, settings: { [key in str
  * Everything the injected code needs to know about the app is in here, so
  * there is a single global to look at.
  */
-export type Payload = { config: Config, os: string, internalHost: string, 
+export type Payload = { config: Config, os: string, internalHost: string, communityThemesBaseUrl: string,
 /**
  * Version of the injected client bundle. This is distinct from the
  * desktop application's release version.
