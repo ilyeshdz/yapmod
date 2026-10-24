@@ -7,6 +7,9 @@ export default defineConfig({
   // `site` is the origin, `base` is the path prefix the site is served from.
   site: "https://ilyeshdz.github.io",
   base: "/yapmod",
+  server: {
+    host: "127.0.0.1",
+  },
   build: {
     format: "directory",
   },

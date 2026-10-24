@@ -1,4 +1,4 @@
-import type { ResolvedMode, ThemeBundle } from "./types";
+import type { CommunityTheme, ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
 import { getYapmod } from "../scope";
 import { invokeCommand } from "../tauri";
@@ -20,8 +20,10 @@ export type YapmodThemeApi = {
   readonly active: ThemeBundle | null;
   apply(theme: ThemeBundle | null): void;
   list(): Promise<ThemeBundle[]>;
+  listCommunity(): Promise<CommunityTheme[]>;
   pickFolder(): Promise<string | null>;
   install(source: string): Promise<ThemeBundle>;
+  installCommunity(id: string): Promise<ThemeBundle>;
   remove(id: string): Promise<void>;
   folder(): Promise<string>;
   openFolder(): Promise<void>;
@@ -398,12 +400,20 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
       return invokeCommand<ThemeBundle[]>("list_themes");
     },
 
+    listCommunity(): Promise<CommunityTheme[]> {
+      return invokeCommand<CommunityTheme[]>("list_community_themes");
+    },
+
     pickFolder(): Promise<string | null> {
       return invokeCommand<string | null>("pick_theme_folder");
     },
 
     install(source: string): Promise<ThemeBundle> {
       return invokeCommand<ThemeBundle>("install_theme", { source });
+    },
+
+    installCommunity(id: string): Promise<ThemeBundle> {
+      return invokeCommand<ThemeBundle>("install_community_theme", { id });
     },
 
     remove(id: string): Promise<void> {

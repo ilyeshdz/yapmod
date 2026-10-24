@@ -1,10 +1,11 @@
 import type { SettingsSection } from "../types";
-import type { ThemeBundle } from "./types";
+import type { CommunityTheme, ThemeBundle } from "./types";
 import { createElement, ensureStyle } from "../ui";
 import { createDropdown } from "../dropdown";
 import { getYapmod } from "../scope";
 import { resolveMode } from "./engine";
 import { appPalette, readTokens, TOKENS } from "./tokens";
+import { openExternally } from "../links";
 
 const SECTION_ID = "yapmod-themes";
 
@@ -29,10 +30,39 @@ const THEME_UI_CSS = `
   margin-bottom: 14px;
 }
 
+.yapmod-theme-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.yapmod-theme-tab-active {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a)) !important;
+  color: var(--ym-accent, var(--accent, #ff6b4a)) !important;
+}
+
+.yapmod-theme-community-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.yapmod-theme-search {
+  flex: 1;
+  min-width: 120px;
+}
+
 .yapmod-theme-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 10px;
+}
+
+.yapmod-theme-grid[hidden],
+.yapmod-theme-toolbar[hidden],
+.yapmod-theme-community-toolbar[hidden] {
+  display: none;
 }
 
 .yapmod-theme-card {
@@ -66,6 +96,13 @@ const THEME_UI_CSS = `
   border: 0;
   border-radius: inherit;
   cursor: pointer;
+}
+
+.yapmod-theme-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px 6px;
 }
 
 .yapmod-theme-card-pick:focus-visible {
@@ -196,6 +233,24 @@ const THEME_UI_CSS = `
 .yapmod-theme-card-name {
   font-weight: 600;
   font-size: 0.95em;
+}
+
+.yapmod-theme-card-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.82em;
+  opacity: 0.72;
+}
+
+.yapmod-theme-install {
+  flex: none;
+}
+
+.yapmod-theme-install:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .yapmod-theme-card-meta {
@@ -481,8 +536,16 @@ function createThemeSection(): SettingsSection {
       const store = getYapmod().store;
 
       let installedThemes: ThemeBundle[] = [];
+      let communityThemes: CommunityTheme[] = [];
+      let communityLoaded = false;
+      let communityLoading = false;
+      let searchQuery = "";
 
       const gallery = createElement("div", { className: "yapmod-theme-grid" });
+      const communityGallery = createElement("div", {
+        className: "yapmod-theme-grid",
+        props: { hidden: true },
+      });
       const status = createElement("p", {
         className: "hint yapmod-theme-status",
       });
@@ -493,6 +556,27 @@ function createThemeSection(): SettingsSection {
       };
 
       const activeId = (): string => store?.get<string>("theme_id", "") ?? "";
+
+      const tabs = createElement("div", {
+        className: "yapmod-theme-tabs",
+        attrs: { role: "tablist", "aria-label": "Theme collection" },
+      });
+
+      const installedTab = createElement("button", {
+        className: "btn small ghost yapmod-theme-tab-active",
+        text: "Installed",
+        attrs: { type: "button", role: "tab", "aria-selected": "true" },
+        on: { click: () => setView("installed") },
+      });
+
+      const communityTab = createElement("button", {
+        className: "btn small ghost",
+        text: "Community",
+        attrs: { type: "button", role: "tab", "aria-selected": "false" },
+        on: { click: () => setView("community") },
+      });
+
+      tabs.append(installedTab, communityTab);
 
       const select = (theme: ThemeBundle | null): void => {
         store?.set("theme_id", theme?.id ?? "");
@@ -587,13 +671,103 @@ function createThemeSection(): SettingsSection {
         });
       };
 
+      const renderCommunity = (): void => {
+        const query = searchQuery.trim().toLowerCase();
+        const matches = communityThemes.filter((theme) => {
+          if (!query) {
+            return true;
+          }
+
+          return [theme.name, theme.author, theme.description, ...theme.tags]
+            .filter(Boolean)
+            .some((value) => value?.toLowerCase().includes(query));
+        });
+
+        if (matches.length === 0) {
+          const message = communityThemes.length === 0
+            ? "No community themes have been published yet. Check back later or submit a theme."
+            : "No themes match your search.";
+          communityGallery.replaceChildren(
+            createElement("p", { className: "hint", text: message }),
+          );
+          return;
+        }
+
+        const installedIds = new Set(installedThemes.map((theme) => theme.id));
+        const cards = matches.map((theme) => {
+          const preview = theme.previewUrl
+            ? createElement("span", {
+                className: "yapmod-theme-preview",
+                children: [
+                  createElement("img", {
+                    attrs: { src: theme.previewUrl, alt: `${theme.name} preview` },
+                  }),
+                ],
+              })
+            : createElement("span", {
+                className: "yapmod-theme-preview",
+                attrs: { "aria-hidden": "true" },
+              });
+          const details = createElement("div", {
+            className: "yapmod-theme-card-info",
+            children: [
+              preview,
+              createElement("span", {
+                className: "yapmod-theme-card-name",
+                text: theme.name,
+              }),
+              ...(theme.description
+                ? [createElement("span", {
+                    className: "yapmod-theme-card-description",
+                    text: theme.description,
+                  })]
+                : []),
+            ],
+          });
+          const meta = [theme.mode, theme.author, theme.version, theme.license]
+            .filter(Boolean)
+            .join(" · ");
+          const isInstalled = installedIds.has(theme.id);
+          const installButton = createElement("button", {
+            className: "btn small yapmod-theme-install",
+            text: isInstalled ? "Installed" : "Install",
+            attrs: { type: "button" },
+            props: { disabled: isInstalled },
+            on: {
+              click: () => {
+                void installCommunityTheme(theme);
+              },
+            },
+          });
+
+          return createElement("div", {
+            className: "yapmod-theme-card",
+            children: [
+              details,
+              createElement("div", {
+                className: "yapmod-theme-card-foot",
+                children: [
+                  createElement("span", {
+                    className: "yapmod-theme-card-meta",
+                    text: meta,
+                  }),
+                  installButton,
+                ],
+              }),
+            ],
+          });
+        });
+
+        communityGallery.replaceChildren(...cards);
+      };
+
       const galleryItems = (): HTMLElement[] => {
         const items = [
           createCard(null, "Yapper's theme", "the look the app ships with"),
         ];
 
         for (const theme of installedThemes) {
-          const meta = [theme.mode, theme.author, theme.version]
+          const meta = [theme.mode, theme.author, theme.version, theme.license]
             .filter(Boolean)
             .join(" · ");
 
@@ -605,6 +779,7 @@ function createThemeSection(): SettingsSection {
 
       const renderGallery = (): void => {
         gallery.replaceChildren(...galleryItems());
+        renderCommunity();
       };
 
       const refresh = async (): Promise<void> => {
@@ -620,6 +795,58 @@ function createThemeSection(): SettingsSection {
           setStatus(String(error), true);
         }
       };
+
+      const loadCommunity = async (): Promise<void> => {
+        if (!themeApi || communityLoading) {
+          return;
+        }
+
+        communityLoading = true;
+        setStatus("Loading community themes…");
+
+        try {
+          communityThemes = await themeApi.listCommunity();
+          communityLoaded = true;
+          setStatus(communityThemes.length === 0
+            ? "No community themes are published yet."
+            : `${communityThemes.length} community theme${communityThemes.length === 1 ? "" : "s"} available.`);
+          renderCommunity();
+        } catch (error) {
+          setStatus(`Could not load community themes: ${String(error)}`, true);
+        } finally {
+          communityLoading = false;
+        }
+      };
+
+      const installCommunityTheme = async (theme: CommunityTheme): Promise<void> => {
+        try {
+          setStatus(`Installing ${theme.name}…`);
+          await themeApi?.installCommunity(theme.id);
+          installedThemes = await themeApi?.list() ?? installedThemes;
+          renderGallery();
+          setStatus(`Installed ${theme.name}.`);
+        } catch (error) {
+          setStatus(String(error), true);
+        }
+      };
+
+      function setView(view: "installed" | "community"): void {
+        const installed = view === "installed";
+        installedTab.classList.toggle("yapmod-theme-tab-active", installed);
+        communityTab.classList.toggle("yapmod-theme-tab-active", !installed);
+        installedTab.setAttribute("aria-selected", String(installed));
+        communityTab.setAttribute("aria-selected", String(!installed));
+        installedToolbar.hidden = !installed;
+        communityToolbar.hidden = installed;
+        gallery.hidden = !installed;
+        communityGallery.hidden = installed;
+
+        if (!installed && !communityLoaded) {
+          void loadCommunity();
+        } else if (!installed) {
+          renderCommunity();
+        }
+      }
 
       const importTheme = async (): Promise<void> => {
         try {
@@ -655,7 +882,7 @@ function createThemeSection(): SettingsSection {
       });
 
       // The buttons live in the top right of the section.
-      const toolbar = createElement("div", {
+      const installedToolbar = createElement("div", {
         className: "yapmod-theme-toolbar",
         children: [
           createElement("button", {
@@ -691,6 +918,43 @@ function createThemeSection(): SettingsSection {
         ],
       });
 
+      const search = createElement("input", {
+        className: "input yapmod-theme-search",
+        attrs: {
+          type: "search",
+          placeholder: "Search community themes",
+          "aria-label": "Search community themes",
+        },
+        on: {
+          input: (event) => {
+            searchQuery = (event.currentTarget as HTMLInputElement).value;
+            renderCommunity();
+          },
+        },
+      });
+
+      const communityToolbar = createElement("div", {
+        className: "yapmod-theme-community-toolbar",
+        props: { hidden: true },
+        children: [
+          search,
+          createElement("button", {
+            className: "btn small ghost",
+            text: "Refresh",
+            attrs: { type: "button" },
+            on: { click: () => void loadCommunity() },
+          }),
+          createElement("button", {
+            className: "btn small",
+            text: "Submit a theme",
+            attrs: { type: "button" },
+            on: {
+              click: () => openExternally("https://ilyeshdz.github.io/yapmod/docs/community-themes/"),
+            },
+          }),
+        ],
+      });
+
       const modeField = createElement("div", {
         className: "field yapmod-theme-field",
         children: [
@@ -706,7 +970,7 @@ function createThemeSection(): SettingsSection {
         ],
       });
 
-      host.append(toolbar, gallery, modeField, status);
+      host.append(tabs, installedToolbar, communityToolbar, gallery, communityGallery, modeField, status);
 
       renderGallery();
       void refresh();

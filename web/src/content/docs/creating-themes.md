@@ -6,7 +6,7 @@ eyebrow: Themes
 description: The theme format and a complete example.
 ---
 
-A theme is a folder with a `manifest.json` and a stylesheet. That is all yapmod needs. It never fetches theme files from the internet.
+A local theme is a folder with a `manifest.json` and a stylesheet. You can also install themes from the community catalog; those files are downloaded from the Yapmod website when you choose **Install**.
 
 ```
 midnight-blurple/
@@ -39,7 +39,7 @@ midnight-blurple/
 | `description` | no | A line about it. |
 | `license` | no | The license of the theme. |
 | `mode` | no | `dark`, `light` or `both`. A theme that says `both` follows the mode setting in the app. Anything else is treated as `dark`. |
-| `tags` | no | Words that describe the theme. They are read and kept, but the app does not search or filter by them yet. |
+| `tags` | no | Words that describe the theme. The Community gallery includes them in search. |
 | `api` | no | The theme format the theme was written against. The current version is `1`. |
 | `preview` | no | The name of a preview image in the folder, such as `preview.png`. Without it, the gallery draws a small picture of the app from the tokens of the theme. |
 | `css` | no | The stylesheet of the theme. Defaults to `theme.css`. It has to be a file inside the theme folder. |
@@ -141,7 +141,7 @@ A few things to keep in mind:
 1. Create a folder with a `manifest.json` and a `theme.css`.
 2. Open **Settings → Themes** in yapmod.
 3. Press **Import theme** and pick your folder, or press **Open folder** and copy it into the themes folder.
-4. Press **Refresh**, then click your theme to use it.
+4. Press **Refresh**, then click your theme to use it. To share it in the community gallery, follow [Submit a theme](community-themes#submit-a-theme).
 
 ## Rules
 

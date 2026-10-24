@@ -36,6 +36,14 @@ pnpm tauri dev
 
 This makes a one-time client build, then opens the Yapmod window. The window loads the live Yapper site.
 
+To develop the website-backed community theme catalog locally, start the website in a second terminal before opening **Settings → Themes → Community**:
+
+```bash
+pnpm --dir web dev
+```
+
+The app's debug build reads the catalog from the local Astro server at `127.0.0.1:4321`. The dev command prepares the catalog and theme files from `community-themes/` before starting Astro. Release builds use the published Yapmod website.
+
 When working on files in `client/`, optionally run this in a second terminal to rebuild the bundle after each edit:
 
 ```bash

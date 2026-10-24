@@ -27,7 +27,7 @@ A theme is a folder. You can install it in either of these ways.
 - **Import it.** Press **Import theme** in the settings and pick the folder of the theme in the file dialog. The folder is copied into the themes folder for you.
 - **Put it in the themes folder.** Copy the folder of the theme into the themes folder, then press **Refresh**. The theme shows up in the gallery right away.
 
-Themes are only loaded from this folder. yapmod does not download them for you.
+Themes you import yourself are loaded from this folder. You can also browse and install reviewed community themes from the **Community** tab; see [Community themes](community-themes).
 
 ## Using a theme
 

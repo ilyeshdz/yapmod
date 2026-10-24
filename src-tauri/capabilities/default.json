@@ -20,10 +20,12 @@
     "allow-close-main-window",
     "allow-get-changelog",
     "allow-list-themes",
+    "allow-list-community-themes",
     "allow-themes-folder",
     "allow-open-themes-folder",
     "allow-pick-theme-folder",
     "allow-install-theme",
+    "allow-install-community-theme",
     "allow-remove-theme"
   ],
   "remote": {
