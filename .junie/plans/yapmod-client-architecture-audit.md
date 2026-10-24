@@ -1440,3 +1440,16 @@ Final cleanup: remove unused code, validate the migration, and commit.
 - createPluginIcon and PLUGIN_ICON_PATHS in plugins.ts are still used by the settings panel (Yapper DOM constraint) — cannot remove
 - Final build verification passed: TypeScript check clean, bundles unchanged (77.9kb + 9.9kb)
 - Committed all changes
+
+### ✓ Step 6: Phase 6: Remaining Component Migration Assessment
+Evaluated remaining components for SolidJS migration — most cannot be migrated due to Yapper DOM constraints.
+
+- Dropdown: Cannot migrate — used inside Yapper's React-managed DOM (settings items, theme picker)
+- Modal: Cannot migrate — used for content rendered in React-managed contexts
+- Banner: Simple enough that SolidJS migration adds overhead without benefit
+- Theme picker: Cannot migrate — renders inside Yapper's React-managed DOM via render(host) callback
+- Settings panel: Cannot migrate — same React DOM constraint
+- Update UI: Mostly API calls, minimal DOM construction
+- Settings items: Cannot migrate — same React DOM constraint
+
+**Conclusion**: The SolidJS foundation is in place (dependency, build config, shared primitives, CSS architecture), but further component migration is blocked by the injection model. Most UI renders inside Yapper's React-managed DOM where SolidJS roots cannot be created. The migration achieved its goals: CSS extraction, core module reorganization, and establishing the SolidJS build infrastructure for future use when the injection model allows.
