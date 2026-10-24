@@ -1,5 +1,6 @@
 /** Card layout for the plugin manager. */
 export const PLUGIN_UI_CSS = `
+.yapmod-plugin-tabs,
 .yapmod-plugin-toolbar {
   display: flex;
   align-items: center;
@@ -35,6 +36,12 @@ export const PLUGIN_UI_CSS = `
   background: var(--ym-bg-elev, var(--bg-elev, rgba(127, 127, 127, 0.06)));
   border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
   border-radius: var(--ym-radius, var(--radius, 10px));
+  transition: border-color 0.12s ease;
+}
+
+.yapmod-plugin-card:hover,
+.yapmod-plugin-card.yapmod-plugin-active {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
 }
 
 .yapmod-plugin-card-body {
@@ -42,8 +49,8 @@ export const PLUGIN_UI_CSS = `
   flex: 1;
   flex-direction: column;
   align-items: flex-start;
-  gap: 9px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .yapmod-plugin-card-title-row {
@@ -91,14 +98,14 @@ export const PLUGIN_UI_CSS = `
   line-height: 1.4;
 }
 
-.yapmod-plugin-tags {
+.yapmod-plugin-capabilities {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 2px;
 }
 
-.yapmod-plugin-tag {
+.yapmod-plugin-capability {
   padding: 3px 6px;
   border-radius: 5px;
   background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
@@ -115,40 +122,15 @@ export const PLUGIN_UI_CSS = `
 
 .yapmod-plugin-card-foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 14px 14px;
-  border-top: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.16)));
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 0 10px 10px;
 }
 
-.yapmod-plugin-card-actions {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 6px;
-}
-
-.yapmod-plugin-install {
-  width: 100%;
-}
-
-.yapmod-plugin-icon-button {
-  display: inline-grid;
-  width: 40px;
-  min-width: 40px;
-  height: 38px;
-  place-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.yapmod-plugin-action-icon {
-  display: block;
-}
-
-.yapmod-plugin-setting-row input.switch {
-  flex: none;
+.yapmod-plugin-enable {
+  border-color: transparent !important;
+  background: var(--ym-accent, var(--tint-a, #5865f2)) !important;
+  color: var(--ym-on-accent, var(--on-accent, #fff)) !important;
 }
 
 .yapmod-plugin-status {
@@ -157,57 +139,5 @@ export const PLUGIN_UI_CSS = `
 
 .yapmod-plugin-status-error {
   color: var(--ym-danger, var(--danger, #d9485f));
-}
-
-.yapmod-plugin-setting-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.2)));
-  cursor: pointer;
-}
-
-.yapmod-plugin-setting-row:last-child {
-  border-bottom: 0;
-}
-
-.yapmod-plugin-source-note {
-  margin-top: 4px;
-  font-size: 0.85em;
-  opacity: 0.72;
-}
-
-.yapmod-plugin-setting-row input {
-  flex: none;
-}
-
-.yapmod-plugin-source-file {
-  margin-top: 10px;
-  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.yapmod-plugin-source-file summary {
-  padding: 9px 12px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.yapmod-plugin-source-code {
-  max-height: 48vh;
-  margin: 0;
-  padding: 12px;
-  overflow: auto;
-  background: var(--ym-bg-elev, var(--bg-elev, rgba(127, 127, 127, 0.06)));
-  font-size: 0.78em;
-  tab-size: 2;
-  white-space: pre;
-}
-
-.yapmod-plugin-source-code code {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 `;

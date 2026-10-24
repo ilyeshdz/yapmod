@@ -51,6 +51,4 @@ return {
 
 `activate` and its cleanup may be asynchronous. The API provides namespaced storage, manifest-declared setting reads/listeners, extra validated styles, and banners. Cleanup must remove the listeners, timers, nodes, and DOM changes created by the plugin.
 
-Declare user-facing options in the manifest's `settings` array. Yapmod shows these controls in a settings modal on the plugin card; the user's changes are applied when they choose **Save**.
-
 JavaScript plugins are trusted page code, not sandboxed extensions. Test locally with **Settings → Yapmod → Plugins → Import plugin** and only distribute code you expect users to trust.

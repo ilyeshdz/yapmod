@@ -8,6 +8,8 @@ import type {
   PluginDiagnostic,
   PluginManifest,
   PluginSetting,
+  SettingsItem,
+  SettingsSection,
   YapmodPluginInfo,
   YapmodPluginApi,
   YapmodPluginModule,
@@ -15,20 +17,9 @@ import type {
 } from "./types";
 import { PLUGIN_UI_CSS } from "./plugins.styles";
 
+const SECTION_ID = "yapmod-plugins";
 const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";
-const PLUGINS_SECTION_ID = "yapmod-plugins";
-const PLUGIN_ICON_PATHS = {
-  settings: [
-    "M4 6h16M4 12h16M4 18h16",
-    "M9 4v4M15 10v4M11 16v4",
-  ],
-  files: [
-    "M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5Z",
-    "M14 2.5v6h6",
-    "M8 13h8M8 17h6",
-  ],
-} as const;
 
 type ConsentRecord = { version: string; contentHash: string };
 type InstalledEntry = {
@@ -39,26 +30,6 @@ type InstalledEntry = {
   cleanup: PluginCleanup[];
   diagnostic: PluginDiagnostic | null;
 };
-
-function createPluginIcon(name: keyof typeof PLUGIN_ICON_PATHS): SVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "yapmod-plugin-action-icon");
-  svg.setAttribute("width", "22");
-  svg.setAttribute("height", "22");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "1.9");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("aria-hidden", "true");
-  for (const pathData of PLUGIN_ICON_PATHS[name]) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", pathData);
-    svg.append(path);
-  }
-  return svg;
-}
 
 const registry = new Map<string, InstalledEntry>();
 const listeners = new Set<() => void>();
@@ -274,109 +245,42 @@ function setOptionAttribute(manifest: PluginManifest, setting: PluginSetting, va
   else document.documentElement.removeAttribute(attribute);
 }
 
-function applyStoredSettings(entry: InstalledEntry): void {
-  for (const setting of entry.bundle.manifest.settings) {
-    const value = getYapmod().store?.get<boolean>(
-      pluginStorageKey(entry.bundle.manifest.id, setting.id),
-      setting.default,
-    ) ?? setting.default;
-    setOptionAttribute(entry.bundle.manifest, setting, value);
-  }
-}
-
-function removeSettingAttributes(entry: InstalledEntry): void {
-  for (const setting of entry.bundle.manifest.settings) {
-    document.documentElement.removeAttribute(
-      `data-yapmod-plugin-${entry.bundle.manifest.id}-${setting.id}`,
-    );
-  }
-}
-
-function showPluginSettings(entry: InstalledEntry): void {
-  const modalApi = getYapmod().modal;
-  if (!modalApi || entry.bundle.manifest.settings.length === 0) return;
+function renderOptionSection(entry: InstalledEntry): (() => void) | null {
   const { manifest } = entry.bundle;
-  const draft = new Map<string, boolean>();
-  const controls = manifest.settings.map((setting) => {
-    const current = getYapmod().store?.get<boolean>(
-      pluginStorageKey(manifest.id, setting.id),
-      setting.default,
-    ) ?? setting.default;
-    draft.set(setting.id, current);
-    const input = createElement("input", {
-      className: "switch",
-      attrs: { "aria-label": setting.label },
-      props: { type: "checkbox", checked: current },
-      on: { change: (event) => draft.set(setting.id, (event.currentTarget as HTMLInputElement).checked) },
-    });
-    return createElement("label", {
-      className: "toggle-row yapmod-plugin-setting-row",
-      children: [
-        createElement("span", {
-          children: [
-            createElement("div", { className: "toggle-label", text: setting.label }),
-            ...(setting.description ? [createElement("div", { className: "hint", text: setting.description })] : []),
-          ],
-        }),
-        input,
-      ],
-    });
-  });
-  const content = createElement("div", { className: "yapmod-plugin-settings-modal", children: controls });
-  modalApi.show({
-    title: `${manifest.name} settings`,
-    description: entry.enabled
-      ? "Changes are applied when you save."
-      : "Changes are saved now and applied the next time you enable this plugin.",
-    content,
-    buttons: [
-      { label: "Cancel", variant: "secondary" },
-      {
-        label: "Save",
-        variant: "primary",
-        onClick: async () => {
-          for (const setting of manifest.settings) {
-            const value = draft.get(setting.id) ?? setting.default;
-            getYapmod().store?.set(pluginStorageKey(manifest.id, setting.id), value);
-            if (entry.enabled) setOptionAttribute(manifest, setting, value);
-          }
-          await getYapmod().store?.flush();
-        },
+  const settingsApi = getYapmod().settings;
+  if (!settingsApi || manifest.settings.length === 0) return null;
+
+  const items: SettingsItem[] = manifest.settings.map((setting) => {
+    const initial = getYapmod().store?.get<boolean>(pluginStorageKey(manifest.id, setting.id), setting.default) ?? setting.default;
+    setOptionAttribute(manifest, setting, initial);
+    const item: Extract<SettingsItem, { type: "toggle" }> = {
+      type: "toggle",
+      id: setting.id,
+      label: setting.label,
+      description: setting.description,
+      value: initial,
+      onChange: (value) => {
+        item.value = value;
+        setOptionAttribute(manifest, setting, value);
+        getYapmod().store?.set(pluginStorageKey(manifest.id, setting.id), value);
       },
-    ],
+    };
+    return item;
   });
-}
 
-function appendSourceFile(container: HTMLElement, filename: string, source: string): void {
-  const code = createElement("pre", {
-    className: "yapmod-plugin-source-code",
-    children: [createElement("code", { text: source })],
+  const unregister = settingsApi.register({
+    id: `plugin-${manifest.id}-options`,
+    label: manifest.name,
+    group: "Plugins",
+    description: "Options provided by this plugin.",
+    items,
   });
-  container.append(createElement("details", {
-    className: "yapmod-plugin-source-file",
-    children: [createElement("summary", { text: filename }), code],
-  }));
-}
-
-function showPluginFiles(entry: InstalledEntry): void {
-  const modalApi = getYapmod().modal;
-  if (!modalApi) return;
-  const { bundle } = entry;
-  const content = createElement("div", { className: "yapmod-plugin-source-viewer" });
-  content.append(createElement("p", {
-    className: "yapmod-plugin-source-note",
-    text: "These are the package contents loaded by Yapmod. Community plugins are copied to this local installation and can be reviewed here.",
-  }));
-  appendSourceFile(content, "manifest.json", JSON.stringify(bundle.manifest, null, 2));
-  appendSourceFile(content, "plugin.css", bundle.css);
-  if (bundle.script !== null) appendSourceFile(content, "plugin.js", bundle.script);
-  modalApi.show({
-    title: `${bundle.manifest.name} files`,
-    description: "Review the installed package source.",
-    content,
-    size: "xl",
-    buttons: [{ label: "Close", variant: "secondary" }],
-  });
+  return () => {
+    unregister();
+    for (const setting of manifest.settings) {
+      document.documentElement.removeAttribute(`data-yapmod-plugin-${manifest.id}-${setting.id}`);
+    }
+  };
 }
 
 function errorMessage(error: unknown): string {
@@ -407,27 +311,27 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
   entry.cleanup = [];
   try {
     upsertStyle(styleId, entry.bundle.css);
-    applyStoredSettings(entry);
+    const removeOptions = renderOptionSection(entry);
     entry.cleanup = [
       () => document.getElementById(styleId)?.remove(),
-      () => removeSettingAttributes(entry),
+      ...(removeOptions ? [removeOptions] : []),
     ];
     if (entry.bundle.script !== null) {
       const manifest = entry.bundle.manifest;
       const scriptStyleIds: string[] = [];
       const api: YapmodPluginApi = Object.freeze({
-        id: manifest.id,
-        manifest: Object.freeze({ ...manifest }),
-        storage: Object.freeze({
-          get<T>(key: string, fallback?: T): T {
-            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-            return getYapmod().store?.get<T>(`plugin:${manifest.id}:data_${key}`, fallback) as T;
-          },
-          set(key: string, value: unknown): void {
-            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-            getYapmod().store?.set(`plugin:${manifest.id}:data_${key}`, value);
-          },
-        }),
+      id: manifest.id,
+      manifest: Object.freeze({ ...manifest }),
+      storage: Object.freeze({
+        get<T>(key: string, fallback?: T): T {
+          if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
+          return getYapmod().store?.get<T>(`plugin:${manifest.id}:data_${key}`, fallback) as T;
+        },
+        set(key: string, value: unknown): void {
+          if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
+          getYapmod().store?.set(`plugin:${manifest.id}:data_${key}`, value);
+        },
+      }),
         settings: Object.freeze({
           get(id: string): boolean {
             const setting = manifest.settings.find((item) => item.id === id);
@@ -455,13 +359,13 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
-      entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
       const module = new Function("api", "document", "window", entry.bundle.script)(api, document, window) as unknown;
       if (!module || typeof module !== "object" || typeof (module as YapmodPluginModule).activate !== "function") {
         throw new Error("plugin.js must return an object with an activate(api) function.");
       }
       const cleanup = await (module as YapmodPluginModule).activate(api);
       if (typeof cleanup === "function") entry.cleanup.push(cleanup);
+      entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
     }
   } catch (error) {
     await runCleanup(entry);
@@ -538,13 +442,7 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
   }
 }
 
-function createCard(
-  plugin: YapmodPluginInfo,
-  onToggle: () => void,
-  onRemove: () => void,
-  onSettings: () => void,
-  onInspect: () => void,
-): HTMLElement {
+function createCard(plugin: YapmodPluginInfo, onToggle: () => void, onRemove: () => void): HTMLElement {
   const { manifest } = plugin;
   return createElement("article", {
     className: ["yapmod-plugin-card", plugin.enabled ? "yapmod-plugin-active" : ""].filter(Boolean).join(" "),
@@ -559,7 +457,7 @@ function createCard(
               createElement("span", { className: plugin.enabled ? "yapmod-plugin-state yapmod-plugin-state-active" : "yapmod-plugin-state", text: plugin.enabled ? "Enabled" : "Disabled" }),
             ],
           }),
-          createElement("p", { className: "yapmod-plugin-card-meta", text: [manifest.author, manifest.version ? `v${manifest.version}` : null].filter(Boolean).join(" · ") }),
+          createElement("p", { className: "yapmod-plugin-card-meta", text: [manifest.author, manifest.version ? `v${manifest.version}` : null, `API ${manifest.api}`].filter(Boolean).join(" · ") }),
           createElement("p", { className: "yapmod-plugin-card-description", text: manifest.description ?? "No description provided." }),
           ...(manifest.script ? [createElement("p", { className: "yapmod-plugin-warning", text: "Trusted JavaScript plugin — runs in the Yapper page." })] : []),
           ...(plugin.error ? [createElement("p", { className: "yapmod-plugin-error", text: plugin.error })] : []),
@@ -568,15 +466,8 @@ function createCard(
       createElement("div", {
         className: "yapmod-plugin-card-foot",
         children: [
-          createElement("div", {
-            className: "yapmod-plugin-card-actions",
-            children: [
-              ...(manifest.settings.length ? [createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, children: [createPluginIcon("settings")], on: { click: onSettings } })] : []),
-              createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `View files for ${manifest.name}`, title: "View plugin files" }, children: [createPluginIcon("files")], on: { click: onInspect } }),
-              createElement("button", { className: "btn small ghost", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
-            ],
-          }),
-          createElement("button", { className: "btn small ghost", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
+          createElement("button", { className: "btn small ghost", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
+          createElement("button", { className: plugin.enabled ? "btn small ghost" : "btn small yapmod-plugin-enable", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
         ],
       }),
     ],
@@ -658,7 +549,7 @@ export function installPluginSettings(): void {
 
   upsertStyle("yapmod-plugin-ui-styles", PLUGIN_UI_CSS);
   yapmod.settings.register({
-    id: PLUGINS_SECTION_ID,
+    id: SECTION_ID,
     label: "Plugins",
     icon: "puzzle",
     group: "Yapmod",
@@ -679,12 +570,12 @@ export function installPluginSettings(): void {
         status.textContent = message;
         status.classList.toggle("yapmod-plugin-status-error", isError);
       };
-      const installedTab = createElement("button", { className: "btn small ghost yapmod-theme-tab-active", text: "Installed", attrs: { type: "button", role: "tab", "aria-selected": "true" }, on: { click: () => setView("installed") } });
-      const communityTab = createElement("button", { className: "btn small ghost", text: "Community", attrs: { type: "button", role: "tab", "aria-selected": "false" }, on: { click: () => setView("community") } });
-      const tabs = createElement("div", { className: "yapmod-theme-tabs", attrs: { role: "tablist", "aria-label": "Plugin collection" }, children: [installedTab, communityTab] });
+      const installedTab = createElement("button", { className: "btn small ghost yapmod-plugin-tab yapmod-plugin-tab-active", text: "Installed", attrs: { type: "button", role: "tab", "aria-selected": "true" }, on: { click: () => setView("installed") } });
+      const communityTab = createElement("button", { className: "btn small ghost yapmod-plugin-tab", text: "Community", attrs: { type: "button", role: "tab", "aria-selected": "false" }, on: { click: () => setView("community") } });
+      const tabs = createElement("div", { className: "yapmod-plugin-tabs", attrs: { role: "tablist", "aria-label": "Plugin collection" }, children: [installedTab, communityTab] });
 
       const refreshInstalled = async (): Promise<void> => {
-        try { await pluginApi.refreshInstalled(); }
+        try { await pluginApi.refreshInstalled(); setStatus(`${pluginApi.list().length} plugin${pluginApi.list().length === 1 ? "" : "s"} installed.`); }
         catch (error) { setStatus(`Could not refresh installed plugins: ${String(error)}`, true); }
       };
       const loadCommunity = async (force = false): Promise<void> => {
@@ -734,13 +625,7 @@ export function installPluginSettings(): void {
             if (!success && !plugin.enabled) setStatus("The plugin was not enabled. Review the warning or check the error on its card.", true);
             renderInstalled();
           });
-        }, () => void removePlugin(plugin), () => {
-          const entry = registry.get(plugin.manifest.id);
-          if (entry) showPluginSettings(entry);
-        }, () => {
-          const entry = registry.get(plugin.manifest.id);
-          if (entry) showPluginFiles(entry);
-        })));
+        }, () => void removePlugin(plugin))));
       }
       function renderCommunity(): void {
         const installed = new Set(pluginApi.list().map((plugin) => plugin.manifest.id));
@@ -754,20 +639,20 @@ export function installPluginSettings(): void {
           className: "yapmod-plugin-card",
           children: [
             createElement("div", { className: "yapmod-plugin-card-body", children: [
-              createElement("div", { className: "yapmod-plugin-card-title-row", children: [createElement("h3", { className: "yapmod-plugin-card-name", text: plugin.name })] }),
+              createElement("div", { className: "yapmod-plugin-card-title-row", children: [createElement("h3", { className: "yapmod-plugin-card-name", text: plugin.name }), createElement("span", { className: "yapmod-plugin-state", text: `API ${plugin.api}` })] }),
               createElement("p", { className: "yapmod-plugin-card-meta", text: [plugin.author, plugin.version ? `v${plugin.version}` : null, plugin.license].filter(Boolean).join(" · ") }),
               createElement("p", { className: "yapmod-plugin-card-description", text: plugin.description ?? "No description provided." }),
-              ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-tags", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-tag", text: tag })) })] : []),
+              ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-capabilities", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-capability", text: tag })) })] : []),
             ] }),
-            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small yapmod-plugin-install", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
+            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small yapmod-plugin-enable", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
           ],
         })));
       }
       function setView(next: "installed" | "community"): void {
         view = next;
         const installed = next === "installed";
-        installedTab.classList.toggle("yapmod-theme-tab-active", installed);
-        communityTab.classList.toggle("yapmod-theme-tab-active", !installed);
+        installedTab.classList.toggle("yapmod-plugin-tab-active", installed);
+        communityTab.classList.toggle("yapmod-plugin-tab-active", !installed);
         installedTab.setAttribute("aria-selected", String(installed));
         communityTab.setAttribute("aria-selected", String(!installed));
         installedGrid.hidden = !installed;
@@ -786,7 +671,7 @@ export function installPluginSettings(): void {
       const communityToolbar = createElement("div", { className: "yapmod-plugin-toolbar", props: { hidden: true }, children: [
         search,
         createElement("button", { className: "btn small ghost", text: "Refresh", props: { type: "button" }, on: { click: () => void loadCommunity(true) } }),
-        createElement("button", { className: "btn small", text: "Submit a plugin", props: { type: "button" }, on: { click: () => window.open("https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/", "_blank", "noopener") } }),
+        createElement("button", { className: "btn small ghost", text: "Submit a plugin", props: { type: "button" }, on: { click: () => window.open("https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/", "_blank", "noopener") } }),
       ] });
 
       host.append(tabs, installedToolbar, communityToolbar, installedGrid, communityGrid, status);
