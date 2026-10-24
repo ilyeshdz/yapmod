@@ -1,5 +1,5 @@
 import { getYapmod } from "./scope";
-import { createElement, upsertStyle } from "./ui";
+import { createElement, createSvgIcon, upsertStyle } from "./ui";
 import { invokeCommand } from "./tauri";
 import type {
   CommunityPlugin,
@@ -18,6 +18,10 @@ import { PLUGIN_UI_CSS } from "./plugins.styles";
 const ENABLED_KEY = "plugin_enabled";
 const CONSENTS_KEY = "plugin_consents";
 const PLUGINS_SECTION_ID = "yapmod-plugins";
+const PLUGIN_ICON_PATHS = {
+  settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5a8 8 0 0 0-.1-1.2l1.4-1.1-1.4-2.4-1.7.6a8 8 0 0 0-2.1-1.2L15.8 4h-2.8l-.3 1.8a8 8 0 0 0-2.1 1.2l-1.7-.6-1.4 2.4 1.4 1.1a8 8 0 0 0 0 2.4l-1.4 1.1 1.4 2.4 1.7-.6a8 8 0 0 0 2.1 1.2l.3 1.8h2.8l.3-1.8a8 8 0 0 0 2.1-1.2l1.7.6 1.4-2.4-1.4-1.1A8 8 0 0 0 20 12Z",
+  files: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 1.5L18.5 8H14ZM7 12h10v1.5H7Zm0 3h10v1.5H7Zm0 3h7v1.5H7Z",
+} as const;
 
 type ConsentRecord = { version: string; contentHash: string };
 type InstalledEntry = {
@@ -273,17 +277,18 @@ function showPluginSettings(entry: InstalledEntry): void {
     ) ?? setting.default;
     draft.set(setting.id, current);
     const input = createElement("input", {
-      attrs: { type: "checkbox", "aria-label": setting.label },
-      props: { checked: current },
+      className: "switch",
+      attrs: { "aria-label": setting.label },
+      props: { type: "checkbox", checked: current },
       on: { change: (event) => draft.set(setting.id, (event.currentTarget as HTMLInputElement).checked) },
     });
     return createElement("label", {
-      className: "yapmod-plugin-setting-row",
+      className: "toggle-row yapmod-plugin-setting-row",
       children: [
         createElement("span", {
           children: [
-            createElement("span", { className: "yapmod-plugin-setting-label", text: setting.label }),
-            ...(setting.description ? [createElement("span", { className: "yapmod-plugin-setting-description", text: setting.description })] : []),
+            createElement("div", { className: "toggle-label", text: setting.label }),
+            ...(setting.description ? [createElement("div", { className: "hint", text: setting.description })] : []),
           ],
         }),
         input,
@@ -536,10 +541,10 @@ function createCard(
       createElement("div", {
         className: "yapmod-plugin-card-foot",
         children: [
-          ...(manifest.settings.length ? [createElement("button", { className: "btn small ghost yapmod-plugin-icon-button", text: "⚙", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, on: { click: onSettings } })] : []),
-          createElement("button", { className: "btn small ghost", text: "View files", props: { type: "button" }, on: { click: onInspect } }),
-          createElement("button", { className: "btn small ghost", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
-          createElement("button", { className: plugin.enabled ? "btn small ghost" : "btn small yapmod-plugin-enable", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
+          ...(manifest.settings.length ? [createElement("button", { className: "btn small yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `Settings for ${manifest.name}`, title: "Plugin settings" }, children: [createSvgIcon("yapmod-plugin-action-icon", 24, PLUGIN_ICON_PATHS.settings)], on: { click: onSettings } })] : []),
+          createElement("button", { className: "btn small yapmod-plugin-icon-button", attrs: { type: "button", "aria-label": `View files for ${manifest.name}`, title: "View plugin files" }, children: [createSvgIcon("yapmod-plugin-action-icon", 24, PLUGIN_ICON_PATHS.files)], on: { click: onInspect } }),
+          createElement("button", { className: "btn small", text: "Remove", props: { type: "button" }, on: { click: onRemove } }),
+          createElement("button", { className: "btn small", text: plugin.busy ? "Working…" : plugin.enabled ? "Disable" : "Enable", props: { type: "button", disabled: plugin.busy }, on: { click: onToggle } }),
         ],
       }),
     ],
@@ -722,7 +727,7 @@ export function installPluginSettings(): void {
               createElement("p", { className: "yapmod-plugin-card-description", text: plugin.description ?? "No description provided." }),
               ...(plugin.tags?.length ? [createElement("div", { className: "yapmod-plugin-tags", children: plugin.tags.map((tag) => createElement("span", { className: "yapmod-plugin-tag", text: tag })) })] : []),
             ] }),
-            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small yapmod-plugin-enable", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
+            createElement("div", { className: "yapmod-plugin-card-foot", children: [createElement("button", { className: "btn small", text: installed.has(plugin.id) ? "Installed" : "Install", props: { type: "button", disabled: installed.has(plugin.id) }, on: { click: () => void installCommunity(plugin) } })] }),
           ],
         })));
       }

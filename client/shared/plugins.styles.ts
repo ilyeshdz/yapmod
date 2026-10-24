@@ -129,15 +129,19 @@ export const PLUGIN_UI_CSS = `
 }
 
 .yapmod-plugin-icon-button {
-  min-width: 34px;
-  padding-inline: 7px;
-  font-size: 1.05em;
+  width: 38px;
+  min-width: 38px;
+  height: 36px;
+  justify-content: center;
+  padding: 4px;
 }
 
-.yapmod-plugin-enable {
-  border-color: transparent !important;
-  background: var(--ym-accent, var(--tint-a, #5865f2)) !important;
-  color: var(--ym-on-accent, var(--on-accent, #fff)) !important;
+.yapmod-plugin-action-icon {
+  display: block;
+}
+
+.yapmod-plugin-setting-row input.switch {
+  flex: none;
 }
 
 .yapmod-plugin-status {
