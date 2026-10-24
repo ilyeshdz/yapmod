@@ -410,6 +410,16 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
             return () => document.getElementById(id)?.remove();
           },
         }),
+        webSocket: getYapmod().webSocket ?? Object.freeze({
+          incoming: Object.freeze({
+            messages: () => [],
+            subscribe: () => () => {},
+          }),
+          outgoing: Object.freeze({
+            messages: () => [],
+            subscribe: () => () => {},
+          }),
+        }),
       banner(message: string): void {
         getYapmod().banner?.show({ id: `plugin-${manifest.id}`, message, dismissible: true });
       },

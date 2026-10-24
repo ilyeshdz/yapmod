@@ -264,6 +264,7 @@ export type YapmodPluginApi = {
   readonly styles: {
     add(css: string): PluginCleanup;
   };
+  readonly webSocket: WebSocketInspector;
   banner(message: string): void;
 };
 
@@ -300,6 +301,41 @@ export type YapmodPluginInfo = {
   diagnostic: PluginDiagnostic | null;
 };
 
+/** A single observed WebSocket message with basic connection metadata. */
+export type WebSocketMessage = {
+  /** The URL the WebSocket was created with. */
+  url: string;
+  /** The raw message data (string or ArrayBuffer). */
+  data: string | ArrayBuffer;
+  /** When the message was observed (epoch ms). */
+  timestamp: number;
+};
+
+/** Callback invoked when a new WebSocket message is observed. */
+export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
+
+/**
+ * Inspects WebSocket messages flowing through the application.
+ * Provides access to observed incoming and outgoing messages without
+ * modifying or suppressing any traffic.
+ */
+export type WebSocketInspector = {
+  /** Messages received by the application from a WebSocket server. */
+  incoming: {
+    /** Returns a snapshot of all observed incoming messages. */
+    messages(): WebSocketMessage[];
+    /** Subscribes to incoming messages; returns a cleanup function to unsubscribe. */
+    subscribe(handler: WebSocketMessageHandler): () => void;
+  };
+  /** Messages sent by the application through a WebSocket connection. */
+  outgoing: {
+    /** Returns a snapshot of all observed outgoing messages. */
+    messages(): WebSocketMessage[];
+    /** Subscribes to outgoing messages; returns a cleanup function to unsubscribe. */
+    subscribe(handler: WebSocketMessageHandler): () => void;
+  };
+};
+
 export type YapmodGlobal = {
   config?: Config;
   os?: string;
@@ -315,6 +351,8 @@ export type YapmodGlobal = {
   plugins?: YapmodPluginsApi;
   store?: YapmodStoreApi;
   theme?: YapmodThemeApi;
+  /** Low-level WebSocket inspection layer for plugins. */
+  webSocket?: WebSocketInspector;
 };
 
 export type YapmodScope = typeof globalThis & {
