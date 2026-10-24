@@ -91,11 +91,6 @@ const MODAL_CSS = `
 .yapmod-modal-danger:hover {
   background: color-mix(in srgb, var(--ym-danger, var(--danger, #d9485f)) 88%, #000) !important;
 }
-.yapmod-modal-primary {
-  border-color: transparent !important;
-  background: var(--ym-accent, var(--tint-a, #5865f2)) !important;
-  color: var(--ym-on-accent, var(--on-accent, #fff)) !important;
-}
 html.${SCROLL_LOCK_CLASS},
 html.${SCROLL_LOCK_CLASS} body {
   overflow: hidden !important;
@@ -400,9 +395,6 @@ class YapmodModalImpl implements YapmodModal {
         button.variant === "secondary" ? "secondary" : "",
         button.variant === "danger" ? "yapmod-modal-danger" : "",
         // "native" keeps the styles of the host app, without our own tint.
-        button.variant === "primary" || !button.variant
-          ? "yapmod-modal-primary"
-          : "",
         button.className ?? "",
       ]
         .filter(Boolean)
