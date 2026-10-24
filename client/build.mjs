@@ -23,7 +23,9 @@ const options = {
   minify: true,
   sourcemap: false,
   legalComments: "none",
-  loader: { ".svg": "text" },
+  loader: { ".svg": "text", ".css": "text" },
+  jsx: "transform",
+  jsxImportSource: "solid-js",
   logLevel: "info",
 };
 

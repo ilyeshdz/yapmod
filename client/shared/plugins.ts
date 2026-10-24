@@ -1,6 +1,6 @@
-import { getYapmod } from "./scope";
+import { getYapmod } from "../core/scope";
 import { createElement, upsertStyle } from "./ui";
-import { invokeCommand } from "./tauri";
+import { invokeCommand } from "../core/tauri";
 import type {
   CommunityPlugin,
   PluginBundle,
@@ -437,7 +437,7 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           onChange(id: string, listener: (value: boolean) => void): () => void {
             const setting = manifest.settings.find((item) => item.id === id);
             if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
-            return getYapmod().store?.onChange(pluginStorageKey(manifest.id, id), (value) => listener(Boolean(value))) ?? (() => {});
+            return getYapmod().store?.onChange(pluginStorageKey(manifest.id, id), (value: unknown) => listener(Boolean(value))) ?? (() => {});
           },
         }),
         styles: Object.freeze({
@@ -644,7 +644,7 @@ export function installPluginApi(): void {
 
 /** Restores installed packages that were previously enabled and consented to. */
 export function initializePluginManager(): void {
-  void getYapmod().plugins?.refreshInstalled().catch((error) => {
+  void getYapmod().plugins?.refreshInstalled().catch((error: unknown) => {
     console.error("[yapmod] could not load installed plugins", error);
   });
 }
@@ -664,7 +664,7 @@ export function installPluginSettings(): void {
     group: "Yapmod",
     order: 3,
     description: "Import local plugins or browse community packages. JavaScript plugins run as trusted code in the Yapper page.",
-    render: (host) => {
+    render: (host: HTMLElement) => {
       let disposed = false;
       let community: CommunityPlugin[] = [];
       let communityLoaded = false;
@@ -729,8 +729,8 @@ export function installPluginSettings(): void {
           installedGrid.replaceChildren(createElement("p", { className: "hint", text: "No plugins installed yet. Import a folder or browse Community." }));
           return;
         }
-        installedGrid.replaceChildren(...current.map((plugin) => createCard(plugin, () => {
-          void pluginApi.setEnabled(plugin.manifest.id, !plugin.enabled).then((success) => {
+        installedGrid.replaceChildren(...current.map((plugin: YapmodPluginInfo) => createCard(plugin, () => {
+          void pluginApi.setEnabled(plugin.manifest.id, !plugin.enabled).then((success: boolean) => {
             if (!success && !plugin.enabled) setStatus("The plugin was not enabled. Review the warning or check the error on its card.", true);
             renderInstalled();
           });
@@ -743,7 +743,7 @@ export function installPluginSettings(): void {
         })));
       }
       function renderCommunity(): void {
-        const installed = new Set(pluginApi.list().map((plugin) => plugin.manifest.id));
+        const installed = new Set(pluginApi.list().map((plugin: YapmodPluginInfo) => plugin.manifest.id));
         const query = searchQuery.trim().toLowerCase();
         const entries = community.filter((item) => !query || `${item.name} ${item.author ?? ""} ${item.description ?? ""} ${(item.tags ?? []).join(" ")}`.toLowerCase().includes(query));
         if (!entries.length) {
@@ -781,7 +781,7 @@ export function installPluginSettings(): void {
       const installedToolbar = createElement("div", { className: "yapmod-plugin-toolbar", children: [
         createElement("button", { className: "btn small", text: "Import plugin", props: { type: "button" }, on: { click: () => void importLocal() } }),
         createElement("button", { className: "btn small ghost", text: "Refresh", props: { type: "button" }, on: { click: () => void refreshInstalled() } }),
-        createElement("button", { className: "btn small ghost", text: "Open folder", props: { type: "button" }, on: { click: () => void pluginApi.openFolder().catch((error) => setStatus(String(error), true)) } }),
+        createElement("button", { className: "btn small ghost", text: "Open folder", props: { type: "button" }, on: { click: () => void pluginApi.openFolder().catch((error: unknown) => setStatus(String(error), true)) } }),
       ] });
       const communityToolbar = createElement("div", { className: "yapmod-plugin-toolbar", props: { hidden: true }, children: [
         search,

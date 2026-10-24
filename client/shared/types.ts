@@ -7,7 +7,7 @@ import type {
   ReleaseNotesSection,
   UpdateInfo,
 } from "../generated/types";
-import type { DesktopBridge } from "./desktop";
+import type { DesktopBridge } from "../core/desktop";
 import type { YapmodBannerApi } from "./banner";
 import type { YapmodThemeApi } from "./theme/engine";
 

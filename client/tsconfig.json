@@ -8,7 +8,9 @@
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
     "types": []
   },
-  "include": ["*.ts", "shared/**/*.ts", "generated/**/*.ts"]
+  "include": ["*.ts", "*.tsx", "shared/**/*.ts", "shared/**/*.tsx", "core/**/*.ts", "core/**/*.tsx", "components/**/*.tsx", "features/**/*.ts", "features/**/*.tsx", "types/**/*.ts", "generated/**/*.ts"]
 }

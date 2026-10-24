@@ -8,7 +8,7 @@ import type {
   YapmodModalApi,
 } from "./types";
 import { createElement, ensureStyle } from "./ui";
-import { getYapmod } from "./scope";
+import { getYapmod } from "../core/scope";
 
 const MODAL_STYLE_ID = "yapmod-modal-styles";
 const SCROLL_LOCK_CLASS = "yapmod-modal-open";

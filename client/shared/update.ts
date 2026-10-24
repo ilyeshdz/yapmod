@@ -3,10 +3,10 @@ import type {
   UpdateInfo,
   YapmodModal,
 } from "./types";
-import { invokeCommand } from "./tauri";
-import { openExternally } from "./links";
+import { invokeCommand } from "../core/tauri";
+import { openExternally } from "../core/links";
 import { createElement } from "./ui";
-import { getYapmod } from "./scope";
+import { getYapmod } from "../core/scope";
 import { showBanner } from "./banner";
 
 const WEBSITE_URL = "https://ilyeshdz.github.io/yapmod";

@@ -9,8 +9,8 @@ import {
   getChangelog,
 } from "./release";
 import { createElement } from "./ui";
-import { getYapmod } from "./scope";
-import { requestNotificationPermission } from "./notify";
+import { getYapmod } from "../core/scope";
+import { requestNotificationPermission } from "../core/notify";
 
 const SECTION_ID = "yapmod";
 const CHANGELOG_SECTION_ID = "yapmod-changelog";
@@ -46,7 +46,7 @@ function createToggle(
     },
   };
 
-  store?.onChange(options.id, (value) => {
+  store?.onChange(options.id, (value: unknown) => {
     if (typeof value === "boolean") {
       item.value = value;
     }

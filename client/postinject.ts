@@ -7,8 +7,8 @@ import {
 } from "./shared/update";
 import { upsertStyle, createElement } from "./shared/ui";
 import { remountThemeStyles } from "./shared/theme/engine";
-import { getYapmod } from "./shared/scope";
-import { invokeCommand } from "./shared/tauri";
+import { getYapmod } from "./core/scope";
+import { invokeCommand } from "./core/tauri";
 import type {
   ClientUpdateInfo,
   ClientUpdateLaunchStatus,

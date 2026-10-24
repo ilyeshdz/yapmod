@@ -6,7 +6,7 @@ import type {
 import { createElement, safeTeardown, whenBodyReady } from "./ui";
 import { renderSettingsItem } from "./items";
 import { closeAllDropdowns } from "./dropdown";
-import { getYapmod } from "./scope";
+import { getYapmod } from "../core/scope";
 
 type SettingsSectionIcon = NonNullable<SettingsSection["icon"]>;
 

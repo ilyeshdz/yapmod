@@ -1,6 +1,7 @@
+import type { YapmodModal } from "../types";
 import type { ThemeBundle } from "./types";
 import { createElement } from "../ui";
-import { getYapmod } from "../scope";
+import { getYapmod } from "../../core/scope";
 import { resolveMode } from "./engine";
 import { appPalette, readTokens, TOKENS } from "./tokens";
 
@@ -175,7 +176,7 @@ export function confirmRemove(name: string): Promise<boolean> {
         {
           label: "Remove",
           variant: "danger",
-          onClick: (modal) => {
+          onClick: (modal: YapmodModal) => {
             resolve(true);
             modal.close("button");
           },

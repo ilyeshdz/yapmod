@@ -1,6 +1,6 @@
 import type { ReleaseEntry, ReleaseNotes, ReleaseNotesSection } from "./types";
 import { createElement } from "./ui";
-import { invokeCommand } from "./tauri";
+import { invokeCommand } from "../core/tauri";
 
 let changelogCache: ReleaseEntry[] | null = null;
 

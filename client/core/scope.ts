@@ -1,4 +1,4 @@
-import type { YapmodGlobal, YapmodScope } from "./types";
+import type { YapmodGlobal, YapmodScope } from "../shared/types";
 
 /**
  * The scope the injected code runs in.

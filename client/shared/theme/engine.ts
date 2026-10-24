@@ -1,7 +1,7 @@
 import type { CommunityTheme, ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
-import { getYapmod } from "../scope";
-import { invokeCommand } from "../tauri";
+import { getYapmod } from "../../core/scope";
+import { invokeCommand } from "../../core/tauri";
 
 const THEME_STYLE_ID = "yapmod-theme-styles";
 

@@ -1,4 +1,4 @@
-import type { YapmodStoreApi } from "./types";
+import type { YapmodStoreApi } from "../shared/types";
 import { invokeCommand } from "./tauri";
 import { getYapmod } from "./scope";
 

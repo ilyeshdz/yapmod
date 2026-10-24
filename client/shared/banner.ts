@@ -1,5 +1,5 @@
 import { createElement } from "./ui";
-import { getYapmod } from "./scope";
+import { getYapmod } from "../core/scope";
 
 const BANNER_REGION_ID = "yapmod-banner-region";
 

@@ -6,15 +6,15 @@ import {
 } from "./shared/plugins";
 import { installBannerApi } from "./shared/banner";
 import { installSettingsApi } from "./shared/settings";
-import { installStore } from "./shared/store";
+import { installStore } from "./core/store";
 import { installDefaultSettings } from "./shared/defaults";
 import { installThemeEngine } from "./shared/theme/engine";
 import { installThemeSettings } from "./shared/theme/picker";
-import { installDesktopBridge } from "./shared/desktop";
-import { installNotificationApi } from "./shared/notify";
-import { installExternalLinks } from "./shared/links";
+import { installDesktopBridge } from "./core/desktop";
+import { installNotificationApi } from "./core/notify";
+import { installExternalLinks } from "./core/links";
 import { getChangelog } from "./shared/release";
-import { getScope, getYapmod } from "./shared/scope";
+import { getScope, getYapmod } from "./core/scope";
 
 const scope = getScope();
 const yapmod = getYapmod();

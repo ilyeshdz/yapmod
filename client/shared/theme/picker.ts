@@ -2,8 +2,8 @@ import type { SettingsSection } from "../types";
 import type { CommunityTheme, ThemeBundle } from "./types";
 import { createElement, ensureStyle } from "../ui";
 import { createDropdown } from "../dropdown";
-import { getYapmod } from "../scope";
-import { openExternally } from "../links";
+import { getYapmod } from "../../core/scope";
+import { openExternally } from "../../core/links";
 import { confirmRemove, createPreview } from "./picker-preview";
 import { THEME_UI_CSS } from "./picker.styles";
 
