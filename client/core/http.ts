@@ -4,7 +4,6 @@ import type {
   HTTPInspector,
   HTTPMessage,
   HTTPMessageHandler,
-  HTTPOutgoingInterceptor,
   HTTPOutgoingMessage,
   HTTPOutgoingMessageHandler,
 } from "../shared/types";
@@ -16,7 +15,6 @@ const exchanges: HTTPMessage[] = [];
 const outgoingMessages: HTTPOutgoingMessage[] = [];
 const exchangeHandlers: HTTPMessageHandler[] = [];
 const outgoingHandlers: HTTPOutgoingMessageHandler[] = [];
-const outgoingInterceptors: HTTPOutgoingInterceptor[] = [];
 
 // Marker property on the global fetch to detect re-installation.
 const INSTALLED_MARKER = "__yapmod_http_inspector_installed";
@@ -164,8 +162,8 @@ async function readResponseBody(response: Response): Promise<string | ArrayBuffe
  * The wrapper:
  * - Records every outgoing request immediately when sent.
  * - Records every complete exchange (request + response) when the response arrives.
- * - Intercepts outgoing requests to allow plugins to modify request configuration.
  * - Maintains a bounded history of up to `MAX_MESSAGES` entries per channel.
+ * - Never modifies the original request — it only observes passively.
  *
  * Calling this function multiple times is safe — the inspector is installed
  * at most once.
@@ -191,15 +189,23 @@ export function installHTTPInspector(): void {
   const WrappedFetch: typeof fetch = async function (input, init): Promise<Response> {
     const startTime = Date.now();
 
-    // Resolve the request input to extract URL and method.
-    const request = input instanceof Request ? input : new Request(input, init);
-    const url = request.url;
-    const method = request.method;
-    const requestHeaders = extractHeaders(request.headers);
+    // Observe the request by creating a clone for metadata extraction.
+    // We never modify the original request — just pass it through unchanged.
+    let url: string, method: string, requestHeaders: [string, string][], requestBody: string | ArrayBuffer | BlobSnapshot | undefined;
 
-    // Normalize the request body for observation.
-    // Use the existing helper for consistency with response body handling.
-    const requestBody = normalizeBodyData(request.body);
+    try {
+      const observeRequest = input instanceof Request ? input.clone() : new Request(input, init);
+      url = observeRequest.url;
+      method = observeRequest.method;
+      requestHeaders = extractHeaders(observeRequest.headers);
+      requestBody = normalizeBodyData(observeRequest.body);
+    } catch {
+      // If we can't observe (e.g., body already consumed), still record what we can.
+      url = input instanceof Request ? input.url : String(input);
+      method = input instanceof Request ? input.method : (init?.method ?? 'GET');
+      requestHeaders = input instanceof Request ? extractHeaders(input.headers) : [];
+      requestBody = undefined;
+    }
 
     // Build the outgoing message for immediate notification.
     const outgoingMsg: HTTPOutgoingMessage = {
@@ -213,55 +219,10 @@ export function installHTTPInspector(): void {
     // Record outgoing message.
     addMessage(outgoingMessages, outgoingHandlers, outgoingMsg);
 
-    // Execute interceptors in registration order.
-    // If any interceptor throws or returns an invalid value, the entire
-    // chain is discarded and the original request is sent.
-    let modifiedInit: RequestInit | undefined;
-    let chainFailed = false;
-
-    for (const interceptor of outgoingInterceptors) {
-      try {
-        const result = interceptor(outgoingMsg);
-        if (result !== undefined && result !== void 0) {
-          modifiedInit = result;
-        }
-      } catch (error) {
-        console.error(
-          "[yapmod] HTTP outgoing interceptor threw an error, sending original request",
-          error,
-        );
-        chainFailed = true;
-        break;
-      }
-    }
-
-    // Use the resolved URL string as the fetch input, since we've already
-    // extracted all information from the original Request object.
-    let fetchInput: string = url;
-    let fetchInit: RequestInit | undefined;
-
-    if (!chainFailed && modifiedInit !== undefined) {
-      // Apply the modified init by merging with the original request's properties.
-      fetchInit = {
-        ...modifiedInit,
-        method: modifiedInit.method ?? method,
-        headers: modifiedInit.headers ?? request.headers,
-        body: modifiedInit.body,
-      };
-    } else if (input instanceof Request) {
-      // If the original input was a Request object, we need to reconstruct
-      // the init from the resolved request so the body is not lost.
-      fetchInit = {
-        method,
-        headers: request.headers,
-        body: request.body,
-      };
-    }
-
-    // Perform the actual fetch.
+    // Perform the actual fetch with the original arguments, unchanged.
     let response: Response;
     try {
-      response = await OriginalFetch(fetchInput, fetchInit);
+      response = await OriginalFetch(input, init);
     } catch (error) {
       // Network error — still record the exchange with error status.
       const duration = Date.now() - startTime;
@@ -281,14 +242,20 @@ export function installHTTPInspector(): void {
       throw error;
     }
 
-    // Clone the response so we can read the body without consuming the original.
-    const responseClone = response.clone();
-
     // Read response headers.
     const responseHeaders = extractHeaders(response.headers);
 
-    // Read response body asynchronously.
-    const responseBody = await readResponseBody(responseClone);
+    // Read response body asynchronously from a clone.
+    // Wrap in try-catch to handle cases where the response cannot be cloned
+    // or the body is already consumed.
+    let responseBody: string | ArrayBuffer | BlobSnapshot | undefined;
+    try {
+      const responseClone = response.clone();
+      responseBody = await readResponseBody(responseClone);
+    } catch {
+      // If we fail to clone or read the body, record the exchange without it.
+      responseBody = undefined;
+    }
 
     const duration = Date.now() - startTime;
 
@@ -357,22 +324,6 @@ export function installHTTPInspector(): void {
           const index = outgoingHandlers.indexOf(handler);
           if (index !== -1) {
             outgoingHandlers.splice(index, 1);
-          }
-        };
-      },
-      /**
-       * Registers an outgoing interceptor; returns a cleanup function.
-       * The cleanup function is safe to call multiple times (idempotent).
-       */
-      use(interceptor: HTTPOutgoingInterceptor): () => void {
-        outgoingInterceptors.push(interceptor);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = outgoingInterceptors.indexOf(interceptor);
-          if (index !== -1) {
-            outgoingInterceptors.splice(index, 1);
           }
         };
       },

@@ -250,22 +250,70 @@ export type PluginCleanup = () => void | Promise<void>;
 
 export type PluginActivation = void | PluginCleanup | Promise<void | PluginCleanup>;
 
+/**
+ * Namespaced console logger handed to a plugin.
+ *
+ * Every message is prefixed with the plugin id, so plugin output is easy to
+ * tell apart from yapmod and host-app logs.
+ */
+export type YapmodPluginLogger = {
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+};
+
+/** Per-plugin key/value storage. Keys are namespaced by the plugin id. */
+export type YapmodPluginStorageApi = {
+  /** Returns the stored value, or `fallback` when the key has no value. */
+  get<T>(key: string, fallback?: T): T;
+  /** Stores a JSON-serializable value. Writes are persisted in the background. */
+  set(key: string, value: unknown): void;
+  /** Lists the keys this plugin currently has a value for. */
+  keys(): string[];
+  /**
+   * Subscribes to changes of one key for this plugin.
+   * Returns a cleanup function to unsubscribe.
+   */
+  onChange<T = unknown>(key: string, listener: (value: T | undefined) => void): () => void;
+};
+
+/** Manifest-declared settings, scoped to one plugin. */
+export type YapmodPluginSettingsApi = {
+  /** Reads the current value of a declared setting. */
+  get(id: string): boolean;
+  /** Returns a snapshot of every declared setting. */
+  all(): Readonly<Record<string, boolean>>;
+  /**
+   * Subscribes to changes of one declared setting.
+   * Returns a cleanup function to unsubscribe.
+   */
+  onChange(id: string, listener: (value: boolean) => void): () => void;
+};
+
 export type YapmodPluginApi = {
+  /** The plugin format implemented by this API. */
+  readonly apiVersion: 1;
   readonly id: string;
   readonly manifest: Readonly<PluginManifest>;
-  readonly storage: {
-    get<T>(key: string, fallback?: T): T;
-    set(key: string, value: unknown): void;
-  };
-  readonly settings: {
-    get(id: string): boolean;
-    onChange(id: string, listener: (value: boolean) => void): () => void;
-  };
+  readonly storage: YapmodPluginStorageApi;
+  readonly settings: YapmodPluginSettingsApi;
   readonly styles: {
     add(css: string): PluginCleanup;
   };
   readonly webSocket: WebSocketInspector;
   readonly http: HTTPInspector;
+  /** Namespaced console logger for this plugin. */
+  readonly log: YapmodPluginLogger;
+  /**
+   * Registers a cleanup callback that runs automatically when the plugin is
+   * disabled, even if `activate` later throws. Callbacks run in reverse
+   * registration order.
+   *
+   * Use this for helpers created during activation instead of returning one
+   * large cleanup closure. The cleanup returned by `activate` is also supported.
+   */
+  onCleanup(cleanup: PluginCleanup): void;
   banner(message: string): void;
 };
 
@@ -426,29 +474,9 @@ export type HTTPMessageHandler = (message: HTTPMessage) => void;
 export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;
 
 /**
- * Interceptor for outgoing HTTP requests.
- * Receives the request metadata and may return a modified `RequestInit` object
- * to replace the original request configuration.
- *
- * Interceptors run synchronously in registration order before the original
- * `fetch()` call. Each interceptor receives the latest configuration produced
- * by the previous interceptor.
- *
- * - Returning `undefined` (void) means no change — the current configuration is kept.
- * - Returning a `RequestInit`-compatible object replaces the current configuration.
- * - If an interceptor throws, all modifications from the entire interception
- *   chain are discarded and the original request is sent unchanged.
- *
- * Message delivery is never suppressed by an interceptor.
- */
-export type HTTPOutgoingInterceptor = (
-  message: HTTPOutgoingMessage,
-) => RequestInit | void;
-
-/**
  * Inspects HTTP requests flowing through the application via `fetch()`.
  * Provides access to observed incoming (response) and outgoing (request) messages.
- * Outgoing requests can be modified before transmission using interceptors.
+ * This is a passive observer — it never modifies the original request.
  */
 export type HTTPInspector = {
   /**
@@ -467,17 +495,6 @@ export type HTTPInspector = {
     messages(): HTTPOutgoingMessage[];
     /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
     subscribe(handler: HTTPOutgoingMessageHandler): () => void;
-    /**
-     * Registers an interceptor that runs synchronously before each outgoing
-     * HTTP request is sent. Interceptors execute in registration order.
-     *
-     * If an interceptor returns a value, it replaces the request configuration.
-     * If it returns void (undefined), the request passes through unchanged.
-     * If an interceptor throws, the original request is sent and the error is logged.
-     *
-     * Returns a cleanup function to remove the interceptor.
-     */
-    use(interceptor: HTTPOutgoingInterceptor): () => void;
   };
 };
 

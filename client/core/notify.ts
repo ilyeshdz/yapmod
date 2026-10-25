@@ -54,9 +54,19 @@ function sync(): void {
 class YapmodNotification {
   /**
    * The permission the host app asks for before it shows a notification.
+   *
+   * The setter is required: Tauri's notification plugin resolves its own
+   * startup permission check asynchronously and then writes the result to
+   * `window.Notification.permission`. If this class has replaced the plugin's
+   * `Notification` by then, a getter without a setter makes that write throw
+   * "Attempted to assign to readonly property" inside a promise chain.
    */
   static get permission(): PermissionState {
     return permission;
+  }
+
+  static set permission(state: PermissionState) {
+    permission = state;
   }
 
   /**
