@@ -263,6 +263,35 @@ export type YapmodPluginLogger = {
   error(...args: unknown[]): void;
 };
 
+/** Options for showing a system notification from a plugin. */
+export type PluginNotifyOptions = {
+  /** The notification title. */
+  title: string;
+  /** The notification body text. */
+  body?: string;
+  /**
+   * A unique tag to deduplicate notifications.
+   * If omitted, the title is used as the tag.
+   */
+  tag?: string;
+  /**
+   * Handler called when the user clicks the notification.
+   */
+  onClick?: () => void;
+};
+
+/**
+ * Shows system notifications from a plugin.
+ * Notifications appear in the OS notification center.
+ */
+export type YapmodPluginNotifyApi = {
+  /**
+   * Shows a system notification.
+   * Returns a handle that can be used to close the notification programmatically.
+   */
+  show(options: PluginNotifyOptions): { close(): void };
+};
+
 /** Per-plugin key/value storage. Keys are namespaced by the plugin id. */
 export type YapmodPluginStorageApi = {
   /** Returns the stored value, or `fallback` when the key has no value. */
@@ -321,6 +350,11 @@ export type YapmodPluginApi = {
    * that requires user interaction.
    */
   readonly modal: YapmodModalApi;
+  /**
+   * Shows system notifications that appear in the OS notification center.
+   * Useful for alerting users about events even when the app is in the background.
+   */
+  readonly notify: YapmodPluginNotifyApi;
 };
 
 export type YapmodPluginModule = {

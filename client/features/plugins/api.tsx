@@ -490,6 +490,26 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           closeAll: () => {},
           get active() { return []; },
         }),
+        notify: Object.freeze({
+          show(options: { title: string; body?: string; tag?: string; onClick?: () => void }): { close(): void } {
+            const Notification = (window as any).Notification as {
+              new (title: string, opts?: { body?: string; tag?: string }): { close(): void; onclick: (() => void) | null };
+            } | undefined;
+            if (!Notification) {
+              console.warn(`[plugin:${manifest.id}] Notification API is not available.`);
+              return { close: () => {} };
+            }
+            const tag = `plugin-${manifest.id}-${options.tag ?? options.title}`;
+            const notification = new Notification(options.title, {
+              body: options.body,
+              tag,
+            });
+            if (options.onClick) {
+              notification.onclick = options.onClick;
+            }
+            return { close: () => notification.close() };
+          },
+        }),
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
