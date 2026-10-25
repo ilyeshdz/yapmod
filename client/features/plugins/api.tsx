@@ -480,6 +480,16 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         banner(message: string): void {
           getYapmod().banner?.show({ id: `plugin-${manifest.id}`, message, dismissible: true });
         },
+        modal: getYapmod().modal ?? Object.freeze({
+          create: () => {
+            throw new Error("Modal API is not available.");
+          },
+          show: () => {
+            throw new Error("Modal API is not available.");
+          },
+          closeAll: () => {},
+          get active() { return []; },
+        }),
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.

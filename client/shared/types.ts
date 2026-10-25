@@ -315,6 +315,12 @@ export type YapmodPluginApi = {
    */
   onCleanup(cleanup: PluginCleanup): void;
   banner(message: string): void;
+  /**
+   * Opens modal dialogs in the Yapper window.
+   * Plugins can create consent dialogs, settings forms, or any other UI
+   * that requires user interaction.
+   */
+  readonly modal: YapmodModalApi;
 };
 
 export type YapmodPluginModule = {
