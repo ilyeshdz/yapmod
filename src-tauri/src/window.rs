@@ -21,9 +21,7 @@ pub fn show_main(app: &AppHandle) {
 #[tauri::command]
 pub fn minimize_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        if let Err(e) = window.minimize() {
-            eprintln!("failed to minimize window: {e}");
-        }
+        let _ = window.minimize();
     }
 }
 
@@ -31,16 +29,11 @@ pub fn minimize_main_window(app: AppHandle) {
 #[tauri::command]
 pub fn toggle_main_window_maximize(app: AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        let is_maximized = window.is_maximized().unwrap_or(false);
-        if is_maximized {
-            if let Err(e) = window.unmaximize() {
-                eprintln!("failed to unmaximize window: {e}");
-            }
+        let _ = if window.is_maximized().unwrap_or(false) {
+            window.unmaximize()
         } else {
-            if let Err(e) = window.maximize() {
-                eprintln!("failed to maximize window: {e}");
-            }
-        }
+            window.maximize()
+        };
     }
 }
 
@@ -48,9 +41,7 @@ pub fn toggle_main_window_maximize(app: AppHandle) {
 #[tauri::command]
 pub fn close_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        if let Err(e) = window.close() {
-            eprintln!("failed to close window: {e}");
-        }
+        let _ = window.close();
     }
 }
 
