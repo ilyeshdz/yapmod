@@ -14,6 +14,7 @@ import { installDesktopBridge } from "./core/desktop";
 import { installNotificationApi } from "./core/notify";
 import { installExternalLinks } from "./core/links";
 import { installWebSocketInspector } from "./core/websocket";
+import { installHTTPInspector } from "./core/http";
 import { getChangelog } from "./features/settings/release";
 import { getScope, getYapmod } from "./core/scope";
 
@@ -28,12 +29,18 @@ yapmod.clientVersion = payload.clientVersion;
 yapmod.release = payload.release;
 yapmod.changelog = getChangelog;
 
-// Install the WebSocket inspector first, before any other code creates
-// WebSocket connections, so it can capture all traffic from the beginning.
+// Install the WebSocket and HTTP inspectors first, before any other code
+// creates connections or makes requests, so they can capture all traffic.
 try {
   installWebSocketInspector();
 } catch (error) {
   console.error("[yapmod] failed to install WebSocket inspector", error);
+}
+
+try {
+  installHTTPInspector();
+} catch (error) {
+  console.error("[yapmod] failed to install HTTP inspector", error);
 }
 
 try {

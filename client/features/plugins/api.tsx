@@ -421,6 +421,17 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
             use: () => () => {},
           }),
         }),
+        http: getYapmod().http ?? Object.freeze({
+          exchanges: Object.freeze({
+            messages: () => [],
+            subscribe: () => () => {},
+          }),
+          outgoing: Object.freeze({
+            messages: () => [],
+            subscribe: () => () => {},
+            use: () => () => {},
+          }),
+        }),
       banner(message: string): void {
         getYapmod().banner?.show({ id: `plugin-${manifest.id}`, message, dismissible: true });
       },

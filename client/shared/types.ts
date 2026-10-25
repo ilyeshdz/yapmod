@@ -265,6 +265,7 @@ export type YapmodPluginApi = {
     add(css: string): PluginCleanup;
   };
   readonly webSocket: WebSocketInspector;
+  readonly http: HTTPInspector;
   banner(message: string): void;
 };
 
@@ -367,6 +368,120 @@ export type WebSocketOutgoingInterceptor = (
 ) => string | ArrayBuffer | ArrayBufferView | Blob | void;
 
 /**
+ * A single observed HTTP exchange with request and response metadata.
+ *
+ * The `requestBody` and `responseBody` fields are immutable snapshots captured
+ * at the time of observation. For binary payloads (ArrayBuffer, ArrayBufferView),
+ * the data is copied so that mutating the original argument does not corrupt the
+ * inspector's history. For Blob payloads, the data is represented as a
+ * `BlobSnapshot` since Blobs cannot be read synchronously.
+ *
+ * Consumers should treat body fields as read-only.
+ */
+export type HTTPMessage = {
+  /** The request URL. */
+  url: string;
+  /** HTTP method (GET, POST, etc.). */
+  method: string;
+  /** Request headers as an ordered array of [name, value] pairs. */
+  requestHeaders: [string, string][];
+  /** Request body, captured as an immutable snapshot (undefined for no-body methods). */
+  requestBody?: string | ArrayBuffer | BlobSnapshot;
+  /** Response status code (e.g. 200, 404). */
+  status: number;
+  /** Response status text (e.g. "OK", "Not Found"). */
+  statusText: string;
+  /** Response headers as an ordered array of [name, value] pairs. */
+  responseHeaders: [string, string][];
+  /** Response body, captured as an immutable snapshot. */
+  responseBody?: string | ArrayBuffer | BlobSnapshot;
+  /** When the request was sent (epoch ms). */
+  timestamp: number;
+  /** Duration of the request in milliseconds. */
+  duration: number;
+};
+
+/**
+ * A single observed outgoing HTTP request (before response is available).
+ * Used by the outgoing channel so that subscribers fire immediately when
+ * the request is sent, without waiting for the response.
+ */
+export type HTTPOutgoingMessage = {
+  /** The request URL. */
+  url: string;
+  /** HTTP method (GET, POST, etc.). */
+  method: string;
+  /** Request headers as an ordered array of [name, value] pairs. */
+  requestHeaders: [string, string][];
+  /** Request body, captured as an immutable snapshot (undefined for no-body methods). */
+  requestBody?: string | ArrayBuffer | BlobSnapshot;
+  /** When the request was sent (epoch ms). */
+  timestamp: number;
+};
+
+/** Callback invoked when a new HTTP exchange is observed. */
+export type HTTPMessageHandler = (message: HTTPMessage) => void;
+
+/** Callback invoked when a new outgoing HTTP request is observed. */
+export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;
+
+/**
+ * Interceptor for outgoing HTTP requests.
+ * Receives the request metadata and may return a modified `RequestInit` object
+ * to replace the original request configuration.
+ *
+ * Interceptors run synchronously in registration order before the original
+ * `fetch()` call. Each interceptor receives the latest configuration produced
+ * by the previous interceptor.
+ *
+ * - Returning `undefined` (void) means no change — the current configuration is kept.
+ * - Returning a `RequestInit`-compatible object replaces the current configuration.
+ * - If an interceptor throws, all modifications from the entire interception
+ *   chain are discarded and the original request is sent unchanged.
+ *
+ * Message delivery is never suppressed by an interceptor.
+ */
+export type HTTPOutgoingInterceptor = (
+  message: HTTPOutgoingMessage,
+) => RequestInit | void;
+
+/**
+ * Inspects HTTP requests flowing through the application via `fetch()`.
+ * Provides access to observed incoming (response) and outgoing (request) messages.
+ * Outgoing requests can be modified before transmission using interceptors.
+ */
+export type HTTPInspector = {
+  /**
+   * Complete HTTP exchanges (request + response).
+   * This channel fires after the response is received.
+   */
+  exchanges: {
+    /** Returns a snapshot of all observed HTTP exchanges. */
+    messages(): HTTPMessage[];
+    /** Subscribes to HTTP exchanges; returns a cleanup function to unsubscribe. */
+    subscribe(handler: HTTPMessageHandler): () => void;
+  };
+  /** Outgoing HTTP requests (fires immediately when the request is sent). */
+  outgoing: {
+    /** Returns a snapshot of all observed outgoing requests. */
+    messages(): HTTPOutgoingMessage[];
+    /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
+    subscribe(handler: HTTPOutgoingMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs synchronously before each outgoing
+     * HTTP request is sent. Interceptors execute in registration order.
+     *
+     * If an interceptor returns a value, it replaces the request configuration.
+     * If it returns void (undefined), the request passes through unchanged.
+     * If an interceptor throws, the original request is sent and the error is logged.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: HTTPOutgoingInterceptor): () => void;
+  };
+};
+
+/**
  * Inspects WebSocket messages flowing through the application.
  * Provides access to observed incoming and outgoing messages.
  * Outgoing messages can be modified before transmission using interceptors.
@@ -416,6 +531,8 @@ export type YapmodGlobal = {
   theme?: YapmodThemeApi;
   /** Low-level WebSocket inspection layer for plugins. */
   webSocket?: WebSocketInspector;
+  /** Low-level HTTP inspection layer for plugins. */
+  http?: HTTPInspector;
 };
 
 export type YapmodScope = typeof globalThis & {
