@@ -197,21 +197,9 @@ export function installHTTPInspector(): void {
     const method = request.method;
     const requestHeaders = extractHeaders(request.headers);
 
-    // Clone the request body for observation before it's consumed.
-    const requestClone = request.clone();
-    let requestBody: string | ArrayBuffer | BlobSnapshot | undefined;
-    try {
-      const bodyBytes = await requestClone.arrayBuffer();
-      if (bodyBytes.byteLength > 0) {
-        // Copy to prevent mutation.
-        const dest = new ArrayBuffer(bodyBytes.byteLength);
-        new Uint8Array(dest).set(new Uint8Array(bodyBytes));
-        requestBody = dest;
-      }
-    } catch {
-      // Body may already be consumed or unavailable.
-      requestBody = undefined;
-    }
+    // Normalize the request body for observation.
+    // Use the existing helper for consistency with response body handling.
+    const requestBody = normalizeBodyData(request.body);
 
     // Build the outgoing message for immediate notification.
     const outgoingMsg: HTTPOutgoingMessage = {
@@ -247,20 +235,27 @@ export function installHTTPInspector(): void {
       }
     }
 
-    let fetchInput: RequestInfo | URL = input;
-    let fetchInit: RequestInit | undefined = init;
+    // Use the resolved URL string as the fetch input, since we've already
+    // extracted all information from the original Request object.
+    let fetchInput: string = url;
+    let fetchInit: RequestInit | undefined;
 
     if (!chainFailed && modifiedInit !== undefined) {
-      // Apply the modified init by creating a new Request.
-      // Merge the modified init with the original request's properties.
-      const mergedInit: RequestInit = {
+      // Apply the modified init by merging with the original request's properties.
+      fetchInit = {
         ...modifiedInit,
         method: modifiedInit.method ?? method,
         headers: modifiedInit.headers ?? request.headers,
         body: modifiedInit.body,
       };
-      fetchInput = url;
-      fetchInit = mergedInit;
+    } else if (input instanceof Request) {
+      // If the original input was a Request object, we need to reconstruct
+      // the init from the resolved request so the body is not lost.
+      fetchInit = {
+        method,
+        headers: request.headers,
+        body: request.body,
+      };
     }
 
     // Perform the actual fetch.
