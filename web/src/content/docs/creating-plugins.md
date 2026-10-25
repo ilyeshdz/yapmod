@@ -178,8 +178,26 @@ const removeInterceptor = api.webSocket.outgoing.use((message) => {
 });
 ```
 
-HTTP is read-only. Bodies are immutable snapshots; binary payloads are copied,
-and `Blob` bodies appear as `{ __blob: true, type, size }`.
+HTTP responses can be intercepted and modified before they reach the caller.
+Return a new `Response` object to replace the original, or `undefined` to
+leave it unchanged:
+
+```js
+const removeInterceptor = api.http.responses.use((exchange) => {
+  if (exchange.url.includes("/rest/v1/messages") && exchange.status === 200) {
+    const modified = JSON.parse(exchange.responseBody);
+    modified.push({ id: "ghost-1", content: "deleted message" });
+    return new Response(JSON.stringify(modified), {
+      status: exchange.status,
+      headers: Object.fromEntries(exchange.responseHeaders),
+    });
+  }
+  return undefined; // keep the original response
+});
+```
+
+Bodies are immutable snapshots; binary payloads are copied, and `Blob` bodies
+appear as `{ __blob: true, type, size }`.
 
 > [!WARNING]
 > JavaScript plugins are trusted page code, not sandboxed extensions. They run

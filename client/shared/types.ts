@@ -456,6 +456,24 @@ export type WebSocketOutgoingInterceptor = (
 ) => string | ArrayBuffer | ArrayBufferView | Blob | void;
 
 /**
+ * Interceptor for HTTP responses.
+ * Receives the complete exchange (request + response) and may return a
+ * modified `Response` object to replace the original response.
+ *
+ * Interceptors run asynchronously in registration order after the response
+ * is received but before it is delivered to the caller.
+ *
+ * - Returning `undefined` (void) means no change — the original response is kept.
+ * - Returning a `Response` object replaces the original response.
+ * - If an interceptor throws, the original response is delivered and the error is logged.
+ *
+ * Response delivery is never suppressed by an interceptor.
+ */
+export type HTTPResponseInterceptor = (
+  exchange: HTTPMessage,
+) => Response | void;
+
+/**
  * A single observed HTTP exchange with request and response metadata.
  *
  * The `requestBody` and `responseBody` fields are immutable snapshots captured
@@ -516,7 +534,7 @@ export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;
 /**
  * Inspects HTTP requests flowing through the application via `fetch()`.
  * Provides access to observed incoming (response) and outgoing (request) messages.
- * This is a passive observer — it never modifies the original request.
+ * Responses can be modified before delivery using interceptors.
  */
 export type HTTPInspector = {
   /**
@@ -535,6 +553,24 @@ export type HTTPInspector = {
     messages(): HTTPOutgoingMessage[];
     /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
     subscribe(handler: HTTPOutgoingMessageHandler): () => void;
+  };
+  /**
+   * HTTP responses that can be intercepted and modified before delivery.
+   * Interceptors run asynchronously after the response is received but
+   * before it is returned to the caller.
+   */
+  responses: {
+    /**
+     * Registers an interceptor that runs after each HTTP response is received.
+     * Interceptors execute in registration order.
+     *
+     * If an interceptor returns a `Response`, it replaces the original response.
+     * If it returns void (undefined), the response passes through unchanged.
+     * If an interceptor throws, the original response is delivered and the error is logged.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: HTTPResponseInterceptor): () => void;
   };
 };
 

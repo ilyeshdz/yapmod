@@ -4,6 +4,7 @@ import type {
   HTTPInspector,
   HTTPMessage,
   HTTPMessageHandler,
+  HTTPResponseInterceptor,
   HTTPOutgoingMessage,
   HTTPOutgoingMessageHandler,
 } from "../shared/types";
@@ -15,6 +16,7 @@ const exchanges: HTTPMessage[] = [];
 const outgoingMessages: HTTPOutgoingMessage[] = [];
 const exchangeHandlers: HTTPMessageHandler[] = [];
 const outgoingHandlers: HTTPOutgoingMessageHandler[] = [];
+const responseInterceptors: HTTPResponseInterceptor[] = [];
 
 // Marker property on the global fetch to detect re-installation.
 const INSTALLED_MARKER = "__yapmod_http_inspector_installed";
@@ -274,7 +276,27 @@ export function installHTTPInspector(): void {
 
     addMessage(exchanges, exchangeHandlers, exchangeMsg);
 
-    return response;
+    // Execute response interceptors in registration order.
+    // If any interceptor returns a Response, it replaces the current response.
+    // If an interceptor throws, the original response is delivered.
+    let interceptedResponse: Response = response;
+    const snapshot = responseInterceptors.slice();
+    for (const interceptor of snapshot) {
+      try {
+        const result = await interceptor(exchangeMsg);
+        if (result instanceof Response) {
+          interceptedResponse = result;
+        }
+      } catch (error) {
+        console.error(
+          "[yapmod] HTTP response interceptor threw an error, delivering original response",
+          error,
+        );
+        break;
+      }
+    }
+
+    return interceptedResponse;
   };
 
   globalThis.fetch = WrappedFetch;
@@ -324,6 +346,24 @@ export function installHTTPInspector(): void {
           const index = outgoingHandlers.indexOf(handler);
           if (index !== -1) {
             outgoingHandlers.splice(index, 1);
+          }
+        };
+      },
+    },
+    responses: {
+      /**
+       * Registers a response interceptor; returns a cleanup function.
+       * The cleanup function is safe to call multiple times (idempotent).
+       */
+      use(interceptor: HTTPResponseInterceptor): () => void {
+        responseInterceptors.push(interceptor);
+        let removed = false;
+        return () => {
+          if (removed) return;
+          removed = true;
+          const index = responseInterceptors.indexOf(interceptor);
+          if (index !== -1) {
+            responseInterceptors.splice(index, 1);
           }
         };
       },

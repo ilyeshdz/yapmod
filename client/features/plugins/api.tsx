@@ -464,6 +464,9 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
             subscribe: () => () => {},
             use: () => () => {},
           }),
+          responses: Object.freeze({
+            use: () => () => {},
+          }),
         }),
         log: Object.freeze({
           debug: (...args: unknown[]) => console.debug(logPrefix, ...args),
