@@ -1,0 +1,45 @@
+---
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+const postUrl = `${base}/blog/welcome`;
+---
+
+<a href={postUrl} class="site-banner">
+  <span class="banner-text">🎉 Introducing yapmod — Read the story behind the project</span>
+  <span class="banner-arrow">→</span>
+</a>
+
+<style>
+  .site-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 5px 20px;
+    background: var(--g);
+    color: var(--on);
+    text-decoration: none;
+    font: 600 15px/1.4 Figtree, sans-serif;
+    text-align: center;
+    transition: filter 0.15s ease;
+  }
+
+  .site-banner:hover {
+    filter: brightness(1.07);
+  }
+
+  .banner-arrow {
+    font-size: 18px;
+    transition: transform 0.15s ease;
+  }
+
+  .site-banner:hover .banner-arrow {
+    transform: translateX(4px);
+  }
+
+  @media (max-width: 560px) {
+    .site-banner {
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+  }
+</style>

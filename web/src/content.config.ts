@@ -20,4 +20,22 @@ const docs = defineCollection({
   }),
 });
 
-export const collections = { docs };
+/**
+ * Blog posts live in `src/content/blog` as plain Markdown.
+ *
+ * - `title`       the post title
+ * - `description` a short summary shown on the index page
+ * - `date`        the publication date (YYYY-MM-DD)
+ * - `author`      the author name
+ */
+const blog = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/content/blog" }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    date: z.string(),
+    author: z.string().optional(),
+  }),
+});
+
+export const collections = { docs, blog };

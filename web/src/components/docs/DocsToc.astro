@@ -27,8 +27,7 @@ const items = headings.filter((heading) => heading.depth === 2 || heading.depth 
     position: sticky;
     top: 69px;
     align-self: start;
-    max-height: calc(100vh - 69px);
-    overflow-y: auto;
+    overflow-y: visible;
     padding: 24px 22px 48px 4px;
     font-size: 14px;
   }
@@ -53,7 +52,7 @@ const items = headings.filter((heading) => heading.depth === 2 || heading.depth 
 
   a {
     display: block;
-    padding: 4px 0 4px 12px;
+    padding: 2px 0 2px 12px;
     color: var(--m);
     text-decoration: none;
   }
