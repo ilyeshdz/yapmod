@@ -255,6 +255,9 @@ export function installHTTPInspector(): void {
           "[yapmod] HTTP response interceptor threw an error, delivering original response",
           error,
         );
+        // Discard earlier modifications as well, matching the documented
+        // all-or-nothing interceptor contract.
+        interceptedResponse = response;
         break;
       }
     }

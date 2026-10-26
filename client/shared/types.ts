@@ -471,7 +471,7 @@ export type WebSocketOutgoingInterceptor = (
  */
 export type HTTPResponseInterceptor = (
   exchange: HTTPMessage,
-) => Response | void;
+) => Response | void | Promise<Response | void>;
 
 /**
  * A single observed HTTP exchange with request and response metadata.
