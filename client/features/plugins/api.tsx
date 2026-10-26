@@ -446,6 +446,7 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         webSocket: getYapmod().webSocket ?? Object.freeze({
           incoming: Object.freeze({
             subscribe: () => () => {},
+            use: () => () => {},
           }),
           outgoing: Object.freeze({
             subscribe: () => () => {},

@@ -1,6 +1,7 @@
 import { getYapmod } from "./scope";
 import type {
   BlobSnapshot,
+  WebSocketIncomingInterceptor,
   WebSocketInspector,
   WebSocketMessage,
   WebSocketMessageHandler,
@@ -9,8 +10,13 @@ import type {
 
 // Module-level state — shared across all wrapped WebSocket instances.
 const incomingHandlers: WebSocketMessageHandler[] = [];
+const incomingInterceptors: WebSocketIncomingInterceptor[] = [];
 const outgoingHandlers: WebSocketMessageHandler[] = [];
 const outgoingInterceptors: WebSocketOutgoingInterceptor[] = [];
+
+// The delivered (possibly modified) event for a raw MessageEvent. WeakMap
+// entries disappear with the event, so nothing is retained after dispatch.
+const deliveredEvents = new WeakMap<Event, MessageEvent>();
 
 // Marker property on the global WebSocket constructor to detect re-installation.
 const INSTALLED_MARKER = "__yapmod_websocket_inspector_installed";
@@ -97,6 +103,77 @@ function normalizeMessageData(data: unknown): string | ArrayBuffer | BlobSnapsho
   }
   // Fallback — should not occur for valid WebSocket messages.
   return String(data);
+}
+
+/**
+ * Runs incoming interceptors for a message event and notifies subscribers of
+ * the final payload. The event is recorded at most once; later observers get
+ * the already-transformed event.
+ */
+function observeIncomingEvent(event: Event, url: string): Event {
+  if (!(event instanceof MessageEvent)) {
+    return event;
+  }
+
+  const cached = deliveredEvents.get(event);
+  if (cached) {
+    return cached;
+  }
+  if ((event as any).__yapmod_recorded) {
+    return event;
+  }
+
+  const originalData = event.data;
+  let deliveredData = originalData;
+  let chainFailed = false;
+  const interceptors = incomingInterceptors.slice();
+
+  for (const interceptor of interceptors) {
+    try {
+      const result = interceptor({
+        url,
+        data: normalizeMessageData(deliveredData),
+        timestamp: Date.now(),
+      });
+      if (result !== undefined && result !== void 0) {
+        if (isValidSendPayload(result)) {
+          deliveredData = result;
+        } else {
+          console.error(
+            "[yapmod] WebSocket incoming interceptor returned an invalid payload type, delivering original payload",
+          );
+          chainFailed = true;
+          break;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "[yapmod] WebSocket incoming interceptor threw an error, delivering original payload",
+        error,
+      );
+      chainFailed = true;
+      break;
+    }
+  }
+
+  if (chainFailed) {
+    deliveredData = originalData;
+  }
+
+  const delivered = deliveredData === originalData
+    ? event
+    : new MessageEvent("message", {
+        data: deliveredData,
+        origin: event.origin,
+        lastEventId: event.lastEventId,
+        source: event.source,
+        ports: Array.from(event.ports),
+      });
+
+  deliveredEvents.set(event, delivered);
+  (event as any).__yapmod_recorded = true;
+  notifyMessage(incomingHandlers, url, normalizeMessageData(deliveredData));
+  return delivered;
 }
 
 /**
@@ -233,11 +310,9 @@ export function installWebSocketInspector(): void {
     // ---------------------------------------------------------------------
 
     // A single message dispatch fires both `onmessage` (if set) AND all
-    // registered "message" event listeners. To avoid duplicate records,
-    // we use a per-event flag (`__yapmod_recorded`) so the first observer
-    // records the message and subsequent observers skip it. This works
-    // regardless of dispatch order because MessageEvents are dispatched
-    // synchronously.
+    // registered "message" event listeners. `observeIncomingEvent` records the
+    // final payload once per event and caches the transformed event so every
+    // application listener receives the same result.
 
     // Listener identity, not its source text, determines DOM registration.
     // Only the capture flag affects whether two registrations are the same
@@ -270,12 +345,9 @@ export function installWebSocketInspector(): void {
           this: WebSocket,
           event: Event,
         ): void {
-          // Only record if no other observer has recorded this event yet.
-          if (event instanceof MessageEvent && !(event as any).__yapmod_recorded) {
-            const observed = normalizeMessageData(event.data);
-            notifyMessage(incomingHandlers, resolvedUrl, observed);
-            (event as any).__yapmod_recorded = true;
-          }
+          // Observe and transform the message exactly once, then deliver the
+          // same transformed event to every application listener.
+          const delivered = observeIncomingEvent(event, resolvedUrl);
 
           // A `once` listener is removed before its callback runs, matching
           // the DOM. Removing the mapping first also lets the callback
@@ -286,9 +358,9 @@ export function installWebSocketInspector(): void {
 
           // Forward to the original listener, preserving `this`.
           if (typeof listener === "function") {
-            listener.call(this, event);
+            listener.call(this, delivered);
           } else if (typeof listener.handleEvent === "function") {
-            listener.handleEvent.call(listener, event);
+            listener.handleEvent.call(listener, delivered);
           }
         };
 
@@ -368,25 +440,23 @@ export function installWebSocketInspector(): void {
     // This ensures we capture messages even if the app only uses onmessage.
     // We use a high-priority internal listener that cannot be removed by the app.
     const onMessageWrapper: EventListener = function (this: WebSocket, event: Event): void {
-      if (event instanceof MessageEvent && !(event as any).__yapmod_recorded) {
-        const observed = normalizeMessageData(event.data);
-        notifyMessage(incomingHandlers, resolvedUrl, observed);
-        (event as any).__yapmod_recorded = true;
-      }
+      const delivered = observeIncomingEvent(event, resolvedUrl);
 
       // The native `onmessage` event handler was replaced by the accessor
       // above, so forward the event to the handler the application assigned.
       const appHandler = onMessageStorage.value;
       if (appHandler) {
         try {
-          appHandler.call(this, event as MessageEvent);
+          appHandler.call(this, delivered as MessageEvent);
         } catch (error) {
           console.error("[yapmod] WebSocket onmessage handler threw an error", error);
         }
       }
     };
 
-    originalAddEventListener.call(socket, "message", onMessageWrapper, false);
+    // Capture phase ensures observation and interception happen before both
+    // capture and bubble application listeners.
+    originalAddEventListener.call(socket, "message", onMessageWrapper, true);
 
     // A closed socket cannot deliver more messages. Drop the bookkeeping so
     // long-lived references to a closed socket do not retain app listeners.
@@ -431,6 +501,22 @@ export function installWebSocketInspector(): void {
           const index = incomingHandlers.indexOf(handler);
           if (index !== -1) {
             incomingHandlers.splice(index, 1);
+          }
+        };
+      },
+      /**
+       * Registers an incoming message interceptor; returns a cleanup function.
+       * The cleanup function is safe to call multiple times (idempotent).
+       */
+      use(interceptor: WebSocketIncomingInterceptor): () => void {
+        incomingInterceptors.push(interceptor);
+        let removed = false;
+        return () => {
+          if (removed) return;
+          removed = true;
+          const index = incomingInterceptors.indexOf(interceptor);
+          if (index !== -1) {
+            incomingInterceptors.splice(index, 1);
           }
         };
       },

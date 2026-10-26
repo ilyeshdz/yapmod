@@ -456,6 +456,28 @@ export type WebSocketOutgoingInterceptor = (
 ) => string | ArrayBuffer | ArrayBufferView | Blob | void;
 
 /**
+ * Interceptor for incoming WebSocket messages.
+ * Receives the message and may return replacement data to deliver to the
+ * application instead.
+ *
+ * Interceptors run synchronously in registration order as each message is
+ * received. Each interceptor receives the latest payload produced by the
+ * previous interceptor.
+ *
+ * - Returning `undefined` (void) means no change — the current payload is kept.
+ * - Returning a valid WebSocket payload (`string`, `ArrayBuffer`,
+ *   `ArrayBufferView`, or `Blob`) replaces the delivered payload.
+ * - If an interceptor throws or returns an invalid type, all modifications
+ *   from the chain are discarded and the original payload is delivered.
+ *
+ * Message delivery is never suppressed by an interceptor. Because message
+ * delivery is synchronous, returning a promise is not supported.
+ */
+export type WebSocketIncomingInterceptor = (
+  message: WebSocketMessage,
+) => string | ArrayBuffer | ArrayBufferView | Blob | void;
+
+/**
  * Interceptor for HTTP responses.
  * Receives the complete exchange (request + response) and may return a
  * modified `Response` object to replace the original response.
@@ -618,13 +640,21 @@ export type HTTPInspector = {
 /**
  * Inspects WebSocket messages flowing through the application.
  * Provides access to observed incoming and outgoing messages.
- * Outgoing messages can be modified before transmission using interceptors.
+ * Messages can be modified before delivery or transmission using interceptors.
  */
 export type WebSocketInspector = {
   /** Messages received by the application from a WebSocket server. */
   incoming: {
     /** Subscribes to incoming messages; returns a cleanup function to unsubscribe. */
     subscribe(handler: WebSocketMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs synchronously before each incoming
+     * message is delivered to the application. Interceptors execute in
+     * registration order and may modify the delivered payload.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: WebSocketIncomingInterceptor): () => void;
   };
   /** Messages sent by the application through a WebSocket connection. */
   outgoing: {

@@ -168,6 +168,19 @@ const stopOutgoingWs = api.webSocket.outgoing.subscribe((message) => {
 });
 ```
 
+Incoming WebSocket messages can be modified before they reach application
+listeners. Return the replacement payload, or `undefined` to leave it
+unchanged:
+
+```js
+const removeIncomingInterceptor = api.webSocket.incoming.use((message) => {
+  if (typeof message.data === "string" && message.data.includes("secret")) {
+    return "[redacted]"; // replace the delivered payload
+  }
+  return undefined; // keep it unchanged
+});
+```
+
 Outgoing WebSocket messages can be modified with an interceptor. Return the
 replacement payload, or `undefined` to leave it unchanged:
 
