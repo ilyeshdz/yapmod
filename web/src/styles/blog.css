@@ -1,0 +1,176 @@
+/* ---------------------------------------------------------------------------
+   Blog section styles
+   --------------------------------------------------------------------------- */
+
+.blog-section h1 {
+  font-size: clamp(38px, 6vw, 64px);
+}
+
+.blog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.blog-card {
+  padding: 24px 28px;
+  border: 1.5px solid var(--line);
+  border-radius: 18px;
+  background: var(--s);
+  transition: border-color 0.2s ease;
+}
+
+.blog-card:hover {
+  border-color: var(--accent);
+}
+
+.blog-card a {
+  text-decoration: none;
+}
+
+.blog-card time {
+  font-size: 14px;
+  color: var(--m);
+}
+
+.blog-card h2 {
+  margin: 6px 0 8px;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.blog-card p {
+  margin: 0 0 8px;
+  color: var(--m);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.blog-card .author {
+  font-size: 14px;
+  color: var(--m);
+}
+
+.empty-blog {
+  color: var(--m);
+  margin-top: 32px;
+}
+
+/* ---------------------------------------------------------------------------
+   Single blog post
+   --------------------------------------------------------------------------- */
+
+.blog-post {
+  padding-top: 24px;
+  padding-bottom: 60px;
+}
+
+.blog-post header {
+  margin-bottom: 40px;
+}
+
+.blog-post .back-link {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--accent-ink);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.blog-post .back-link:hover {
+  text-decoration: underline;
+}
+
+.blog-post header time {
+  display: block;
+  font-size: 14px;
+  color: var(--m);
+  margin-bottom: 4px;
+}
+
+.blog-post header .author {
+  display: block;
+  font-size: 14px;
+  color: var(--m);
+  margin-bottom: 12px;
+}
+
+.blog-post header h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.blog-post .prose {
+  max-width: 720px;
+}
+
+.blog-post .prose h2 {
+  font-size: 24px;
+  margin-top: 40px;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.blog-post .prose h3 {
+  font-size: 20px;
+  margin-top: 32px;
+  margin-bottom: 12px;
+}
+
+.blog-post .prose p {
+  margin-bottom: 16px;
+  line-height: 1.7;
+}
+
+.blog-post .prose ul,
+.blog-post .prose ol {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.blog-post .prose li {
+  margin-bottom: 8px;
+}
+
+.blog-post .prose blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+  margin: 24px 0;
+  color: var(--m);
+}
+
+.blog-post .prose pre {
+  background: var(--s);
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.blog-post .prose code {
+  font-size: 14px;
+  background: var(--s);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.blog-post .prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.blog-post .prose img {
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  margin: 24px 0;
+}
+
+.blog-post .prose a {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
