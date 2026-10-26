@@ -397,16 +397,21 @@ export function installHTTPInspector(): void {
     // Read response headers.
     const responseHeaders = extractHeaders(response.headers);
 
-    // Read response body asynchronously from a clone.
-    // Wrap in try-catch to handle cases where the response cannot be cloned
-    // or the body is already consumed.
+    // Only read a body when somebody can consume it, and never buffer an
+    // event stream: doing so would stop the caller from receiving events
+    // until the stream closes.
+    const contentType = response.headers.get("content-type") ?? "";
+    const needsBody = exchangeHandlers.length > 0 || responseInterceptors.length > 0;
+    const isEventStream = contentType.toLowerCase().includes("text/event-stream");
     let responseBody: string | ArrayBuffer | BlobSnapshot | undefined;
-    try {
-      const responseClone = response.clone();
-      responseBody = await readResponseBody(responseClone);
-    } catch {
-      // If we fail to clone or read the body, record the exchange without it.
-      responseBody = undefined;
+    if (needsBody && !isEventStream && response.body !== null) {
+      try {
+        const responseClone = response.clone();
+        responseBody = await readResponseBody(responseClone);
+      } catch {
+        // If we fail to clone or read the body, report the exchange without it.
+        responseBody = undefined;
+      }
     }
 
     const duration = Date.now() - startTime;

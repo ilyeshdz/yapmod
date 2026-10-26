@@ -228,7 +228,9 @@ const removeInterceptor = api.http.responses.use((exchange) => {
 ```
 
 Bodies are immutable snapshots; binary payloads are copied, and `Blob` bodies
-appear as `{ __blob: true, type, size }`.
+appear as `{ __blob: true, type, size }`. Streaming responses such as
+`text/event-stream` are delivered immediately and report `responseBody` as
+`undefined` so the inspector never blocks the stream.
 
 > [!WARNING]
 > JavaScript plugins are trusted page code, not sandboxed extensions. They run
