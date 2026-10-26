@@ -525,6 +525,43 @@ export type HTTPOutgoingMessage = {
   timestamp: number;
 };
 
+/**
+ * A set of overrides returned by an outgoing HTTP interceptor.
+ *
+ * Omitted fields keep the current request value. `headers` replaces the full
+ * header set; use the interceptor's `requestHeaders` to build a modified set.
+ * `body` replaces the request body; pass `null` to remove it.
+ */
+export type HTTPOutgoingRequestPatch = {
+  /** Replacement URL. A `URL` is converted to a string. */
+  url?: string | URL;
+  /** Replacement HTTP method. */
+  method?: string;
+  /** Replacement headers. */
+  headers?: HeadersInit;
+  /** Replacement body. Pass `null` to send no body. */
+  body?: BodyInit | null;
+};
+
+/**
+ * Interceptor for outgoing HTTP requests.
+ * Receives the request metadata and may return overrides to change the URL,
+ * method, headers, or body before the request is transmitted.
+ *
+ * Interceptors run asynchronously in registration order. Each interceptor
+ * receives the request as modified by the previous one.
+ *
+ * - Returning `undefined` (void) means no change.
+ * - Returning a patch applies those fields to the current request.
+ * - If an interceptor throws or returns an invalid patch, every modification
+ *   in the chain is discarded and the original request is sent unchanged.
+ *
+ * Request delivery is never suppressed by an interceptor.
+ */
+export type HTTPOutgoingInterceptor = (
+  request: HTTPOutgoingMessage,
+) => HTTPOutgoingRequestPatch | void | Promise<HTTPOutgoingRequestPatch | void>;
+
 /** Callback invoked when a new HTTP exchange is observed. */
 export type HTTPMessageHandler = (message: HTTPMessage) => void;
 
@@ -533,8 +570,8 @@ export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;
 
 /**
  * Inspects HTTP requests flowing through the application via `fetch()`.
- * Provides access to observed incoming (response) and outgoing (request) messages.
- * Responses can be modified before delivery using interceptors.
+ * Provides access to observed incoming (response) and outgoing (request)
+ * messages. Requests and responses can be modified using interceptors.
  */
 export type HTTPInspector = {
   /**
@@ -549,6 +586,14 @@ export type HTTPInspector = {
   outgoing: {
     /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
     subscribe(handler: HTTPOutgoingMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs before each HTTP request is sent.
+     * Interceptors execute in registration order and may asynchronously modify
+     * the URL, method, headers, or body.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: HTTPOutgoingInterceptor): () => void;
   };
   /**
    * HTTP responses that can be intercepted and modified before delivery.

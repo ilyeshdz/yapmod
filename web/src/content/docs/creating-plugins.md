@@ -145,9 +145,10 @@ change created by the plugin must be released.
 
 ## Inspectors
 
-The inspectors are observers. They do not keep request or message history:
-subscribers only receive events as they happen. If you need a log, retain the
-data in your plugin and release it when the plugin is disabled.
+The inspectors observe traffic as it happens. They do not keep request or
+message history, so subscribers only receive events as they occur. If you need
+a log, retain the data in your plugin and release it when the plugin is
+disabled.
 
 ```js
 // HTTP: complete request/response pairs, or requests as they are sent.
@@ -179,9 +180,25 @@ const removeInterceptor = api.webSocket.outgoing.use((message) => {
 });
 ```
 
+Outgoing HTTP requests can be modified before transmission. Return an object
+with any `url`, `method`, `headers`, or `body` overrides, or `undefined` to
+leave the request unchanged. `headers` replaces the full header set, and
+`body: null` removes the body:
+
+```js
+const removeInterceptor = api.http.outgoing.use((request) => {
+  if (request.url.includes("/rest/v1/messages")) {
+    return {
+      headers: [...request.requestHeaders, ["x-plugin", "enabled"]],
+    };
+  }
+  return undefined;
+});
+```
+
 HTTP responses can be intercepted and modified before they reach the caller.
 Return a new `Response` object to replace the original, or `undefined` to
-leave it unchanged:
+leave it unchanged. Interceptors may be async:
 
 ```js
 const removeInterceptor = api.http.responses.use((exchange) => {

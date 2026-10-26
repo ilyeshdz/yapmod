@@ -5,6 +5,7 @@ import type {
   HTTPMessage,
   HTTPMessageHandler,
   HTTPResponseInterceptor,
+  HTTPOutgoingInterceptor,
   HTTPOutgoingMessage,
   HTTPOutgoingMessageHandler,
 } from "../shared/types";
@@ -12,6 +13,7 @@ import type {
 // Module-level state — shared across all wrapped fetch calls.
 const exchangeHandlers: HTTPMessageHandler[] = [];
 const outgoingHandlers: HTTPOutgoingMessageHandler[] = [];
+const outgoingInterceptors: HTTPOutgoingInterceptor[] = [];
 const responseInterceptors: HTTPResponseInterceptor[] = [];
 
 // Marker property on the global fetch to detect re-installation.
@@ -86,6 +88,99 @@ async function readRequestBody(request: Request): Promise<string | ArrayBuffer |
 }
 
 /**
+ * Normalizes a body supplied by an interceptor into an observer snapshot.
+ */
+function normalizeBodyData(body: unknown): string | ArrayBuffer | BlobSnapshot | undefined {
+  if (body === null || body === undefined) {
+    return undefined;
+  }
+  if (typeof body === "string") {
+    return body;
+  }
+  if (body instanceof ArrayBuffer) {
+    const dest = new ArrayBuffer(body.byteLength);
+    new Uint8Array(dest).set(new Uint8Array(body));
+    return dest;
+  }
+  if (ArrayBuffer.isView(body)) {
+    const dest = new ArrayBuffer(body.byteLength);
+    new Uint8Array(dest).set(new Uint8Array(body.buffer, body.byteOffset, body.byteLength));
+    return dest;
+  }
+  if (body instanceof Blob) {
+    return { __blob: true, type: body.type, size: body.size };
+  }
+  if (body instanceof FormData) {
+    const pairs: string[] = [];
+    body.forEach((value, key) => {
+      if (value instanceof File) {
+        pairs.push(`${key}: [File: ${value.name}, ${value.type}, ${value.size}B]`);
+      } else {
+        pairs.push(`${key}: ${value}`);
+      }
+    });
+    return pairs.join("\n");
+  }
+  if (body instanceof URLSearchParams) {
+    return body.toString();
+  }
+  if (body instanceof ReadableStream) {
+    return { __blob: true, type: "", size: 0 };
+  }
+  return String(body);
+}
+
+/**
+ * Copies the fetch options of a request so a modified request can preserve
+ * credentials, caching, redirects, signals, and similar settings.
+ */
+function requestInitFrom(request: Request): RequestInit {
+  return {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+    mode: request.mode,
+    credentials: request.credentials,
+    cache: request.cache,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    referrerPolicy: request.referrerPolicy,
+    integrity: request.integrity,
+    keepalive: request.keepalive,
+    signal: request.signal,
+  };
+}
+
+/**
+ * Builds the request that will actually be sent after interceptor patches.
+ */
+function buildInterceptedRequest(
+  base: Request,
+  url: string,
+  method: string,
+  headers: [string, string][],
+  body: BodyInit | null | undefined,
+): Request {
+  // The Request constructor rejects bodies for GET and HEAD.
+  const normalizedMethod = method.toUpperCase();
+  const finalBody = normalizedMethod === "GET" || normalizedMethod === "HEAD"
+    ? null
+    : (body === undefined ? base.body : body);
+  const init: RequestInit & { duplex?: "half" } = {
+    ...requestInitFrom(base),
+    method,
+    headers,
+    body: finalBody,
+  };
+  // Node's fetch requires an explicit duplex mode for streamed bodies. The
+  // field is ignored by browsers but keeps the wrapper portable.
+  if (finalBody instanceof ReadableStream) {
+    init.duplex = "half";
+  }
+  return new Request(url, init);
+}
+
+/**
  * Reads the response body asynchronously and normalizes it.
  */
 async function readResponseBody(response: Response): Promise<string | ArrayBuffer | BlobSnapshot | undefined> {
@@ -128,7 +223,7 @@ async function readResponseBody(response: Response): Promise<string | ArrayBuffe
  * - Notifies subscribers of every outgoing request when it is sent.
  * - Notifies subscribers of every complete exchange when the response arrives.
  * - Keeps no history — subscribers that need past data must retain it themselves.
- * - Never modifies the original request — it only observes passively.
+ * - Lets interceptors modify outgoing requests before transmission.
  *
  * Calling this function multiple times is safe — the inspector is installed
  * at most once.
@@ -154,16 +249,23 @@ export function installHTTPInspector(): void {
   const WrappedFetch: typeof fetch = async function (input, init): Promise<Response> {
     const startTime = Date.now();
 
-    // Observe the request by creating a clone for metadata extraction.
-    // We never modify the original request — just pass it through unchanged.
+    // Observe the request by creating a clone for metadata extraction. A
+    // second clone is kept as the base for building an intercepted request.
     let url: string, method: string, requestHeaders: [string, string][], requestBody: string | ArrayBuffer | BlobSnapshot | undefined;
+    let observed = false;
+    let sendBase: Request | undefined;
+    const interceptors = outgoingInterceptors.slice();
 
     try {
       const observeRequest = input instanceof Request ? input.clone() : new Request(input, init);
+      if (interceptors.length > 0) {
+        sendBase = observeRequest.clone();
+      }
       url = observeRequest.url;
       method = observeRequest.method;
       requestHeaders = extractHeaders(observeRequest.headers);
       requestBody = await readRequestBody(observeRequest);
+      observed = true;
     } catch {
       // If we can't observe (e.g., body already consumed), still record what we can.
       url = input instanceof Request ? input.url : String(input);
@@ -172,22 +274,107 @@ export function installHTTPInspector(): void {
       requestBody = undefined;
     }
 
-    // Build the outgoing message for immediate notification.
-    const outgoingMsg: HTTPOutgoingMessage = {
+    const originalMsg: HTTPOutgoingMessage = {
       url,
       method,
       requestHeaders,
       requestBody,
       timestamp: startTime,
     };
+    let outgoingMsg = originalMsg;
+    let interceptedBody: BodyInit | null | undefined;
+    let modified = false;
+    let interceptorFailed = false;
 
-    // Notify outgoing request subscribers.
+    if (observed && sendBase && interceptors.length > 0) {
+      for (const interceptor of interceptors) {
+        try {
+          const patch = await interceptor(outgoingMsg);
+          if (patch === undefined || patch === null) {
+            continue;
+          }
+          if (typeof patch !== "object" || Array.isArray(patch)) {
+            throw new Error("HTTP outgoing interceptor returned an invalid patch.");
+          }
+          if (patch.url !== undefined && typeof patch.url !== "string" && !(patch.url instanceof URL)) {
+            throw new Error("HTTP outgoing interceptor returned an invalid URL.");
+          }
+          if (patch.method !== undefined && typeof patch.method !== "string") {
+            throw new Error("HTTP outgoing interceptor returned an invalid method.");
+          }
+          const nextMethod = patch.method ?? outgoingMsg.method;
+          const nextBody = patch.body !== undefined ? patch.body : undefined;
+          outgoingMsg = {
+            url: patch.url !== undefined ? patch.url.toString() : outgoingMsg.url,
+            method: nextMethod,
+            requestHeaders: patch.headers !== undefined
+              ? extractHeaders(new Headers(patch.headers))
+              : outgoingMsg.requestHeaders,
+            requestBody: nextBody !== undefined
+              ? normalizeBodyData(nextBody)
+              : outgoingMsg.requestBody,
+            timestamp: startTime,
+          };
+          if (patch.body !== undefined) {
+            interceptedBody = patch.body;
+          }
+          modified = modified ||
+            patch.url !== undefined ||
+            patch.method !== undefined ||
+            patch.headers !== undefined ||
+            patch.body !== undefined;
+        } catch (error) {
+          console.error(
+            "[yapmod] HTTP outgoing interceptor threw an error, sending the original request",
+            error,
+          );
+          interceptorFailed = true;
+          break;
+        }
+      }
+    }
+
+    let fetchInput: RequestInfo | URL = input;
+    let fetchInit: RequestInit | undefined = init;
+
+    if (interceptorFailed) {
+      outgoingMsg = originalMsg;
+      modified = false;
+    } else if (modified && sendBase) {
+      try {
+        fetchInput = buildInterceptedRequest(
+          sendBase,
+          outgoingMsg.url,
+          outgoingMsg.method,
+          outgoingMsg.requestHeaders,
+          interceptedBody,
+        );
+        fetchInit = undefined;
+
+        // GET/HEAD requests cannot carry a body; reflect what was actually sent.
+        const finalMethod = outgoingMsg.method.toUpperCase();
+        if (finalMethod === "GET" || finalMethod === "HEAD") {
+          outgoingMsg = { ...outgoingMsg, requestBody: undefined };
+        }
+      } catch (error) {
+        console.error(
+          "[yapmod] HTTP outgoing interceptor produced an invalid request, sending the original request",
+          error,
+        );
+        outgoingMsg = originalMsg;
+        fetchInput = input;
+        fetchInit = init;
+        modified = false;
+      }
+    }
+
+    // Notify outgoing request subscribers of the request that is actually sent.
     notifyHandlers(outgoingHandlers, outgoingMsg);
 
-    // Perform the actual fetch with the original arguments, unchanged.
+    // Perform the actual fetch.
     let response: Response;
     try {
-      response = await OriginalFetch(input, init);
+      response = await OriginalFetch(fetchInput, fetchInit);
     } catch (error) {
       // Network error — still record the exchange with error status.
       const duration = Date.now() - startTime;
@@ -304,6 +491,22 @@ export function installHTTPInspector(): void {
           const index = outgoingHandlers.indexOf(handler);
           if (index !== -1) {
             outgoingHandlers.splice(index, 1);
+          }
+        };
+      },
+      /**
+       * Registers an outgoing request interceptor; returns a cleanup function.
+       * The cleanup function is safe to call multiple times (idempotent).
+       */
+      use(interceptor: HTTPOutgoingInterceptor): () => void {
+        outgoingInterceptors.push(interceptor);
+        let removed = false;
+        return () => {
+          if (removed) return;
+          removed = true;
+          const index = outgoingInterceptors.indexOf(interceptor);
+          if (index !== -1) {
+            outgoingInterceptors.splice(index, 1);
           }
         };
       },
