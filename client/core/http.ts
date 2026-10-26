@@ -379,10 +379,10 @@ export function installHTTPInspector(): void {
       // Network error — still record the exchange with error status.
       const duration = Date.now() - startTime;
       const exchangeMsg: HTTPMessage = {
-        url,
-        method,
-        requestHeaders,
-        requestBody,
+        url: outgoingMsg.url,
+        method: outgoingMsg.method,
+        requestHeaders: outgoingMsg.requestHeaders,
+        requestBody: outgoingMsg.requestBody,
         status: 0,
         statusText: "Network Error",
         responseHeaders: [],
@@ -417,10 +417,10 @@ export function installHTTPInspector(): void {
     const duration = Date.now() - startTime;
 
     const exchangeMsg: HTTPMessage = {
-      url,
-      method,
-      requestHeaders,
-      requestBody,
+      url: outgoingMsg.url,
+      method: outgoingMsg.method,
+      requestHeaders: outgoingMsg.requestHeaders,
+      requestBody: outgoingMsg.requestBody,
       status: response.status,
       statusText: response.statusText,
       responseHeaders,
