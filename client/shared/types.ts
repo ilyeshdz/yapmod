@@ -357,6 +357,7 @@ export type YapmodPluginApi = {
   readonly notify: YapmodPluginNotifyApi;
 };
 
+/** The default export of a `plugin.js` ES module. */
 export type YapmodPluginModule = {
   activate(api: YapmodPluginApi): PluginActivation;
 };

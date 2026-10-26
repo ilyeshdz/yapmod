@@ -525,11 +525,23 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           }
         }
       });
-      const module = new Function("api", "document", "window", entry.bundle.script)(api, document, window) as unknown;
-      if (!module || typeof module !== "object" || typeof (module as YapmodPluginModule).activate !== "function") {
-        throw new Error("plugin.js must return an object with an activate(api) function.");
+      // Load the package source as a real ES module. A Blob URL keeps the
+      // plugin's own file boundary without evaluating the source as a script
+      // body or exposing the host module scope.
+      const sourceUrl = URL.createObjectURL(
+        new Blob([entry.bundle.script], { type: "text/javascript" }),
+      );
+      let module: unknown;
+      try {
+        module = await import(/* @vite-ignore */ sourceUrl);
+      } finally {
+        URL.revokeObjectURL(sourceUrl);
       }
-      const cleanup = await (module as YapmodPluginModule).activate(api);
+      const plugin = (module as { default?: unknown }).default;
+      if (!plugin || typeof plugin !== "object" || typeof (plugin as YapmodPluginModule).activate !== "function") {
+        throw new Error("plugin.js must default-export an object with an activate(api) function.");
+      }
+      const cleanup = await (plugin as YapmodPluginModule).activate(api);
       if (typeof cleanup === "function") entry.cleanup.push(cleanup);
     }
   } catch (error) {
