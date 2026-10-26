@@ -187,16 +187,9 @@ async function readResponseBody(response: Response): Promise<string | ArrayBuffe
   try {
     const contentType = response.headers.get("content-type") ?? "";
 
-    // For JSON content, read as text.
-    if (contentType.includes("application/json")) {
-      const text = await response.text();
-      return text;
-    }
-
-    // For text-based content, read as text.
-    if (contentType.includes("text/") || contentType.includes("application/xml") || contentType.includes("application/html")) {
-      const text = await response.text();
-      return text;
+    // For text-based content, including structured JSON/XML suffixes, read as text.
+    if (isTextContentType(contentType)) {
+      return await response.text();
     }
 
     // For binary content, read as ArrayBuffer.
