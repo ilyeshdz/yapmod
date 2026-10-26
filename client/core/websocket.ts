@@ -111,22 +111,6 @@ function normalizeOptions(
 }
 
 /**
- * Creates a key for identifying a listener+options pair in the wrapped map.
- * Since the same listener function can be registered with different options,
- * we must track them separately.
- */
-function listenerKey(
-  listener: EventListenerOrEventListenerObject,
-  options?: boolean | AddEventListenerOptions,
-): string {
-  const norm = normalizeOptions(options);
-  const capture = norm?.capture ?? false;
-  const once = norm?.once ?? false;
-  const passive = norm?.passive ?? false;
-  return `${String(listener)}|${capture}|${once}|${passive}`;
-}
-
-/**
  * Replaces the global `WebSocket` constructor with a wrapper that observes
  * every connection's incoming and outgoing messages. The original WebSocket
  * instance is preserved and all calls are forwarded unchanged.
@@ -253,7 +237,13 @@ export function installWebSocketInspector(): void {
     // regardless of dispatch order because MessageEvents are dispatched
     // synchronously.
 
-    const wrappedListeners = new Map<string, EventListener>();
+    // Listener identity, not its source text, determines DOM registration.
+    // Only the capture flag affects whether two registrations are the same
+    // listener, so the inner map is keyed by capture.
+    const wrappedListeners = new Map<
+      EventListenerOrEventListenerObject,
+      Map<boolean, EventListener>
+    >();
 
     const originalAddEventListener = socket.addEventListener.bind(socket);
     const originalRemoveEventListener = socket.removeEventListener.bind(socket);
@@ -264,20 +254,15 @@ export function installWebSocketInspector(): void {
       options?: boolean | AddEventListenerOptions,
     ): void {
       if (type === "message") {
-        const key = listenerKey(listener, options);
-
-        // If the same listener+options pair is already registered, don't
-        // wrap it again — the native method is a no-op per the DOM spec.
-        if (wrappedListeners.has(key)) {
-          return originalAddEventListener(
-            type as keyof WebSocketEventMap,
-            listener,
-            options,
-          );
-        }
-
         const normOpts = normalizeOptions(options);
+        const capture = normOpts?.capture ?? false;
         const once = normOpts?.once ?? false;
+        const byCapture = wrappedListeners.get(listener);
+
+        // Registering the same listener for the same phase is a no-op.
+        if (byCapture?.has(capture)) {
+          return;
+        }
 
         const wrapped: EventListener = function (
           this: WebSocket,
@@ -290,20 +275,24 @@ export function installWebSocketInspector(): void {
             (event as any).__yapmod_recorded = true;
           }
 
+          // A `once` listener is removed before its callback runs, matching
+          // the DOM. Removing the mapping first also lets the callback
+          // re-register itself.
+          if (once) {
+            removeWrappedListener(listener, capture);
+          }
+
           // Forward to the original listener, preserving `this`.
           if (typeof listener === "function") {
             listener.call(this, event);
           } else if (typeof listener.handleEvent === "function") {
             listener.handleEvent.call(listener, event);
           }
-
-          // Clean up `once` listener mapping — the browser won't invoke it again.
-          if (once) {
-            wrappedListeners.delete(key);
-          }
         };
 
-        wrappedListeners.set(key, wrapped);
+        const listeners = byCapture ?? new Map<boolean, EventListener>();
+        listeners.set(capture, wrapped);
+        wrappedListeners.set(listener, listeners);
         return originalAddEventListener(type as keyof WebSocketEventMap, wrapped, options);
       }
 
@@ -314,23 +303,37 @@ export function installWebSocketInspector(): void {
       );
     };
 
+    function removeWrappedListener(
+      listener: EventListenerOrEventListenerObject,
+      capture: boolean,
+    ): EventListener | undefined {
+      const byCapture = wrappedListeners.get(listener);
+      const wrapped = byCapture?.get(capture);
+      if (!wrapped) return undefined;
+      byCapture!.delete(capture);
+      if (byCapture!.size === 0) {
+        wrappedListeners.delete(listener);
+      }
+      return wrapped;
+    }
+
     socket.removeEventListener = function (
       type: string,
       listener: EventListenerOrEventListenerObject,
       options?: boolean | EventListenerOptions,
     ): void {
       if (type === "message") {
-        const key = listenerKey(listener, options);
-        const wrapped = wrappedListeners.get(key);
+        const capture = normalizeOptions(options)?.capture ?? false;
+        const wrapped = removeWrappedListener(listener, capture);
 
         if (wrapped) {
-          wrappedListeners.delete(key);
           return originalRemoveEventListener(
             type as keyof WebSocketEventMap,
             wrapped,
             options,
           );
         }
+        return;
       }
 
       return originalRemoveEventListener(
@@ -382,6 +385,12 @@ export function installWebSocketInspector(): void {
     };
 
     originalAddEventListener.call(socket, "message", onMessageWrapper, false);
+
+    // A closed socket cannot deliver more messages. Drop the bookkeeping so
+    // long-lived references to a closed socket do not retain app listeners.
+    originalAddEventListener.call(socket, "close", () => {
+      wrappedListeners.clear();
+    }, { once: true });
 
     return socket;
   } as unknown as typeof WebSocket;
