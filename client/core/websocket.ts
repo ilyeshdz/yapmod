@@ -175,10 +175,12 @@ export function installWebSocketInspector(): void {
       let payload: string | ArrayBuffer | ArrayBufferView | Blob = data;
       let chainFailed = false;
 
-      // Execute interceptors in registration order.
+      // Execute interceptors in registration order. Snapshot the list so
+      // unsubscribing during a send does not skip another interceptor.
       // If any interceptor throws or returns an invalid value, the entire
       // chain is discarded and the original payload is sent.
-      for (const interceptor of outgoingInterceptors) {
+      const interceptors = outgoingInterceptors.slice();
+      for (const interceptor of interceptors) {
         try {
           const observed = normalizeMessageData(payload);
           const message: WebSocketMessage = {
@@ -216,7 +218,7 @@ export function installWebSocketInspector(): void {
         payload = originalPayload;
       }
 
-      // Record the final payload exactly once.
+      // Notify subscribers of the final payload exactly once.
       const finalObserved = normalizeMessageData(payload);
       notifyMessage(outgoingHandlers, resolvedUrl, finalObserved);
 
