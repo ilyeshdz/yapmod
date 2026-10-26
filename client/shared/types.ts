@@ -250,23 +250,114 @@ export type PluginCleanup = () => void | Promise<void>;
 
 export type PluginActivation = void | PluginCleanup | Promise<void | PluginCleanup>;
 
+/**
+ * Namespaced console logger handed to a plugin.
+ *
+ * Every message is prefixed with the plugin id, so plugin output is easy to
+ * tell apart from yapmod and host-app logs.
+ */
+export type YapmodPluginLogger = {
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+};
+
+/** Options for showing a system notification from a plugin. */
+export type PluginNotifyOptions = {
+  /** The notification title. */
+  title: string;
+  /** The notification body text. */
+  body?: string;
+  /**
+   * A unique tag to deduplicate notifications.
+   * If omitted, the title is used as the tag.
+   */
+  tag?: string;
+  /**
+   * Handler called when the user clicks the notification.
+   */
+  onClick?: () => void;
+};
+
+/**
+ * Shows system notifications from a plugin.
+ * Notifications appear in the OS notification center.
+ */
+export type YapmodPluginNotifyApi = {
+  /**
+   * Shows a system notification.
+   * Returns a handle that can be used to close the notification programmatically.
+   */
+  show(options: PluginNotifyOptions): { close(): void };
+};
+
+/** Per-plugin key/value storage. Keys are namespaced by the plugin id. */
+export type YapmodPluginStorageApi = {
+  /** Returns the stored value, or `fallback` when the key has no value. */
+  get<T>(key: string, fallback?: T): T;
+  /** Stores a JSON-serializable value. Writes are persisted in the background. */
+  set(key: string, value: unknown): void;
+  /** Lists the keys this plugin currently has a value for. */
+  keys(): string[];
+  /**
+   * Subscribes to changes of one key for this plugin.
+   * Returns a cleanup function to unsubscribe.
+   */
+  onChange<T = unknown>(key: string, listener: (value: T | undefined) => void): () => void;
+};
+
+/** Manifest-declared settings, scoped to one plugin. */
+export type YapmodPluginSettingsApi = {
+  /** Reads the current value of a declared setting. */
+  get(id: string): boolean;
+  /** Returns a snapshot of every declared setting. */
+  all(): Readonly<Record<string, boolean>>;
+  /**
+   * Subscribes to changes of one declared setting.
+   * Returns a cleanup function to unsubscribe.
+   */
+  onChange(id: string, listener: (value: boolean) => void): () => void;
+};
+
 export type YapmodPluginApi = {
+  /** The plugin format implemented by this API. */
+  readonly apiVersion: 1;
   readonly id: string;
   readonly manifest: Readonly<PluginManifest>;
-  readonly storage: {
-    get<T>(key: string, fallback?: T): T;
-    set(key: string, value: unknown): void;
-  };
-  readonly settings: {
-    get(id: string): boolean;
-    onChange(id: string, listener: (value: boolean) => void): () => void;
-  };
+  readonly storage: YapmodPluginStorageApi;
+  readonly settings: YapmodPluginSettingsApi;
   readonly styles: {
     add(css: string): PluginCleanup;
   };
+  readonly webSocket: WebSocketInspector;
+  readonly http: HTTPInspector;
+  /** Namespaced console logger for this plugin. */
+  readonly log: YapmodPluginLogger;
+  /**
+   * Registers a cleanup callback that runs automatically when the plugin is
+   * disabled, even if `activate` later throws. Callbacks run in reverse
+   * registration order.
+   *
+   * Use this for helpers created during activation instead of returning one
+   * large cleanup closure. The cleanup returned by `activate` is also supported.
+   */
+  onCleanup(cleanup: PluginCleanup): void;
   banner(message: string): void;
+  /**
+   * Opens modal dialogs in the Yapper window.
+   * Plugins can create consent dialogs, settings forms, or any other UI
+   * that requires user interaction.
+   */
+  readonly modal: YapmodModalApi;
+  /**
+   * Shows system notifications that appear in the OS notification center.
+   * Useful for alerting users about events even when the app is in the background.
+   */
+  readonly notify: YapmodPluginNotifyApi;
 };
 
+/** The default export of a `plugin.js` ES module. */
 export type YapmodPluginModule = {
   activate(api: YapmodPluginApi): PluginActivation;
 };
@@ -300,6 +391,290 @@ export type YapmodPluginInfo = {
   diagnostic: PluginDiagnostic | null;
 };
 
+/**
+ * A single observed WebSocket message with basic connection metadata.
+ *
+ * The `data` field is an immutable snapshot of the message payload at the time
+ * it was observed. For binary payloads (ArrayBuffer, ArrayBufferView), the data
+ * is copied so that mutating the original send argument does not corrupt the
+ * observed snapshot. For Blob payloads, the data is represented as a
+ * `BlobSnapshot` since Blobs cannot be read synchronously.
+ *
+ * Consumers should treat `data` as read-only.
+ */
+export type WebSocketMessage = {
+  /** The URL the WebSocket was created with. */
+  url: string;
+  /**
+   * The message payload, captured as an immutable snapshot.
+   * - Strings remain strings.
+   * - ArrayBuffer and ArrayBufferView payloads are copied into a new ArrayBuffer.
+   * - Blob payloads are represented as a BlobSnapshot (cannot be read synchronously).
+   */
+  data: string | ArrayBuffer | BlobSnapshot;
+  /** When the message was observed (epoch ms). */
+  timestamp: number;
+};
+
+/**
+ * Represents a Blob payload that could not be read synchronously.
+ * Since reading a Blob requires an asynchronous API, the inspector stores
+ * a snapshot describing the blob's metadata instead of its contents.
+ */
+export type BlobSnapshot = {
+  /** Identifies this as a Blob snapshot. */
+  __blob: true;
+  /** The Blob's reported type (MIME type), if available. */
+  type: string;
+  /** The Blob's reported size in bytes. */
+  size: number;
+};
+
+/** Callback invoked when a new WebSocket message is observed. */
+export type WebSocketMessageHandler = (message: WebSocketMessage) => void;
+
+/**
+ * Interceptor for outgoing WebSocket messages.
+ * Receives the message data and connection metadata, and may return a
+ * replacement payload to send instead.
+ *
+ * Interceptors run synchronously in registration order before the original
+ * `send()` call. Each interceptor receives the latest payload produced by
+ * the previous interceptor.
+ *
+ * - Returning `undefined` (void) means no change — the current payload is kept.
+ * - Returning a valid WebSocket payload (`string`, `ArrayBuffer`,
+ *   `ArrayBufferView`, or `Blob`) replaces the current payload.
+ * - If an interceptor throws, all modifications from the entire interception
+ *   chain are discarded and the original payload is sent unchanged.
+ * - If an interceptor returns an invalid type, it is treated as a failure:
+ *   the entire chain is discarded and the original payload is sent.
+ *
+ * Message delivery is never suppressed by an interceptor.
+ */
+export type WebSocketOutgoingInterceptor = (
+  message: WebSocketMessage,
+) => string | ArrayBuffer | ArrayBufferView | Blob | void;
+
+/**
+ * Interceptor for incoming WebSocket messages.
+ * Receives the message and may return replacement data to deliver to the
+ * application instead.
+ *
+ * Interceptors run synchronously in registration order as each message is
+ * received. Each interceptor receives the latest payload produced by the
+ * previous interceptor.
+ *
+ * - Returning `undefined` (void) means no change — the current payload is kept.
+ * - Returning a valid WebSocket payload (`string`, `ArrayBuffer`,
+ *   `ArrayBufferView`, or `Blob`) replaces the delivered payload.
+ * - If an interceptor throws or returns an invalid type, all modifications
+ *   from the chain are discarded and the original payload is delivered.
+ *
+ * Message delivery is never suppressed by an interceptor. Because message
+ * delivery is synchronous, returning a promise is not supported.
+ */
+export type WebSocketIncomingInterceptor = (
+  message: WebSocketMessage,
+) => string | ArrayBuffer | ArrayBufferView | Blob | void;
+
+/**
+ * Interceptor for HTTP responses.
+ * Receives the complete exchange (request + response) and may return a
+ * modified `Response` object to replace the original response.
+ *
+ * Interceptors run asynchronously in registration order after the response
+ * is received but before it is delivered to the caller.
+ *
+ * - Returning `undefined` (void) means no change — the original response is kept.
+ * - Returning a `Response` object replaces the original response.
+ * - If an interceptor throws, the original response is delivered and the error is logged.
+ *
+ * Response delivery is never suppressed by an interceptor.
+ */
+export type HTTPResponseInterceptor = (
+  exchange: HTTPMessage,
+) => Response | void | Promise<Response | void>;
+
+/**
+ * A single observed HTTP exchange with request and response metadata.
+ *
+ * The `requestBody` and `responseBody` fields are immutable snapshots captured
+ * at the time of observation. For binary payloads (ArrayBuffer, ArrayBufferView),
+ * the data is copied so that mutating the original argument does not corrupt the
+ * observed snapshot. For Blob payloads, the data is represented as a
+ * `BlobSnapshot` since Blobs cannot be read synchronously.
+ *
+ * Consumers should treat body fields as read-only.
+ */
+export type HTTPMessage = {
+  /** The request URL. */
+  url: string;
+  /** HTTP method (GET, POST, etc.). */
+  method: string;
+  /** Request headers as an ordered array of [name, value] pairs. */
+  requestHeaders: [string, string][];
+  /** Request body, captured as an immutable snapshot (undefined for no-body methods). */
+  requestBody?: string | ArrayBuffer | BlobSnapshot;
+  /** Response status code (e.g. 200, 404). */
+  status: number;
+  /** Response status text (e.g. "OK", "Not Found"). */
+  statusText: string;
+  /** Response headers as an ordered array of [name, value] pairs. */
+  responseHeaders: [string, string][];
+  /** Response body, captured as an immutable snapshot. */
+  responseBody?: string | ArrayBuffer | BlobSnapshot;
+  /** When the request was sent (epoch ms). */
+  timestamp: number;
+  /** Duration of the request in milliseconds. */
+  duration: number;
+};
+
+/**
+ * A single observed outgoing HTTP request (before response is available).
+ * Used by the outgoing channel so that subscribers fire immediately when
+ * the request is sent, without waiting for the response.
+ */
+export type HTTPOutgoingMessage = {
+  /** The request URL. */
+  url: string;
+  /** HTTP method (GET, POST, etc.). */
+  method: string;
+  /** Request headers as an ordered array of [name, value] pairs. */
+  requestHeaders: [string, string][];
+  /** Request body, captured as an immutable snapshot (undefined for no-body methods). */
+  requestBody?: string | ArrayBuffer | BlobSnapshot;
+  /** When the request was sent (epoch ms). */
+  timestamp: number;
+};
+
+/**
+ * A set of overrides returned by an outgoing HTTP interceptor.
+ *
+ * Omitted fields keep the current request value. `headers` replaces the full
+ * header set; use the interceptor's `requestHeaders` to build a modified set.
+ * `body` replaces the request body; pass `null` to remove it.
+ */
+export type HTTPOutgoingRequestPatch = {
+  /** Replacement URL. A `URL` is converted to a string. */
+  url?: string | URL;
+  /** Replacement HTTP method. */
+  method?: string;
+  /** Replacement headers. */
+  headers?: HeadersInit;
+  /** Replacement body. Pass `null` to send no body. */
+  body?: BodyInit | null;
+};
+
+/**
+ * Interceptor for outgoing HTTP requests.
+ * Receives the request metadata and may return overrides to change the URL,
+ * method, headers, or body before the request is transmitted.
+ *
+ * Interceptors run asynchronously in registration order. Each interceptor
+ * receives the request as modified by the previous one.
+ *
+ * - Returning `undefined` (void) means no change.
+ * - Returning a patch applies those fields to the current request.
+ * - If an interceptor throws or returns an invalid patch, every modification
+ *   in the chain is discarded and the original request is sent unchanged.
+ *
+ * Request delivery is never suppressed by an interceptor.
+ */
+export type HTTPOutgoingInterceptor = (
+  request: HTTPOutgoingMessage,
+) => HTTPOutgoingRequestPatch | void | Promise<HTTPOutgoingRequestPatch | void>;
+
+/** Callback invoked when a new HTTP exchange is observed. */
+export type HTTPMessageHandler = (message: HTTPMessage) => void;
+
+/** Callback invoked when a new outgoing HTTP request is observed. */
+export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;
+
+/**
+ * Inspects HTTP requests flowing through the application via `fetch()`.
+ * Provides access to observed incoming (response) and outgoing (request)
+ * messages. Requests and responses can be modified using interceptors.
+ */
+export type HTTPInspector = {
+  /**
+   * Complete HTTP exchanges (request + response).
+   * This channel fires after the response is received.
+   */
+  exchanges: {
+    /** Subscribes to HTTP exchanges; returns a cleanup function to unsubscribe. */
+    subscribe(handler: HTTPMessageHandler): () => void;
+  };
+  /** Outgoing HTTP requests (fires immediately when the request is sent). */
+  outgoing: {
+    /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
+    subscribe(handler: HTTPOutgoingMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs before each HTTP request is sent.
+     * Interceptors execute in registration order and may asynchronously modify
+     * the URL, method, headers, or body.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: HTTPOutgoingInterceptor): () => void;
+  };
+  /**
+   * HTTP responses that can be intercepted and modified before delivery.
+   * Interceptors run asynchronously after the response is received but
+   * before it is returned to the caller.
+   */
+  responses: {
+    /**
+     * Registers an interceptor that runs after each HTTP response is received.
+     * Interceptors execute in registration order.
+     *
+     * If an interceptor returns a `Response`, it replaces the original response.
+     * If it returns void (undefined), the response passes through unchanged.
+     * If an interceptor throws, the original response is delivered and the error is logged.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: HTTPResponseInterceptor): () => void;
+  };
+};
+
+/**
+ * Inspects WebSocket messages flowing through the application.
+ * Provides access to observed incoming and outgoing messages.
+ * Messages can be modified before delivery or transmission using interceptors.
+ */
+export type WebSocketInspector = {
+  /** Messages received by the application from a WebSocket server. */
+  incoming: {
+    /** Subscribes to incoming messages; returns a cleanup function to unsubscribe. */
+    subscribe(handler: WebSocketMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs synchronously before each incoming
+     * message is delivered to the application. Interceptors execute in
+     * registration order and may modify the delivered payload.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: WebSocketIncomingInterceptor): () => void;
+  };
+  /** Messages sent by the application through a WebSocket connection. */
+  outgoing: {
+    /** Subscribes to outgoing messages; returns a cleanup function to unsubscribe. */
+    subscribe(handler: WebSocketMessageHandler): () => void;
+    /**
+     * Registers an interceptor that runs synchronously before each outgoing
+     * WebSocket message is sent. Interceptors execute in registration order.
+     *
+     * If an interceptor returns a value, it replaces the message payload.
+     * If it returns void (undefined), the message passes through unchanged.
+     * If an interceptor throws, the original payload is sent and the error is logged.
+     *
+     * Returns a cleanup function to remove the interceptor.
+     */
+    use(interceptor: WebSocketOutgoingInterceptor): () => void;
+  };
+};
+
 export type YapmodGlobal = {
   config?: Config;
   os?: string;
@@ -315,6 +690,10 @@ export type YapmodGlobal = {
   plugins?: YapmodPluginsApi;
   store?: YapmodStoreApi;
   theme?: YapmodThemeApi;
+  /** Low-level WebSocket inspection layer for plugins. */
+  webSocket?: WebSocketInspector;
+  /** Low-level HTTP inspection layer for plugins. */
+  http?: HTTPInspector;
 };
 
 export type YapmodScope = typeof globalThis & {

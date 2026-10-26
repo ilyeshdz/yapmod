@@ -376,24 +376,57 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
     if (entry.bundle.script !== null) {
       const manifest = entry.bundle.manifest;
       const scriptStyleIds: string[] = [];
+      const cleanupCallbacks: PluginCleanup[] = [];
+      const storagePrefix = `plugin:${manifest.id}:data_`;
+      const logPrefix = `[plugin:${manifest.id}]`;
+
+      const assertStorageKey = (key: string): void => {
+        if (typeof key !== "string" || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) {
+          throw new Error("Invalid plugin storage key.");
+        }
+      };
+
+      const readSetting = (id: string): boolean => {
+        const setting = manifest.settings.find((item) => item.id === id);
+        if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
+        return getYapmod().store?.get<boolean>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
+      };
+
       const api: YapmodPluginApi = Object.freeze({
+        apiVersion: 1,
         id: manifest.id,
         manifest: Object.freeze({ ...manifest }),
         storage: Object.freeze({
           get<T>(key: string, fallback?: T): T {
-            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-            return getYapmod().store?.get<T>(`plugin:${manifest.id}:data_${key}`, fallback) as T;
+            assertStorageKey(key);
+            return getYapmod().store?.get<T>(`${storagePrefix}${key}`, fallback) as T;
           },
           set(key: string, value: unknown): void {
-            if (!/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(key)) throw new Error("Invalid plugin storage key.");
-            getYapmod().store?.set(`plugin:${manifest.id}:data_${key}`, value);
+            assertStorageKey(key);
+            getYapmod().store?.set(`${storagePrefix}${key}`, value);
+          },
+          keys(): string[] {
+            const values = getYapmod().store?.all() ?? {};
+            return Object.keys(values)
+              .filter((key) => key.startsWith(storagePrefix))
+              .map((key) => key.slice(storagePrefix.length));
+          },
+          onChange<T>(key: string, listener: (value: T | undefined) => void): () => void {
+            assertStorageKey(key);
+            return getYapmod().store?.onChange(
+              `${storagePrefix}${key}`,
+              (value: unknown) => listener(value as T | undefined),
+            ) ?? (() => {});
           },
         }),
         settings: Object.freeze({
           get(id: string): boolean {
-            const setting = manifest.settings.find((item) => item.id === id);
-            if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
-            return getYapmod().store?.get<boolean>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
+            return readSetting(id);
+          },
+          all(): Readonly<Record<string, boolean>> {
+            return Object.freeze(
+              Object.fromEntries(manifest.settings.map((setting) => [setting.id, readSetting(setting.id)])),
+            );
           },
           onChange(id: string, listener: (value: boolean) => void): () => void {
             const setting = manifest.settings.find((item) => item.id === id);
@@ -410,18 +443,105 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
             return () => document.getElementById(id)?.remove();
           },
         }),
-      banner(message: string): void {
-        getYapmod().banner?.show({ id: `plugin-${manifest.id}`, message, dismissible: true });
-      },
+        webSocket: getYapmod().webSocket ?? Object.freeze({
+          incoming: Object.freeze({
+            subscribe: () => () => {},
+            use: () => () => {},
+          }),
+          outgoing: Object.freeze({
+            subscribe: () => () => {},
+            use: () => () => {},
+          }),
+        }),
+        http: getYapmod().http ?? Object.freeze({
+          exchanges: Object.freeze({
+            subscribe: () => () => {},
+          }),
+          outgoing: Object.freeze({
+            subscribe: () => () => {},
+            use: () => () => {},
+          }),
+          responses: Object.freeze({
+            use: () => () => {},
+          }),
+        }),
+        log: Object.freeze({
+          debug: (...args: unknown[]) => console.debug(logPrefix, ...args),
+          info: (...args: unknown[]) => console.info(logPrefix, ...args),
+          warn: (...args: unknown[]) => console.warn(logPrefix, ...args),
+          error: (...args: unknown[]) => console.error(logPrefix, ...args),
+        }),
+        onCleanup(cleanup: PluginCleanup): void {
+          if (typeof cleanup !== "function") {
+            throw new Error("Plugin cleanup must be a function.");
+          }
+          cleanupCallbacks.push(cleanup);
+        },
+        banner(message: string): void {
+          getYapmod().banner?.show({ id: `plugin-${manifest.id}`, message, dismissible: true });
+        },
+        modal: getYapmod().modal ?? Object.freeze({
+          create: () => {
+            throw new Error("Modal API is not available.");
+          },
+          show: () => {
+            throw new Error("Modal API is not available.");
+          },
+          closeAll: () => {},
+          get active() { return []; },
+        }),
+        notify: Object.freeze({
+          show(options: { title: string; body?: string; tag?: string; onClick?: () => void }): { close(): void } {
+            const Notification = (window as any).Notification as {
+              new (title: string, opts?: { body?: string; tag?: string }): { close(): void; onclick: (() => void) | null };
+            } | undefined;
+            if (!Notification) {
+              console.warn(`[plugin:${manifest.id}] Notification API is not available.`);
+              return { close: () => {} };
+            }
+            const tag = `plugin-${manifest.id}-${options.tag ?? options.title}`;
+            const notification = new Notification(options.title, {
+              body: options.body,
+              tag,
+            });
+            if (options.onClick) {
+              notification.onclick = options.onClick;
+            }
+            return { close: () => notification.close() };
+          },
+        }),
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
       entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
-      const module = new Function("api", "document", "window", entry.bundle.script)(api, document, window) as unknown;
-      if (!module || typeof module !== "object" || typeof (module as YapmodPluginModule).activate !== "function") {
-        throw new Error("plugin.js must return an object with an activate(api) function.");
+      // Run callbacks registered through `api.onCleanup`. This is registered
+      // before activation so callbacks survive an activation that throws.
+      entry.cleanup.push(async () => {
+        for (const cleanup of cleanupCallbacks.splice(0).reverse()) {
+          try {
+            await cleanup();
+          } catch (error) {
+            console.error(`[yapmod plugin:${manifest.id}] cleanup failed`, error);
+          }
+        }
+      });
+      // Load the package source as a real ES module. A Blob URL keeps the
+      // plugin's own file boundary without evaluating the source as a script
+      // body or exposing the host module scope.
+      const sourceUrl = URL.createObjectURL(
+        new Blob([entry.bundle.script], { type: "text/javascript" }),
+      );
+      let module: unknown;
+      try {
+        module = await import(/* @vite-ignore */ sourceUrl);
+      } finally {
+        URL.revokeObjectURL(sourceUrl);
       }
-      const cleanup = await (module as YapmodPluginModule).activate(api);
+      const plugin = (module as { default?: unknown }).default;
+      if (!plugin || typeof plugin !== "object" || typeof (plugin as YapmodPluginModule).activate !== "function") {
+        throw new Error("plugin.js must default-export an object with an activate(api) function.");
+      }
+      const cleanup = await (plugin as YapmodPluginModule).activate(api);
       if (typeof cleanup === "function") entry.cleanup.push(cleanup);
     }
   } catch (error) {

@@ -42,10 +42,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-          cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm --dir web install --frozen-lockfile --ignore-workspace
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir web install --frozen-lockfile --ignore-workspace
 
       - name: Check and build website
         run: pnpm check:web
