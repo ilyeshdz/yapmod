@@ -340,45 +340,47 @@ export function installWebSocketInspector(): void {
       );
     };
 
-    // Observe messages delivered through the `onmessage` property.
-    // Since the application may set `onmessage` after the inspector wraps it,
-    // we use a property descriptor to intercept both gets and sets. This way
-    // the inspector's wrapper is always called, regardless of when the app
-    // assigns its handler.
-    const onMessageDescriptor = Object.getOwnPropertyDescriptor(socket, "onmessage")!;
-    const onMessageStorage: { value: ((event: MessageEvent) => void) | null } = {
-      value: onMessageDescriptor?.value ?? socket.onmessage ?? null,
+    // Observe messages delivered through the `onmessage` property. The
+    // application may assign the handler before or after the inspector is
+    // installed, so the property is replaced with an accessor that stores the
+    // app handler and the hidden message listener below forwards to it.
+    const onMessageStorage: { value: ((this: WebSocket, event: MessageEvent) => void) | null } = {
+      value: socket.onmessage ?? null,
     };
 
     Object.defineProperty(socket, "onmessage", {
       get() {
         return onMessageStorage.value;
       },
-      set(handler: ((event: MessageEvent) => void) | null) {
-        onMessageStorage.value = handler;
+      set(handler: ((this: WebSocket, event: MessageEvent) => void) | null) {
+        onMessageStorage.value = typeof handler === "function" ? handler : null;
       },
       configurable: true,
       enumerable: true,
     });
 
-    // The inspector wraps onmessage by installing itself as the handler.
-    // When the app sets onmessage, it updates the storage, and the inspector
-    // reads the storage to forward to the app's handler.
-    // We use addEventListener as the primary observation point (see below),
-    // so onmessage wrapping is a fallback for apps that only use onmessage.
-    // Since we can't reliably intercept onmessage without breaking the app's
-    // ability to set it, we use a hidden addEventListener listener instead.
+    // Register a hidden listener that observes messages before any app listener.
+    // This ensures we capture messages even if the app only uses onmessage.
+    // We use a high-priority internal listener that cannot be removed by the app.
     const onMessageWrapper: EventListener = function (this: WebSocket, event: Event): void {
       if (event instanceof MessageEvent && !(event as any).__yapmod_recorded) {
         const observed = normalizeMessageData(event.data);
         notifyMessage(incomingHandlers, resolvedUrl, observed);
         (event as any).__yapmod_recorded = true;
       }
+
+      // The native `onmessage` event handler was replaced by the accessor
+      // above, so forward the event to the handler the application assigned.
+      const appHandler = onMessageStorage.value;
+      if (appHandler) {
+        try {
+          appHandler.call(this, event as MessageEvent);
+        } catch (error) {
+          console.error("[yapmod] WebSocket onmessage handler threw an error", error);
+        }
+      }
     };
 
-    // Register a hidden listener that observes messages before any app listener.
-    // This ensures we capture messages even if the app only uses onmessage.
-    // We use a high-priority internal listener that cannot be removed by the app.
     originalAddEventListener.call(socket, "message", onMessageWrapper, false);
 
     return socket;
