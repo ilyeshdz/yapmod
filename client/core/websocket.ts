@@ -7,11 +7,7 @@ import type {
   WebSocketOutgoingInterceptor,
 } from "../shared/types";
 
-const MAX_MESSAGES = 5000;
-
 // Module-level state — shared across all wrapped WebSocket instances.
-const incomingMessages: WebSocketMessage[] = [];
-const outgoingMessages: WebSocketMessage[] = [];
 const incomingHandlers: WebSocketMessageHandler[] = [];
 const outgoingHandlers: WebSocketMessageHandler[] = [];
 const outgoingInterceptors: WebSocketOutgoingInterceptor[] = [];
@@ -37,21 +33,14 @@ function notifyHandlers(handlers: WebSocketMessageHandler[], message: WebSocketM
 }
 
 /**
- * Appends a message to a bounded history list and notifies handlers.
- * The oldest messages are evicted when the limit is reached.
+ * Notifies subscribers of a WebSocket message without retaining it.
  */
-function addMessage(
-  list: WebSocketMessage[],
+function notifyMessage(
   handlers: WebSocketMessageHandler[],
   url: string,
   data: string | ArrayBuffer | BlobSnapshot,
 ): void {
-  if (list.length >= MAX_MESSAGES) {
-    list.splice(0, list.length - MAX_MESSAGES + 1);
-  }
-  const message: WebSocketMessage = { url, data, timestamp: Date.now() };
-  list.push(message);
-  notifyHandlers(handlers, message);
+  notifyHandlers(handlers, { url, data, timestamp: Date.now() });
 }
 
 /**
@@ -69,19 +58,19 @@ function isValidSendPayload(
 }
 
 /**
- * Normalizes a WebSocket message payload into an immutable snapshot for the
- * inspector's history.
+ * Normalizes a WebSocket message payload into an immutable snapshot for
+ * observers.
  *
  * - Strings are returned as-is (strings are immutable in JavaScript).
  * - ArrayBuffer payloads are copied into a new ArrayBuffer so that mutating
- *   the original argument does not corrupt the inspector's history.
+ *   the original argument does not corrupt the observed snapshot.
  * - ArrayBufferView payloads are copied, accounting for `byteOffset` and
  *   `byteLength`, so that only the view's bytes are captured.
  * - Blob payloads cannot be read synchronously, so they are represented as
  *   a `BlobSnapshot` containing the blob's type and size metadata.
  *
- * The returned value is safe to store without risk of later mutation by the
- * caller.
+ * The returned value is safe to hand to observers without risk of later
+ * mutation by the caller.
  */
 function normalizeMessageData(data: unknown): string | ArrayBuffer | BlobSnapshot {
   if (typeof data === "string") {
@@ -143,12 +132,13 @@ function listenerKey(
  * instance is preserved and all calls are forwarded unchanged.
  *
  * The wrapper:
- * - Records every incoming message exactly once, regardless of whether the
- *   application uses `onmessage`, `addEventListener("message", ...)`, or both.
+ * - Notifies subscribers of every incoming message exactly once, regardless of
+ *   whether the application uses `onmessage`, `addEventListener("message", ...)`,
+ *   or both.
  * - Intercepts outgoing `send()` calls to allow plugins to modify payloads.
  * - Preserves native WebSocket event semantics including `once`, `capture`,
  *   `passive`, and `EventListenerObject` support.
- * - Maintains a bounded history of up to `MAX_MESSAGES` messages per direction.
+ * - Keeps no history — subscribers that need past messages must retain them.
  *
  * Calling this function multiple times is safe — the inspector is installed
  * at most once.
@@ -244,7 +234,7 @@ export function installWebSocketInspector(): void {
 
       // Record the final payload exactly once.
       const finalObserved = normalizeMessageData(payload);
-      addMessage(outgoingMessages, outgoingHandlers, resolvedUrl, finalObserved);
+      notifyMessage(outgoingHandlers, resolvedUrl, finalObserved);
 
       // Invoke the native send. Do NOT wrap in try/catch — if the native
       // send throws (e.g. socket is not OPEN), the error should propagate
@@ -296,7 +286,7 @@ export function installWebSocketInspector(): void {
           // Only record if no other observer has recorded this event yet.
           if (event instanceof MessageEvent && !(event as any).__yapmod_recorded) {
             const observed = normalizeMessageData(event.data);
-            addMessage(incomingMessages, incomingHandlers, resolvedUrl, observed);
+            notifyMessage(incomingHandlers, resolvedUrl, observed);
             (event as any).__yapmod_recorded = true;
           }
 
@@ -381,7 +371,7 @@ export function installWebSocketInspector(): void {
     const onMessageWrapper: EventListener = function (this: WebSocket, event: Event): void {
       if (event instanceof MessageEvent && !(event as any).__yapmod_recorded) {
         const observed = normalizeMessageData(event.data);
-        addMessage(incomingMessages, incomingHandlers, resolvedUrl, observed);
+        notifyMessage(incomingHandlers, resolvedUrl, observed);
         (event as any).__yapmod_recorded = true;
       }
     };
@@ -415,10 +405,6 @@ export function installWebSocketInspector(): void {
 
   const inspector: WebSocketInspector = {
     incoming: {
-      /** Returns a shallow copy of the message history array. */
-      messages(): WebSocketMessage[] {
-        return incomingMessages.slice();
-      },
       /**
        * Subscribes to incoming messages; returns a cleanup function.
        * The cleanup function is safe to call multiple times (idempotent).
@@ -437,10 +423,6 @@ export function installWebSocketInspector(): void {
       },
     },
     outgoing: {
-      /** Returns a shallow copy of the message history array. */
-      messages(): WebSocketMessage[] {
-        return outgoingMessages.slice();
-      },
       /**
        * Subscribes to outgoing messages; returns a cleanup function.
        * The cleanup function is safe to call multiple times (idempotent).

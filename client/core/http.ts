@@ -9,11 +9,7 @@ import type {
   HTTPOutgoingMessageHandler,
 } from "../shared/types";
 
-const MAX_MESSAGES = 5000;
-
 // Module-level state — shared across all wrapped fetch calls.
-const exchanges: HTTPMessage[] = [];
-const outgoingMessages: HTTPOutgoingMessage[] = [];
 const exchangeHandlers: HTTPMessageHandler[] = [];
 const outgoingHandlers: HTTPOutgoingMessageHandler[] = [];
 const responseInterceptors: HTTPResponseInterceptor[] = [];
@@ -37,28 +33,11 @@ function notifyHandlers<T>(handlers: ((msg: T) => void)[], message: T): void {
 }
 
 /**
- * Appends a message to a bounded history list and notifies handlers.
- * The oldest messages are evicted when the limit is reached.
- */
-function addMessage<T>(
-  list: T[],
-  handlers: ((msg: T) => void)[],
-  message: T,
-): void {
-  if (list.length >= MAX_MESSAGES) {
-    list.splice(0, list.length - MAX_MESSAGES + 1);
-  }
-  list.push(message);
-  notifyHandlers(handlers, message);
-}
-
-/**
- * Normalizes a fetch body payload into an immutable snapshot for the
- * inspector's history.
+ * Normalizes a fetch body payload into an immutable snapshot for observers.
  *
  * - Strings are returned as-is (strings are immutable in JavaScript).
  * - ArrayBuffer payloads are copied into a new ArrayBuffer so that mutating
- *   the original argument does not corrupt the inspector's history.
+ *   the original argument does not corrupt the observed snapshot.
  * - ArrayBufferView payloads are copied, accounting for `byteOffset` and
  *   `byteLength`, so that only the view's bytes are captured.
  * - Blob and ReadableStream payloads cannot be read synchronously, so they
@@ -66,8 +45,8 @@ function addMessage<T>(
  * - FormData and URLSearchParams are serialized to strings.
  * - null/undefined are returned as undefined (no body).
  *
- * The returned value is safe to store without risk of later mutation by the
- * caller.
+ * The returned value is safe to hand to observers without risk of later
+ * mutation by the caller.
  */
 function normalizeBodyData(body: unknown): string | ArrayBuffer | BlobSnapshot | undefined {
   if (body === null || body === undefined) {
@@ -162,9 +141,9 @@ async function readResponseBody(response: Response): Promise<string | ArrayBuffe
  * preserved and all calls are forwarded unchanged.
  *
  * The wrapper:
- * - Records every outgoing request immediately when sent.
- * - Records every complete exchange (request + response) when the response arrives.
- * - Maintains a bounded history of up to `MAX_MESSAGES` entries per channel.
+ * - Notifies subscribers of every outgoing request when it is sent.
+ * - Notifies subscribers of every complete exchange when the response arrives.
+ * - Keeps no history — subscribers that need past data must retain it themselves.
  * - Never modifies the original request — it only observes passively.
  *
  * Calling this function multiple times is safe — the inspector is installed
@@ -218,8 +197,8 @@ export function installHTTPInspector(): void {
       timestamp: startTime,
     };
 
-    // Record outgoing message.
-    addMessage(outgoingMessages, outgoingHandlers, outgoingMsg);
+    // Notify outgoing request subscribers.
+    notifyHandlers(outgoingHandlers, outgoingMsg);
 
     // Perform the actual fetch with the original arguments, unchanged.
     let response: Response;
@@ -240,7 +219,7 @@ export function installHTTPInspector(): void {
         timestamp: startTime,
         duration,
       };
-      addMessage(exchanges, exchangeHandlers, exchangeMsg);
+      notifyHandlers(exchangeHandlers, exchangeMsg);
       throw error;
     }
 
@@ -274,7 +253,7 @@ export function installHTTPInspector(): void {
       duration,
     };
 
-    addMessage(exchanges, exchangeHandlers, exchangeMsg);
+    notifyHandlers(exchangeHandlers, exchangeMsg);
 
     // Execute response interceptors in registration order.
     // If any interceptor returns a Response, it replaces the current response.
@@ -307,10 +286,6 @@ export function installHTTPInspector(): void {
 
   const inspector: HTTPInspector = {
     exchanges: {
-      /** Returns a shallow copy of the exchange history array. */
-      messages(): HTTPMessage[] {
-        return exchanges.slice();
-      },
       /**
        * Subscribes to HTTP exchanges; returns a cleanup function.
        * The cleanup function is safe to call multiple times (idempotent).
@@ -329,10 +304,6 @@ export function installHTTPInspector(): void {
       },
     },
     outgoing: {
-      /** Returns a shallow copy of the outgoing request history array. */
-      messages(): HTTPOutgoingMessage[] {
-        return outgoingMessages.slice();
-      },
       /**
        * Subscribes to outgoing requests; returns a cleanup function.
        * The cleanup function is safe to call multiple times (idempotent).

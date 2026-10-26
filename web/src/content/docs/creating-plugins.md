@@ -145,8 +145,9 @@ change created by the plugin must be released.
 
 ## Inspectors
 
-The inspectors are passive observers: they never change observed traffic.
-`messages()` returns a snapshot of the most recent entries (up to 5000).
+The inspectors are observers. They do not keep request or message history:
+subscribers only receive events as they happen. If you need a log, retain the
+data in your plugin and release it when the plugin is disabled.
 
 ```js
 // HTTP: complete request/response pairs, or requests as they are sent.

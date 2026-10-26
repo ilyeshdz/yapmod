@@ -445,24 +445,19 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         }),
         webSocket: getYapmod().webSocket ?? Object.freeze({
           incoming: Object.freeze({
-            messages: () => [],
             subscribe: () => () => {},
           }),
           outgoing: Object.freeze({
-            messages: () => [],
             subscribe: () => () => {},
             use: () => () => {},
           }),
         }),
         http: getYapmod().http ?? Object.freeze({
           exchanges: Object.freeze({
-            messages: () => [],
             subscribe: () => () => {},
           }),
           outgoing: Object.freeze({
-            messages: () => [],
             subscribe: () => () => {},
-            use: () => () => {},
           }),
           responses: Object.freeze({
             use: () => () => {},

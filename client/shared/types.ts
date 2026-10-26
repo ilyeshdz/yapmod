@@ -396,7 +396,7 @@ export type YapmodPluginInfo = {
  * The `data` field is an immutable snapshot of the message payload at the time
  * it was observed. For binary payloads (ArrayBuffer, ArrayBufferView), the data
  * is copied so that mutating the original send argument does not corrupt the
- * inspector's history. For Blob payloads, the data is represented as a
+ * observed snapshot. For Blob payloads, the data is represented as a
  * `BlobSnapshot` since Blobs cannot be read synchronously.
  *
  * Consumers should treat `data` as read-only.
@@ -479,7 +479,7 @@ export type HTTPResponseInterceptor = (
  * The `requestBody` and `responseBody` fields are immutable snapshots captured
  * at the time of observation. For binary payloads (ArrayBuffer, ArrayBufferView),
  * the data is copied so that mutating the original argument does not corrupt the
- * inspector's history. For Blob payloads, the data is represented as a
+ * observed snapshot. For Blob payloads, the data is represented as a
  * `BlobSnapshot` since Blobs cannot be read synchronously.
  *
  * Consumers should treat body fields as read-only.
@@ -542,15 +542,11 @@ export type HTTPInspector = {
    * This channel fires after the response is received.
    */
   exchanges: {
-    /** Returns a snapshot of all observed HTTP exchanges. */
-    messages(): HTTPMessage[];
     /** Subscribes to HTTP exchanges; returns a cleanup function to unsubscribe. */
     subscribe(handler: HTTPMessageHandler): () => void;
   };
   /** Outgoing HTTP requests (fires immediately when the request is sent). */
   outgoing: {
-    /** Returns a snapshot of all observed outgoing requests. */
-    messages(): HTTPOutgoingMessage[];
     /** Subscribes to outgoing requests; returns a cleanup function to unsubscribe. */
     subscribe(handler: HTTPOutgoingMessageHandler): () => void;
   };
@@ -582,15 +578,11 @@ export type HTTPInspector = {
 export type WebSocketInspector = {
   /** Messages received by the application from a WebSocket server. */
   incoming: {
-    /** Returns a snapshot of all observed incoming messages. */
-    messages(): WebSocketMessage[];
     /** Subscribes to incoming messages; returns a cleanup function to unsubscribe. */
     subscribe(handler: WebSocketMessageHandler): () => void;
   };
   /** Messages sent by the application through a WebSocket connection. */
   outgoing: {
-    /** Returns a snapshot of all observed outgoing messages. */
-    messages(): WebSocketMessage[];
     /** Subscribes to outgoing messages; returns a cleanup function to unsubscribe. */
     subscribe(handler: WebSocketMessageHandler): () => void;
     /**
