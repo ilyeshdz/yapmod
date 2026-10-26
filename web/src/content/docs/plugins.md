@@ -19,7 +19,7 @@ my-plugin/
 └── plugin.js       # optional
 ```
 
-`manifest.json` describes the plugin, `plugin.css` changes the interface, and `plugin.js` may add behavior. Plugins can also declare simple on/off settings in the manifest.
+`manifest.json` describes the plugin, `plugin.css` changes the interface, and `plugin.js` may add behavior. A script is loaded as an ES module and must default-export an object with an `activate(api)` function. Plugins can also declare simple on/off settings in the manifest.
 
 ## Trust
 
