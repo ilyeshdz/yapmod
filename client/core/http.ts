@@ -33,64 +33,6 @@ function notifyHandlers<T>(handlers: ((msg: T) => void)[], message: T): void {
 }
 
 /**
- * Normalizes a fetch body payload into an immutable snapshot for observers.
- *
- * - Strings are returned as-is (strings are immutable in JavaScript).
- * - ArrayBuffer payloads are copied into a new ArrayBuffer so that mutating
- *   the original argument does not corrupt the observed snapshot.
- * - ArrayBufferView payloads are copied, accounting for `byteOffset` and
- *   `byteLength`, so that only the view's bytes are captured.
- * - Blob and ReadableStream payloads cannot be read synchronously, so they
- *   are represented as a `BlobSnapshot` containing metadata.
- * - FormData and URLSearchParams are serialized to strings.
- * - null/undefined are returned as undefined (no body).
- *
- * The returned value is safe to hand to observers without risk of later
- * mutation by the caller.
- */
-function normalizeBodyData(body: unknown): string | ArrayBuffer | BlobSnapshot | undefined {
-  if (body === null || body === undefined) {
-    return undefined;
-  }
-  if (typeof body === "string") {
-    return body;
-  }
-  if (body instanceof ArrayBuffer) {
-    const dest = new ArrayBuffer(body.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(body));
-    return dest;
-  }
-  if (ArrayBuffer.isView(body)) {
-    const dest = new ArrayBuffer(body.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(body.buffer, body.byteOffset, body.byteLength));
-    return dest;
-  }
-  if (body instanceof Blob) {
-    return { __blob: true, type: body.type, size: body.size };
-  }
-  if (body instanceof FormData) {
-    // Serialize FormData to a string representation.
-    const pairs: string[] = [];
-    body.forEach((value, key) => {
-      if (value instanceof File) {
-        pairs.push(`${key}: [File: ${value.name}, ${value.type}, ${value.size}B]`);
-      } else {
-        pairs.push(`${key}: ${value}`);
-      }
-    });
-    return pairs.join("\n");
-  }
-  if (body instanceof URLSearchParams) {
-    return body.toString();
-  }
-  if (body instanceof ReadableStream) {
-    return { __blob: true, type: "", size: 0 };
-  }
-  // Fallback — convert to string.
-  return String(body);
-}
-
-/**
  * Extracts headers from a Headers object or Request into an array of [name, value] pairs.
  */
 function extractHeaders(headers: Headers): [string, string][] {
@@ -99,6 +41,48 @@ function extractHeaders(headers: Headers): [string, string][] {
     result.push([key, value]);
   });
   return result;
+}
+
+/**
+ * Returns whether a content type carries text that can safely be decoded.
+ */
+function isTextContentType(contentType: string): boolean {
+  const type = contentType.toLowerCase();
+  return (
+    type.startsWith("text/") ||
+    type.includes("json") ||
+    type.includes("xml") ||
+    type.includes("javascript") ||
+    type.includes("x-www-form-urlencoded")
+  );
+}
+
+/**
+ * Reads a request body through a disposable copy and normalizes it.
+ *
+ * `Request.body` is always a stream, so the metadata cannot be extracted
+ * synchronously. The observation request is never sent, which makes reading
+ * it safe. Text bodies are decoded; other bodies are copied as an ArrayBuffer.
+ */
+async function readRequestBody(request: Request): Promise<string | ArrayBuffer | undefined> {
+  if (request.body === null) {
+    return undefined;
+  }
+  try {
+    const arrayBuffer = await request.arrayBuffer();
+    if (arrayBuffer.byteLength === 0) {
+      return undefined;
+    }
+    if (isTextContentType(request.headers.get("content-type") ?? "")) {
+      return new TextDecoder().decode(arrayBuffer);
+    }
+    const dest = new ArrayBuffer(arrayBuffer.byteLength);
+    new Uint8Array(dest).set(new Uint8Array(arrayBuffer));
+    return dest;
+  } catch {
+    // Body may already be consumed, streamed, or otherwise unreadable.
+    return undefined;
+  }
 }
 
 /**
@@ -179,7 +163,7 @@ export function installHTTPInspector(): void {
       url = observeRequest.url;
       method = observeRequest.method;
       requestHeaders = extractHeaders(observeRequest.headers);
-      requestBody = normalizeBodyData(observeRequest.body);
+      requestBody = await readRequestBody(observeRequest);
     } catch {
       // If we can't observe (e.g., body already consumed), still record what we can.
       url = input instanceof Request ? input.url : String(input);
