@@ -9,7 +9,7 @@ description: Import a local package or install a Community package.
 Open **Settings → Yapmod → Plugins**.
 
 - In **Installed**, choose **Import plugin** and select a folder containing `manifest.json`, `plugin.css`, and optionally `plugin.js`.
-- In **Community**, choose **Install** for a listed package.
+- In **Community**, choose **Install** for a listed package. Packages reviewed by the Yapmod owners show a **Verified** badge; this is a review signal, not a security guarantee. See [Verified plugins](plugins#verified-plugins).
 - Choose **View files** on an installed card to inspect its manifest, stylesheet, and optional script. Community packages are copied locally at installation and can be reviewed the same way.
 - Use the gear button on a card to edit that plugin's settings in a modal, then choose **Save** to apply them.
 - Read the warning before confirming. JavaScript packages run directly in the Yapper page and are not sandboxed.

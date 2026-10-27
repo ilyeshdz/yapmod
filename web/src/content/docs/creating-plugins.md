@@ -200,9 +200,10 @@ Four setting types are supported:
 }
 ```
 
-**File** — a file picker with a browse button. The value is the absolute file
-path selected by the user. The optional `accept` field hints at the expected
-file type (e.g. `"image/*"`):
+**File** — a file picker with a browse button. The value is a base64 data URI
+for the file the user selected (see [Loading local files](#loading-local-files)).
+The optional `accept` field hints at the expected file type (e.g.
+`"image/*"`):
 
 ```json
 {
@@ -232,8 +233,8 @@ Read settings through the API. The returned value matches the setting type
 
 ```js
 api.settings.get("show-badge");       // boolean
-api.settings.get("background-image"); // string (file path) or null
-api.settings.all();                    // { "show-badge": true, "background-image": "/path/to/img.png" }
+api.settings.get("background-image"); // data URI string or null
+api.settings.all();                    // { "show-badge": true, "background-image": "data:image/png;base64,..." }
 
 const stop = api.settings.onChange("show-badge", (value) => {
   badge.hidden = !value;
@@ -335,7 +336,9 @@ This is useful when a plugin replaces an image and wants to free the previous
 blob immediately rather than waiting for deactivation.
 
 **The data URI is stored in the plugin's settings.** Very large files will
-increase the settings size. For images, keep files under a few megabytes.
+increase the settings size and the startup payload. A file setting's data URI
+may be at most 8 MiB, which corresponds to a roughly 6 MiB file. Other plugin
+setting values are limited to 64 KiB.
 
 ## Watch network traffic
 
@@ -626,6 +629,11 @@ changing the CSS or JavaScript requires the user to approve the plugin again.
 To publish a plugin in the Community catalog, add its folder under
 `community-plugins/` with the same structure. The website build validates the
 manifest, stylesheet, and script before publishing the package.
+
+Verification is separate from publishing. The Yapmod owners add reviewed plugin
+ids to `community-plugins/verified.json`; the build injects the badge into the
+catalog from that list. Do not add a `verified` field to a manifest — it is
+rejected as an unknown field.
 
 > [!WARNING]
 > JavaScript plugins are trusted page code, not sandboxed extensions. They run

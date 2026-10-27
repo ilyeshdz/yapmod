@@ -29,4 +29,10 @@ CSS plugins can also change, hide, or imitate interface elements. Only install p
 
 Yapmod validates the package files and shows a warning before installation. This validation makes imports predictable; it does not make a plugin safe.
 
+## Verified plugins
+
+Some Community plugins carry a **Verified** badge. Verification is maintained by the Yapmod owners, not declared by the plugin author: it means the plugin was reviewed and is listed in the repository's `community-plugins/verified.json`. A manifest cannot mark itself as verified.
+
+The badge is preserved for the local copy installed from the Community catalog. Importing the same files from a local folder does not mark them as verified. Verification is a review signal, not a guarantee: a verified plugin still runs with the same access as any other plugin, and updates may change its behavior. Reinstall from the Community catalog to refresh the badge if verification changes.
+
 See [Installing plugins](installing-plugins) to use a package and [Creating a plugin](creating-plugins) for the current authoring format.
