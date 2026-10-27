@@ -40,9 +40,6 @@ permissions:
 
 jobs:
   publish:
-    concurrency:
-      group: pages
-      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: github-pages
