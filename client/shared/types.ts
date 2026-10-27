@@ -236,9 +236,22 @@ export type PluginSetting = {
   id: string;
   label: string;
   description?: string;
-  type: "toggle";
-  default: boolean;
-};
+} & (
+  | { type: "toggle"; default: boolean }
+  | { type: "text"; default: string | null; accept?: string }
+  | { type: "file"; default: string | null; accept?: string }
+  | { type: "color"; default: string | null }
+);
+
+export type PluginSettingValue = boolean | string | null;
+
+export function isPluginSettingToggle(setting: PluginSetting): setting is Extract<PluginSetting, { type: "toggle" }> {
+  return setting.type === "toggle";
+}
+
+export function isPluginSettingString(setting: PluginSetting): setting is Extract<PluginSetting, { type: "text" | "file" | "color" }> {
+  return setting.type === "text" || setting.type === "file" || setting.type === "color";
+}
 
 export type PluginBundle = {
   manifest: PluginManifest;
@@ -310,14 +323,14 @@ export type YapmodPluginStorageApi = {
 /** Manifest-declared settings, scoped to one plugin. */
 export type YapmodPluginSettingsApi = {
   /** Reads the current value of a declared setting. */
-  get(id: string): boolean;
+  get(id: string): PluginSettingValue;
   /** Returns a snapshot of every declared setting. */
-  all(): Readonly<Record<string, boolean>>;
+  all(): Readonly<Record<string, PluginSettingValue>>;
   /**
    * Subscribes to changes of one declared setting.
    * Returns a cleanup function to unsubscribe.
    */
-  onChange(id: string, listener: (value: boolean) => void): () => void;
+  onChange(id: string, listener: (value: PluginSettingValue) => void): () => void;
 };
 
 export type YapmodPluginApi = {
@@ -355,6 +368,30 @@ export type YapmodPluginApi = {
    * Useful for alerting users about events even when the app is in the background.
    */
   readonly notify: YapmodPluginNotifyApi;
+  /**
+   * File utilities for working with file-type settings.
+   *
+   * When a plugin declares a **file** setting, the user picks a file and the
+   * plugin receives a base64 data URI (e.g. "data:image/png;base64,...") as
+   * the setting value. Use `createBlobUrl()` to convert it to a blob URL for
+   * use in CSS or image elements.
+   *
+   * The file is read at pick time, not at runtime — there is no generic
+   * file-reading command. Plugins execute as trusted page code.
+   */
+  readonly file: {
+    /**
+     * Converts a data URI (from a file-type setting) to a temporary blob URL.
+     * The blob URL is automatically revoked when the plugin is disabled.
+     * For explicit control, use `revokeObjectURL(url)`.
+     */
+    createBlobUrl(dataUri: string): Promise<string>;
+    /**
+     * Explicitly revokes a blob URL created by `createBlobUrl`.
+     * Safe to call multiple times; throws for non-blob URLs.
+     */
+    revokeObjectURL(url: string): void;
+  };
 };
 
 /** The default export of a `plugin.js` ES module. */

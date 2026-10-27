@@ -16,6 +16,7 @@ import type {
   PluginDiagnostic,
   PluginManifest,
   PluginSetting,
+  PluginSettingValue,
   YapmodPluginInfo,
   YapmodPluginApi,
   YapmodPluginModule,
@@ -115,9 +116,23 @@ function validateManifest(manifest: PluginManifest): void {
   for (const setting of manifest.settings) {
     if (!setting || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(setting.id) || ids.has(setting.id) ||
         typeof setting.label !== "string" || !setting.label.trim() || setting.label.length > 80 ||
-        (setting.description !== undefined && (typeof setting.description !== "string" || setting.description.length > 200)) ||
-        setting.type !== "toggle" || typeof setting.default !== "boolean") {
+        (setting.description !== undefined && (typeof setting.description !== "string" || setting.description.length > 200))) {
       throw new Error("The plugin contains an invalid or duplicate setting.");
+    }
+    const validTypes = ["toggle", "text", "file", "color"];
+    if (!validTypes.includes(setting.type)) {
+      throw new Error("The plugin contains an invalid or duplicate setting.");
+    }
+    // Validate default value matches the setting type
+    if (setting.type === "toggle") {
+      if (typeof setting.default !== "boolean") {
+        throw new Error("The plugin contains an invalid or duplicate setting.");
+      }
+    } else {
+      // text, file, color: default must be string or null
+      if (setting.default !== null && typeof setting.default !== "string") {
+        throw new Error("The plugin contains an invalid or duplicate setting.");
+      }
     }
     ids.add(setting.id);
   }
@@ -249,15 +264,24 @@ function pluginStorageKey(id: string, option: string): string {
   return `plugin:${id}:opt_${option}`;
 }
 
-function setOptionAttribute(manifest: PluginManifest, setting: PluginSetting, value: boolean): void {
+function setOptionAttribute(manifest: PluginManifest, setting: PluginSetting, value: PluginSettingValue): void {
   const attribute = `data-yapmod-plugin-${manifest.id}-${setting.id}`;
-  if (value) document.documentElement.setAttribute(attribute, "true");
-  else document.documentElement.removeAttribute(attribute);
+  if (setting.type === "toggle") {
+    if (value === true) document.documentElement.setAttribute(attribute, "true");
+    else document.documentElement.removeAttribute(attribute);
+  } else {
+    // For text, file, color: set the value as the attribute value
+    if (value !== null && value !== undefined) {
+      document.documentElement.setAttribute(attribute, String(value));
+    } else {
+      document.documentElement.removeAttribute(attribute);
+    }
+  }
 }
 
 function applyStoredSettings(entry: InstalledEntry): void {
   for (const setting of entry.bundle.manifest.settings) {
-    const value = getYapmod().store?.get<boolean>(
+    const value = getYapmod().store?.get<PluginSettingValue>(
       pluginStorageKey(entry.bundle.manifest.id, setting.id),
       setting.default,
     ) ?? setting.default;
@@ -278,12 +302,12 @@ function showPluginSettings(entry: InstalledEntry): void {
   if (!modalApi || entry.bundle.manifest.settings.length === 0) return;
 
   const { manifest } = entry.bundle;
-  const draft = new Map<string, boolean>();
+  const draft = new Map<string, PluginSettingValue>();
 
   for (const setting of manifest.settings) {
     draft.set(
       setting.id,
-      getYapmod().store?.get<boolean>(
+      getYapmod().store?.get<PluginSettingValue>(
         pluginStorageKey(manifest.id, setting.id),
         setting.default,
       ) ?? setting.default,
@@ -361,6 +385,7 @@ async function runCleanup(entry: InstalledEntry): Promise<void> {
   }
 }
 
+
 async function enableEntry(entry: InstalledEntry): Promise<void> {
   if (entry.enabled) return;
   validateBundle(entry.bundle);
@@ -386,10 +411,10 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         }
       };
 
-      const readSetting = (id: string): boolean => {
+      const readSetting = (id: string): PluginSettingValue => {
         const setting = manifest.settings.find((item) => item.id === id);
         if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
-        return getYapmod().store?.get<boolean>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
+        return getYapmod().store?.get<PluginSettingValue>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
       };
 
       const api: YapmodPluginApi = Object.freeze({
@@ -420,18 +445,23 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           },
         }),
         settings: Object.freeze({
-          get(id: string): boolean {
+          get(id: string): PluginSettingValue {
             return readSetting(id);
           },
-          all(): Readonly<Record<string, boolean>> {
+          all(): Readonly<Record<string, PluginSettingValue>> {
             return Object.freeze(
               Object.fromEntries(manifest.settings.map((setting) => [setting.id, readSetting(setting.id)])),
             );
           },
-          onChange(id: string, listener: (value: boolean) => void): () => void {
+          onChange(id: string, listener: (value: PluginSettingValue) => void): () => void {
             const setting = manifest.settings.find((item) => item.id === id);
             if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
-            return getYapmod().store?.onChange(pluginStorageKey(manifest.id, id), (value: unknown) => listener(Boolean(value))) ?? (() => {});
+            return getYapmod().store?.onChange(pluginStorageKey(manifest.id, id), (value: unknown) => {
+              // Cast the stored value to PluginSettingValue
+              if (typeof value === "boolean" || typeof value === "string" || value === null || value === undefined) {
+                listener(value as PluginSettingValue);
+              }
+            }) ?? (() => {});
           },
         }),
         styles: Object.freeze({
@@ -508,6 +538,44 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
               notification.onclick = options.onClick;
             }
             return { close: () => notification.close() };
+          },
+        }),
+        file: Object.freeze({
+          /**
+           * Converts a data URI (from a file-type setting) to a blob URL.
+           * The blob URL is automatically revoked when the plugin is disabled.
+           */
+          async createBlobUrl(dataUri: string): Promise<string> {
+            if (typeof dataUri !== "string" || !dataUri.startsWith("data:")) {
+              throw new Error("Expected a data URI from a file-type setting.");
+            }
+            // Decode the base64 data URI to a Blob
+            const base64Data = dataUri.split(",")[1];
+            if (!base64Data) {
+              throw new Error("Invalid data URI.");
+            }
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            // Extract MIME type from the data URI
+            const mimeType = dataUri.slice(5, dataUri.indexOf(";", 5)) || "application/octet-stream";
+            const blob = new Blob([bytes], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            // Automatically revoke the blob URL when the plugin is disabled
+            cleanupCallbacks.push(() => URL.revokeObjectURL(url));
+            return url;
+          },
+          /**
+           * Explicitly revokes a blob URL created by createBlobUrl.
+           * Safe to call multiple times; throws for non-blob URLs.
+           */
+          revokeObjectURL(url: string): void {
+            if (typeof url !== "string" || !url.startsWith("blob:")) {
+              throw new Error("Invalid blob URL.");
+            }
+            URL.revokeObjectURL(url);
           },
         }),
       });

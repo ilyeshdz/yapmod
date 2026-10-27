@@ -76,8 +76,21 @@ pub struct PluginSetting {
     pub description: Option<String>,
     #[serde(rename = "type")]
     pub setting_type: String,
-    #[serde(default)]
-    pub default: bool,
+    #[serde(default = "default_setting_value")]
+    pub default: serde_json::Value,
+    /// File-type filter for `file` settings, e.g. `"image/*"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accept: Option<String>,
+}
+
+fn default_setting_value() -> serde_json::Value {
+    serde_json::Value::Bool(false)
+}
+
+const VALID_SETTING_TYPES: &[&str] = &["toggle", "text", "file", "color"];
+
+fn valid_setting_type(setting_type: &str) -> bool {
+    VALID_SETTING_TYPES.contains(&setting_type)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -222,9 +235,28 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
                 .description
                 .as_ref()
                 .is_some_and(|description| description.chars().count() > 200)
-            || setting.setting_type != "toggle"
+            || !valid_setting_type(&setting.setting_type)
         {
             return Err("the plugin contains an invalid or duplicate setting".into());
+        }
+        // Validate default value matches the setting type
+        match setting.setting_type.as_str() {
+            "toggle" => {
+                if !setting.default.is_boolean() {
+                    return Err("toggle settings must have a boolean default".into());
+                }
+            }
+            "text" | "file" | "color" => {
+                if !setting.default.is_string() && !setting.default.is_null() {
+                    return Err(format!(
+                        "{} settings must have a string or null default",
+                        setting.setting_type
+                    ));
+                }
+            }
+            _ => {
+                return Err("the plugin contains an invalid or duplicate setting".into());
+            }
         }
     }
     Ok(())
@@ -482,6 +514,65 @@ fn install_bundle(
     result
 }
 
+/// Opens a native file picker, reads the selected file immediately, and returns
+/// a base64 data URI. The plugin receives the file content directly in its settings
+/// value, so no runtime file-reading command is needed.
+#[tauri::command]
+pub async fn pick_plugin_file(
+    app: AppHandle,
+    _accept: Option<String>,
+) -> Result<Option<String>, String> {
+    let selected = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .set_title("Select a file")
+            .blocking_pick_file()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let Some(path) = selected else {
+        return Ok(None);
+    };
+    let path = PathBuf::from(path.to_string());
+    if path.is_symlink() {
+        return Err(format!(
+            "Symbolic links are not allowed: {}",
+            path.display()
+        ));
+    }
+    if !path.is_file() {
+        return Err(format!("Not a file: {}", path.display()));
+    }
+    let bytes = fs::read(&path).map_err(|error| format!("Failed to read file: {}", error))?;
+
+    // Detect MIME type from extension
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_else(|| "bin".to_string());
+
+    let mime_type = match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "avif" => "image/avif",
+        _ => "application/octet-stream",
+    };
+
+    let base64_string = base64_encode(&bytes);
+    Ok(Some(format!("data:{};base64,{}", mime_type, base64_string)))
+}
+
+fn base64_encode(bytes: &[u8]) -> String {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.encode(bytes)
+}
+
 /// Opens a native folder picker and returns validated metadata for consent.
 #[tauri::command]
 pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>, String> {
@@ -703,11 +794,83 @@ mod tests {
                 label: "Compact mode".into(),
                 description: None,
                 setting_type: "toggle".into(),
-                default: false,
+                default: serde_json::json!(false),
+                accept: None,
             }],
             stylesheet: "plugin.css".into(),
             script: None,
         }
+    }
+
+    #[test]
+    fn accepts_all_setting_types() {
+        let manifest_with_text = PluginManifest {
+            settings: vec![PluginSetting {
+                id: "custom-text".into(),
+                label: "Custom text".into(),
+                description: None,
+                setting_type: "text".into(),
+                default: serde_json::json!("hello"),
+                accept: None,
+            }],
+            ..manifest()
+        };
+        assert!(validate_manifest(&manifest_with_text).is_ok());
+
+        let manifest_with_file = PluginManifest {
+            settings: vec![PluginSetting {
+                id: "bg-image".into(),
+                label: "Background image".into(),
+                description: None,
+                setting_type: "file".into(),
+                default: serde_json::json!(null),
+                accept: Some("image/*".into()),
+            }],
+            ..manifest()
+        };
+        assert!(validate_manifest(&manifest_with_file).is_ok());
+
+        let manifest_with_color = PluginManifest {
+            settings: vec![PluginSetting {
+                id: "accent-color".into(),
+                label: "Accent color".into(),
+                description: None,
+                setting_type: "color".into(),
+                default: serde_json::json!("#ff0000"),
+                accept: None,
+            }],
+            ..manifest()
+        };
+        assert!(validate_manifest(&manifest_with_color).is_ok());
+    }
+
+    #[test]
+    fn rejects_mismatched_default_types() {
+        let manifest_toggle_with_string = PluginManifest {
+            settings: vec![PluginSetting {
+                id: "bad-toggle".into(),
+                label: "Bad toggle".into(),
+                description: None,
+                setting_type: "toggle".into(),
+                default: serde_json::json!("yes"),
+                accept: None,
+            }],
+            ..manifest()
+        };
+        assert!(validate_manifest(&manifest_toggle_with_string).is_err());
+
+        let manifest_text_with_bool = PluginManifest {
+            settings: vec![PluginSetting {
+                id: "bad-text".into(),
+                label: "Bad text".into(),
+                description: None,
+                setting_type: "text".into(),
+                default: serde_json::json!(true),
+                accept: None,
+            }],
+            ..manifest()
+        };
+        assert!(validate_manifest(&manifest_text_with_bool).is_err());
     }
 
     #[test]

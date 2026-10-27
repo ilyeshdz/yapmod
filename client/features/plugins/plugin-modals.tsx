@@ -4,9 +4,12 @@ import { render } from "solid-js/web";
 import type {
   PluginBundle,
   PluginManifest,
+  PluginSetting,
+  PluginSettingValue,
 } from "../../shared/types";
+import { invokeCommand } from "../../core/tauri";
 
-export type PluginSettingsDraft = Map<string, boolean>;
+export type PluginSettingsDraft = Map<string, PluginSettingValue>;
 
 /** The warning shown before a plugin is imported or enabled. */
 export function PluginConsent(
@@ -38,6 +41,141 @@ export function PluginConsent(
   );
 }
 
+/** Renders the appropriate input control for a plugin setting based on its type. */
+function PluginSettingInput(
+  props: { setting: PluginSetting; draft: PluginSettingsDraft },
+): JSX.Element {
+  const { setting, draft } = props;
+  const value = () => draft.get(setting.id) ?? setting.default;
+
+  const update = (newValue: PluginSettingValue) => {
+    draft.set(setting.id, newValue);
+  };
+
+  if (setting.type === "toggle") {
+    return (
+      <label class="toggle-row yapmod-plugin-setting-row">
+        <span>
+          <div class="toggle-label">{setting.label}</div>
+          <Show when={setting.description}>
+            <div class="hint">{setting.description}</div>
+          </Show>
+        </span>
+        <input
+          class="switch"
+          type="checkbox"
+          aria-label={setting.label}
+          checked={value() as boolean}
+          onChange={(event) => {
+            update(event.currentTarget.checked);
+          }}
+        />
+      </label>
+    );
+  }
+
+  if (setting.type === "text") {
+    return (
+      <div class="yapmod-plugin-setting-row yapmod-plugin-setting-input-row">
+        <span>
+          <div class="toggle-label">{setting.label}</div>
+          <Show when={setting.description}>
+            <div class="hint">{setting.description}</div>
+          </Show>
+        </span>
+        <input
+          class="yapmod-plugin-text-input"
+          type="text"
+          aria-label={setting.label}
+          value={value() as string}
+          onChange={(event) => {
+            update(event.currentTarget.value);
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (setting.type === "file") {
+    const currentValue = value() as string;
+    // The stored value is a data URI; show a short indicator instead of the raw string
+    const displayText = currentValue && currentValue.startsWith("data:")
+      ? "File selected"
+      : currentValue || "No file selected";
+
+    return (
+      <div class="yapmod-plugin-setting-row yapmod-plugin-setting-input-row">
+        <span>
+          <div class="toggle-label">{setting.label}</div>
+          <Show when={setting.description}>
+            <div class="hint">{setting.description}</div>
+          </Show>
+        </span>
+        <div class="yapmod-plugin-file-input-group">
+          <input
+            class="yapmod-plugin-text-input yapmod-plugin-file-path"
+            type="text"
+            aria-label={`${setting.label} file`}
+            value={displayText}
+            readOnly
+            placeholder="No file selected"
+          />
+          <button
+            class="btn small yapmod-plugin-file-browse"
+            type="button"
+            onClick={async () => {
+              const dataUri = await invokeCommand<string | null>("pick_plugin_file", {
+                accept: setting.accept,
+              });
+              if (dataUri !== null) {
+                update(dataUri);
+              }
+            }}
+          >
+            Browse
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (setting.type === "color") {
+    return (
+      <div class="yapmod-plugin-setting-row yapmod-plugin-setting-input-row">
+        <span>
+          <div class="toggle-label">{setting.label}</div>
+          <Show when={setting.description}>
+            <div class="hint">{setting.description}</div>
+          </Show>
+        </span>
+        <div class="yapmod-plugin-color-input-group">
+          <input
+            class="yapmod-plugin-color-picker"
+            type="color"
+            aria-label={setting.label}
+            value={value() as string}
+            onChange={(event) => {
+              update(event.currentTarget.value);
+            }}
+          />
+          <input
+            class="yapmod-plugin-text-input yapmod-plugin-color-text"
+            type="text"
+            aria-label={`${setting.label} hex value`}
+            value={value() as string}
+            onChange={(event) => {
+              update(event.currentTarget.value);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // TypeScript knows all branches are covered, but we keep this for safety.
+  return <div class="yapmod-plugin-setting-row">Unknown setting type</div>;
+}
+
 /** The settings of a plugin, edited as a draft until the modal is saved. */
 export function PluginSettingsForm(
   props: { manifest: PluginManifest; draft: PluginSettingsDraft },
@@ -45,25 +183,7 @@ export function PluginSettingsForm(
   return (
     <div class="yapmod-plugin-settings-modal">
       <For each={props.manifest.settings}>
-        {(setting) => (
-          <label class="toggle-row yapmod-plugin-setting-row">
-            <span>
-              <div class="toggle-label">{setting.label}</div>
-              <Show when={setting.description}>
-                <div class="hint">{setting.description}</div>
-              </Show>
-            </span>
-            <input
-              class="switch"
-              type="checkbox"
-              aria-label={setting.label}
-              checked={props.draft.get(setting.id) ?? setting.default}
-              onChange={(event) => {
-                props.draft.set(setting.id, event.currentTarget.checked);
-              }}
-            />
-          </label>
-        )}
+        {(setting) => <PluginSettingInput setting={setting} draft={props.draft} />}
       </For>
     </div>
   );

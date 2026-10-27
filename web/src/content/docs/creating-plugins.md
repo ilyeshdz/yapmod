@@ -46,7 +46,8 @@ The manifest is the identity of the package.
 - `api` is required. The current plugin API version is `1`.
 - `version`, `author`, `description`, and `license` are optional metadata.
 - `tags` are optional search words used by the Community gallery.
-- `settings` declares the simple toggles that appear on the plugin card.
+- `settings` declares the user-configurable options that appear in the plugin
+  settings dialog.
 - `stylesheet` must be `plugin.css` when present.
 - `script` must be `plugin.js` when present.
 
@@ -170,31 +171,91 @@ copies of requests, headers, or message bodies.
 ### Settings
 
 Settings are declared in the manifest, so users can change plugin behavior
-without editing code. Yapmod renders them on the plugin card and saves them
-when the user chooses **Save**.
+without editing code. Yapmod renders them in the plugin settings dialog and
+saves them when the user chooses **Save**.
+
+Four setting types are supported:
+
+**Toggle** — a simple on/off switch:
 
 ```json
-"settings": [
-  {
-    "id": "show-badge",
-    "label": "Show activity badge",
-    "description": "Display a small status badge.",
-    "type": "toggle",
-    "default": true
-  }
-]
+{
+  "id": "show-badge",
+  "label": "Show activity badge",
+  "description": "Display a small status badge.",
+  "type": "toggle",
+  "default": true
+}
 ```
 
-Read settings through the API:
+**Text** — a free-form text input:
+
+```json
+{
+  "id": "custom-greeting",
+  "label": "Greeting text",
+  "description": "Text shown when the app starts.",
+  "type": "text",
+  "default": "Hello!"
+}
+```
+
+**File** — a file picker with a browse button. The value is the absolute file
+path selected by the user. The optional `accept` field hints at the expected
+file type (e.g. `"image/*"`):
+
+```json
+{
+  "id": "background-image",
+  "label": "Background Image",
+  "description": "Select an image to use as the app background.",
+  "type": "file",
+  "default": null,
+  "accept": "image/*"
+}
+```
+
+**Color** — a color picker with a hex text input:
+
+```json
+{
+  "id": "accent-color",
+  "label": "Accent Color",
+  "description": "Override the default accent color.",
+  "type": "color",
+  "default": "#ff6b4a"
+}
+```
+
+Read settings through the API. The returned value matches the setting type
+(`boolean` for toggle, `string` or `null` for text/file/color):
 
 ```js
-api.settings.get("show-badge"); // boolean
-api.settings.all();              // { "show-badge": true }
+api.settings.get("show-badge");       // boolean
+api.settings.get("background-image"); // string (file path) or null
+api.settings.all();                    // { "show-badge": true, "background-image": "/path/to/img.png" }
 
 const stop = api.settings.onChange("show-badge", (value) => {
   badge.hidden = !value;
 });
 api.onCleanup(stop);
+```
+
+Settings are also exposed as `data-yapmod-plugin-{pluginId}-{settingId}`
+attributes on the `<html>` element. Toggle settings set the attribute to
+`"true"` when enabled; other types set the attribute to the string value.
+This lets CSS react to settings without JavaScript:
+
+```css
+/* Toggle: attribute presence */
+html[data-yapmod-plugin-my-plugin-show-badge="true"] .badge {
+  display: block;
+}
+
+/* Color: attribute value */
+html[data-yapmod-plugin-my-plugin-accent-color] {
+  --ym-accent: attr(data-yapmod-plugin-my-plugin-accent-color);
+}
 ```
 
 Reading or subscribing to an undeclared setting throws, so typos fail loudly.
@@ -243,6 +304,38 @@ const modal = api.modal.show({
   buttons: [{ label: "Close", variant: "secondary" }],
 });
 ```
+
+### Loading local files
+
+When a plugin declares a **file** setting, the user picks a file through a
+native dialog and the plugin receives a **base64 data URI** (e.g.
+`"data:image/png;base64,iVBOR..."`) as the setting value. The file is read at
+pick time, so there is no runtime file-reading command.
+
+To use the data URI in CSS or image elements, convert it to a blob URL:
+
+```js
+// The file setting value is a data URI
+const dataUri = api.settings.get("background-image");
+// "data:image/jpeg;base64,/9j/4AAQSk..."
+
+// Convert to a blob URL for CSS url() or <img> src
+const url = await api.file.createBlobUrl(dataUri);
+// "blob:https://www.yapin.gg/..."
+```
+
+The blob URL is automatically revoked when the plugin is disabled, so manual
+cleanup is optional. For explicit control:
+
+```js
+api.file.revokeObjectURL(url);
+```
+
+This is useful when a plugin replaces an image and wants to free the previous
+blob immediately rather than waiting for deactivation.
+
+**The data URI is stored in the plugin's settings.** Very large files will
+increase the settings size. For images, keep files under a few megabytes.
 
 ## Watch network traffic
 

@@ -48,6 +48,7 @@ fn main() {
             theme::install_theme,
             theme::install_community_theme,
             theme::remove_theme,
+            plugin::pick_plugin_file,
             plugin::pick_plugin_folder,
             plugin::install_picked_plugin,
             plugin::list_plugins,
