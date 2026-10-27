@@ -63,11 +63,13 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
   }
 
   const content = createUpdateContent(info);
+  const product = info.channel === "nightly" ? "yapmod nightly" : "yapmod";
+  const target = info.release_url || WEBSITE_URL;
 
   return modal.show({
     id: UPDATE_MODAL_ID,
     title: UPDATE_MODAL_TITLE,
-    description: `yapmod v${info.latest_version} is out. Download it from the website.`,
+    description: `${product} v${info.latest_version} is out. Download it from the website.`,
     content: content.element,
     size: "sm",
     className: "yapmod-update-modal",
@@ -78,7 +80,7 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
         variant: "native",
         className: "small",
         onClick: () => {
-          openExternally(WEBSITE_URL);
+          openExternally(target);
         },
       },
       {

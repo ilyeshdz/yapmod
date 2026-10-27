@@ -8,6 +8,7 @@ use tauri::{
 use tauri_plugin_opener::OpenerExt;
 
 mod badge;
+mod channel;
 mod client_update;
 mod config;
 mod hosts;

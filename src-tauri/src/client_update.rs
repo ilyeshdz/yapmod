@@ -10,11 +10,9 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
-use crate::{http, injection::ClientBundle};
+use crate::{channel::UpdateChannel, http, injection::ClientBundle};
 
-const MANIFEST_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/manifest.json";
-const SIGNATURE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/manifest.sig";
-const BUNDLE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates/bundle.json";
+const UPDATES_BASE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates";
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_MANIFEST_SIZE: usize = 16 * 1024;
 const MAX_SIGNATURE_SIZE: usize = 1024;
@@ -30,6 +28,7 @@ struct Manifest {
     release_sequence: u64,
     bridge_api_version: u32,
     min_app_version: String,
+    channel: UpdateChannel,
     expires_at: u64,
     bundle_sha256: String,
 }
@@ -62,11 +61,52 @@ pub struct LaunchSelection {
     pub status: ClientUpdateLaunchStatus,
 }
 
-fn updates_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path()
+fn updates_dir(app: &AppHandle, channel: UpdateChannel) -> Result<PathBuf, String> {
+    let base = app
+        .path()
         .app_config_dir()
         .map(|path| path.join("client-updates"))
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    let dir = base.join(channel.directory());
+
+    if channel == UpdateChannel::Stable {
+        migrate_legacy_stable_state(&base, &dir);
+    }
+
+    Ok(dir)
+}
+
+/// Stable installations used the update directory before channels existed.
+/// Keep their high-water mark so a replayed release cannot be installed again,
+/// but do not carry over unsigned cached artifacts into the new channel.
+fn migrate_legacy_stable_state(base: &Path, dir: &Path) {
+    if state_path(dir).exists() {
+        return;
+    }
+
+    let Ok(bytes) = fs::read(state_path(base)) else {
+        return;
+    };
+    let Ok(legacy) = serde_json::from_slice::<State>(&bytes) else {
+        return;
+    };
+    if legacy.highest_sequence == 0 {
+        return;
+    }
+
+    let migrated = State {
+        highest_sequence: legacy.highest_sequence,
+        ..State::default()
+    };
+    if fs::create_dir_all(dir).is_ok()
+        && let Ok(bytes) = serde_json::to_vec(&migrated)
+    {
+        let _ = write_atomic(&state_path(dir), &bytes);
+    }
+}
+
+fn update_url(channel: UpdateChannel, file: &str) -> String {
+    format!("{UPDATES_BASE_URL}/{}/{file}", channel.directory())
 }
 
 fn state_path(dir: &Path) -> PathBuf {
@@ -95,11 +135,6 @@ fn pinned_public_key() -> Option<Vec<u8>> {
     let encoded = CLIENT_UPDATE_PUBLIC_KEY.filter(|key| !key.trim().is_empty())?;
     let key = STANDARD.decode(encoded.trim()).ok()?;
     (key.len() == 32).then_some(key)
-}
-
-fn is_nightly_app(app_version: &str) -> bool {
-    Version::parse(app_version)
-        .is_ok_and(|version| version.build.as_str().split('.').next() == Some("nightly"))
 }
 
 fn read_state(dir: &Path) -> State {
@@ -153,17 +188,30 @@ fn write_state(dir: &Path, state: &State) -> Result<(), String> {
     write_atomic(&state_path(dir), &bytes)
 }
 
-fn read_bundle(dir: &Path, sequence: u64, app_version: &str) -> Option<ClientBundle> {
+fn read_bundle(
+    dir: &Path,
+    sequence: u64,
+    app_version: &str,
+    channel: UpdateChannel,
+) -> Option<ClientBundle> {
     let key = pinned_public_key()?;
     let bytes = fs::read(bundle_path(dir, sequence)).ok()?;
     let manifest_bytes = fs::read(manifest_path(dir, sequence)).ok()?;
     let signature_bytes = fs::read(signature_path(dir, sequence)).ok()?;
-    verified_bundle(&manifest_bytes, &signature_bytes, &bytes, &key, app_version)
-        .filter(|bundle| bundle.release_sequence == sequence)
+    verified_bundle(
+        &manifest_bytes,
+        &signature_bytes,
+        &bytes,
+        &key,
+        app_version,
+        channel,
+    )
+    .filter(|bundle| bundle.release_sequence == sequence)
 }
 
-fn compatible(bundle: &ClientBundle, app_version: &str) -> bool {
-    if bundle.client_version.is_empty()
+fn compatible(bundle: &ClientBundle, app_version: &str, channel: UpdateChannel) -> bool {
+    if bundle.channel != channel
+        || bundle.client_version.is_empty()
         || bundle.client_version.len() > 64
         || bundle.bridge_api_version != BRIDGE_API_VERSION
         || bundle.preinject.is_empty()
@@ -187,9 +235,16 @@ fn validate_manifest(
     highest_sequence: u64,
     app_version: &str,
     now: u64,
+    channel: UpdateChannel,
 ) -> Result<(), String> {
+    if manifest.channel != channel {
+        return Err("the client update belongs to another channel".to_string());
+    }
     if manifest.client_version.is_empty() || manifest.client_version.len() > 64 {
         return Err("the client update version is invalid".to_string());
+    }
+    if Version::parse(&manifest.client_version).is_err() {
+        return Err("the client update version is not a semantic version".to_string());
     }
     if manifest.expires_at <= now {
         return Err("the client update manifest has expired".to_string());
@@ -215,12 +270,18 @@ fn validate_manifest(
     Ok(())
 }
 
-fn bundle_matches_manifest(bundle: &ClientBundle, manifest: &Manifest, app_version: &str) -> bool {
-    bundle.client_version == manifest.client_version
+fn bundle_matches_manifest(
+    bundle: &ClientBundle,
+    manifest: &Manifest,
+    app_version: &str,
+    channel: UpdateChannel,
+) -> bool {
+    bundle.channel == channel
+        && bundle.client_version == manifest.client_version
         && bundle.release_sequence == manifest.release_sequence
         && bundle.bridge_api_version == manifest.bridge_api_version
         && bundle.min_app_version == manifest.min_app_version
-        && compatible(bundle, app_version)
+        && compatible(bundle, app_version, channel)
 }
 
 fn verified_bundle(
@@ -229,17 +290,21 @@ fn verified_bundle(
     bundle_bytes: &[u8],
     public_key: &[u8],
     app_version: &str,
+    channel: UpdateChannel,
 ) -> Option<ClientBundle> {
     if !verify_manifest(manifest_bytes, signature_bytes, public_key) {
         return None;
     }
     let manifest: Manifest = serde_json::from_slice(manifest_bytes).ok()?;
+    if manifest.channel != channel {
+        return None;
+    }
     let expected_hash = hex_digest(&manifest.bundle_sha256)?;
     if digest::digest(&digest::SHA256, bundle_bytes).as_ref() != expected_hash.as_slice() {
         return None;
     }
     let bundle: ClientBundle = serde_json::from_slice(bundle_bytes).ok()?;
-    bundle_matches_manifest(&bundle, &manifest, app_version).then_some(bundle)
+    bundle_matches_manifest(&bundle, &manifest, app_version, channel).then_some(bundle)
 }
 
 /// Selects a cached last-known-good bundle or marks a pending bundle as the
@@ -249,13 +314,9 @@ pub fn for_launch(app: &AppHandle, app_version: &str) -> LaunchSelection {
         bundle: None,
         status: ClientUpdateLaunchStatus::default(),
     };
-    // Nightly builds embed the client from the same commit as the desktop
-    // app. A cached stable-channel bundle must not replace that code.
-    if is_nightly_app(app_version) {
-        return fallback();
-    }
+    let channel = UpdateChannel::active();
 
-    let Ok(dir) = updates_dir(app) else {
+    let Ok(dir) = updates_dir(app, channel) else {
         return fallback();
     };
     if fs::create_dir_all(&dir).is_err() {
@@ -277,7 +338,7 @@ pub fn for_launch(app: &AppHandle, app_version: &str) -> LaunchSelection {
             state.trial_started = false;
             let _ = write_state(&dir, &state);
             status.rolled_back = true;
-        } else if let Some(bundle) = read_bundle(&dir, sequence, app_version) {
+        } else if let Some(bundle) = read_bundle(&dir, sequence, app_version, channel) {
             state.trial_started = true;
             if write_state(&dir, &state).is_ok() {
                 status.trial = true;
@@ -297,7 +358,7 @@ pub fn for_launch(app: &AppHandle, app_version: &str) -> LaunchSelection {
 
     let bundle = state
         .last_good_sequence
-        .and_then(|sequence| read_bundle(&dir, sequence, app_version));
+        .and_then(|sequence| read_bundle(&dir, sequence, app_version, channel));
     LaunchSelection { bundle, status }
 }
 
@@ -311,7 +372,8 @@ pub fn get_client_update_launch_status(
 /// Called only after postinject has completed on an approved Yapper origin.
 #[tauri::command]
 pub fn confirm_client_update(app: AppHandle) -> Result<(), String> {
-    let dir = updates_dir(&app)?;
+    let channel = UpdateChannel::active();
+    let dir = updates_dir(&app, channel)?;
     let mut state = read_state(&dir);
 
     let Some(sequence) = state.pending_sequence else {
@@ -325,7 +387,7 @@ pub fn confirm_client_update(app: AppHandle) -> Result<(), String> {
     // A bundle promoted without compatibility checks must never become the
     // fallback for a later app version.
     let app_version = app.package_info().version.to_string();
-    if read_bundle(&dir, sequence, &app_version).is_none() {
+    if read_bundle(&dir, sequence, &app_version, channel).is_none() {
         return Err("the trial client bundle is no longer compatible".to_string());
     }
 
@@ -366,13 +428,16 @@ async fn download_limited(
     client: &reqwest::Client,
     url: &str,
     limit: usize,
-) -> Result<Vec<u8>, String> {
+) -> Result<Option<Vec<u8>>, String> {
     let mut response = client
         .get(url)
         .timeout(REQUEST_TIMEOUT)
         .send()
         .await
         .map_err(|error| error.to_string())?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
     if !response.status().is_success() {
         return Err(format!("download failed with status {}", response.status()));
     }
@@ -390,16 +455,13 @@ async fn download_limited(
         }
         bytes.extend_from_slice(&chunk);
     }
-    Ok(bytes)
+    Ok(Some(bytes))
 }
 
-/// Checks the fixed static feed and stores a compatible bundle for next
+/// Checks the channel's static feed and stores a compatible bundle for next
 /// launch. All downloaded bytes are authenticated before they are persisted.
 pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Result<(), String> {
-    if is_nightly_app(&app_version) {
-        return Ok(());
-    }
-
+    let channel = UpdateChannel::active();
     let Some(encoded_key) = CLIENT_UPDATE_PUBLIC_KEY.filter(|key| !key.trim().is_empty()) else {
         return Ok(());
     };
@@ -410,7 +472,7 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         return Err("the configured client update public key is invalid".to_string());
     }
 
-    let dir = updates_dir(&app)?;
+    let dir = updates_dir(&app, channel)?;
     fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
     let state = read_state(&dir);
     if state.pending_sequence.is_some() {
@@ -419,9 +481,27 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
 
     let client = http::client();
 
-    let manifest_bytes = download_limited(client, MANIFEST_URL, MAX_MANIFEST_SIZE).await?;
+    // A missing channel feed simply means that channel has no published
+    // client update yet. Other failures remain visible to the caller.
+    let Some(manifest_bytes) = download_limited(
+        client,
+        &update_url(channel, "manifest.json"),
+        MAX_MANIFEST_SIZE,
+    )
+    .await?
+    else {
+        return Ok(());
+    };
     let signature_bytes = STANDARD
-        .decode(download_limited(client, SIGNATURE_URL, MAX_SIGNATURE_SIZE).await?)
+        .decode(
+            download_limited(
+                client,
+                &update_url(channel, "manifest.sig"),
+                MAX_SIGNATURE_SIZE,
+            )
+            .await?
+            .ok_or_else(|| "the client update signature is missing".to_string())?,
+        )
         .map_err(|_| "the client update signature is not valid base64".to_string())?;
     if !verify_manifest(&manifest_bytes, &signature_bytes, &public_key) {
         return Err("the client update manifest signature is invalid".to_string());
@@ -433,15 +513,25 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         .duration_since(UNIX_EPOCH)
         .map_err(|error| error.to_string())?
         .as_secs();
-    validate_manifest(&manifest, state.highest_sequence, &app_version, now)?;
+    validate_manifest(
+        &manifest,
+        state.highest_sequence,
+        &app_version,
+        now,
+        channel,
+    )?;
 
-    let bundle_bytes = download_limited(client, BUNDLE_URL, MAX_BUNDLE_SIZE).await?;
+    let bundle_bytes =
+        download_limited(client, &update_url(channel, "bundle.json"), MAX_BUNDLE_SIZE)
+            .await?
+            .ok_or_else(|| "the client update bundle is missing".to_string())?;
     if verified_bundle(
         &manifest_bytes,
         &signature_bytes,
         &bundle_bytes,
         &public_key,
         &app_version,
+        channel,
     )
     .is_none()
     {
@@ -494,18 +584,16 @@ pub async fn prepare_client_update(
     }
 
     let app_version = app.package_info().version.to_string();
-    if is_nightly_app(&app_version) {
-        return Ok(None);
-    }
 
     check_for_client_update(app.clone(), app_version.clone()).await?;
 
-    let dir = updates_dir(&app)?;
+    let channel = UpdateChannel::active();
+    let dir = updates_dir(&app, channel)?;
     let state = read_state(&dir);
     let Some(sequence) = state.pending_sequence else {
         return Ok(None);
     };
-    let bundle = read_bundle(&dir, sequence, &app_version)
+    let bundle = read_bundle(&dir, sequence, &app_version, channel)
         .ok_or_else(|| "the staged client update could not be verified".to_string())?;
 
     Ok(Some(ClientUpdateInfo {
@@ -556,6 +644,7 @@ mod tests {
             release_sequence: 2,
             bridge_api_version: BRIDGE_API_VERSION,
             min_app_version: "0.4.0".to_string(),
+            channel: UpdateChannel::Stable,
             preinject: "pre".to_string(),
             postinject: "post".to_string(),
             minimum_css: "css".to_string(),
@@ -566,6 +655,7 @@ mod tests {
             release_sequence: bundle.release_sequence,
             bridge_api_version: bundle.bridge_api_version,
             min_app_version: bundle.min_app_version.clone(),
+            channel: UpdateChannel::Stable,
             expires_at: 100,
             bundle_sha256: digest::digest(&digest::SHA256, &bundle_bytes)
                 .as_ref()
@@ -582,7 +672,8 @@ mod tests {
                 signed.as_ref(),
                 &bundle_bytes,
                 pair.public_key().as_ref(),
-                "0.4.1"
+                "0.4.1",
+                UpdateChannel::Stable,
             )
             .is_some()
         );
@@ -595,7 +686,63 @@ mod tests {
                 signed.as_ref(),
                 &changed_bundle,
                 pair.public_key().as_ref(),
-                "0.4.1"
+                "0.4.1",
+                UpdateChannel::Stable,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn a_bundle_cannot_cross_channels() {
+        let seed = [11u8; 32];
+        let pair = signature::Ed25519KeyPair::from_seed_unchecked(&seed).unwrap();
+        let bundle = ClientBundle {
+            client_version: "1.0.0".to_string(),
+            release_sequence: 2,
+            bridge_api_version: BRIDGE_API_VERSION,
+            min_app_version: "0.4.0".to_string(),
+            channel: UpdateChannel::Nightly,
+            preinject: "pre".to_string(),
+            postinject: "post".to_string(),
+            minimum_css: "css".to_string(),
+        };
+        let bundle_bytes = serde_json::to_vec(&bundle).unwrap();
+        let manifest_bytes = serde_json::to_vec(&Manifest {
+            client_version: bundle.client_version.clone(),
+            release_sequence: bundle.release_sequence,
+            bridge_api_version: bundle.bridge_api_version,
+            min_app_version: bundle.min_app_version.clone(),
+            channel: UpdateChannel::Nightly,
+            expires_at: 100,
+            bundle_sha256: digest::digest(&digest::SHA256, &bundle_bytes)
+                .as_ref()
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect(),
+        })
+        .unwrap();
+        let signed = pair.sign(&manifest_bytes);
+
+        assert!(
+            verified_bundle(
+                &manifest_bytes,
+                signed.as_ref(),
+                &bundle_bytes,
+                pair.public_key().as_ref(),
+                "0.4.1",
+                UpdateChannel::Nightly,
+            )
+            .is_some()
+        );
+        assert!(
+            verified_bundle(
+                &manifest_bytes,
+                signed.as_ref(),
+                &bundle_bytes,
+                pair.public_key().as_ref(),
+                "0.4.1",
+                UpdateChannel::Stable,
             )
             .is_none()
         );
@@ -608,16 +755,19 @@ mod tests {
             release_sequence: 1,
             bridge_api_version: BRIDGE_API_VERSION,
             min_app_version: "0.4.1".to_string(),
+            channel: UpdateChannel::Stable,
             preinject: "pre".to_string(),
             postinject: "post".to_string(),
             minimum_css: "css".to_string(),
         };
-        assert!(compatible(&bundle, "0.4.1"));
+        assert!(compatible(&bundle, "0.4.1", UpdateChannel::Stable));
         bundle.min_app_version = "0.5.0".to_string();
-        assert!(!compatible(&bundle, "0.4.1"));
+        assert!(!compatible(&bundle, "0.4.1", UpdateChannel::Stable));
         bundle.min_app_version = "0.1.0".to_string();
         bundle.bridge_api_version += 1;
-        assert!(!compatible(&bundle, "0.4.1"));
+        assert!(!compatible(&bundle, "0.4.1", UpdateChannel::Stable));
+        bundle.bridge_api_version = BRIDGE_API_VERSION;
+        assert!(!compatible(&bundle, "0.4.1", UpdateChannel::Nightly));
     }
 
     #[test]
@@ -627,22 +777,82 @@ mod tests {
     }
 
     #[test]
-    fn rejects_expired_replayed_and_incompatible_manifests() {
+    fn rejects_expired_replayed_incompatible_and_cross_channel_manifests() {
         let manifest = Manifest {
             client_version: "1.0.0".to_string(),
             release_sequence: 7,
             bridge_api_version: BRIDGE_API_VERSION,
             min_app_version: "0.4.0".to_string(),
+            channel: UpdateChannel::Stable,
             expires_at: 100,
             bundle_sha256: "ab".repeat(32),
         };
-        assert!(validate_manifest(&manifest, 6, "0.4.1", 99).is_ok());
-        assert!(validate_manifest(&manifest, 7, "0.4.1", 99).is_err());
-        assert!(validate_manifest(&manifest, 6, "0.4.1", 100).is_err());
-        assert!(validate_manifest(&manifest, 6, "0.3.9", 99).is_err());
+        assert!(validate_manifest(&manifest, 6, "0.4.1", 99, UpdateChannel::Stable).is_ok());
+        assert!(validate_manifest(&manifest, 7, "0.4.1", 99, UpdateChannel::Stable).is_err());
+        assert!(validate_manifest(&manifest, 6, "0.4.1", 100, UpdateChannel::Stable).is_err());
+        assert!(validate_manifest(&manifest, 6, "0.3.9", 99, UpdateChannel::Stable).is_err());
+        assert!(validate_manifest(&manifest, 6, "0.4.1", 99, UpdateChannel::Nightly).is_err());
         let mut too_far_ahead = manifest;
         too_far_ahead.expires_at = MAX_MANIFEST_LIFETIME + 1;
-        assert!(validate_manifest(&too_far_ahead, 6, "0.4.1", 0).is_err());
+        assert!(validate_manifest(&too_far_ahead, 6, "0.4.1", 0, UpdateChannel::Stable).is_err());
+    }
+
+    #[test]
+    fn accepts_nightly_versions_for_nightly_manifests() {
+        let manifest = Manifest {
+            client_version: "1.0.1-nightly.1".to_string(),
+            release_sequence: 3,
+            bridge_api_version: BRIDGE_API_VERSION,
+            min_app_version: "0.5.1+nightly.20261027.4".to_string(),
+            channel: UpdateChannel::Nightly,
+            expires_at: 100,
+            bundle_sha256: "ab".repeat(32),
+        };
+        assert!(
+            validate_manifest(
+                &manifest,
+                2,
+                "0.5.1+nightly.20261027.4",
+                99,
+                UpdateChannel::Nightly
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn migrates_the_legacy_stable_high_water_mark_without_cached_bundles() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let base = std::env::temp_dir().join(format!(
+            "yapmod-client-update-migration-{}-{stamp}",
+            std::process::id()
+        ));
+        let stable = base.join("stable");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(
+            state_path(&base),
+            serde_json::to_vec(&State {
+                highest_sequence: 9,
+                last_good_sequence: Some(8),
+                pending_sequence: Some(9),
+                trial_started: true,
+            })
+            .unwrap(),
+        )
+        .unwrap();
+
+        migrate_legacy_stable_state(&base, &stable);
+
+        let migrated = read_state(&stable);
+        assert_eq!(migrated.highest_sequence, 9);
+        assert_eq!(migrated.last_good_sequence, None);
+        assert_eq!(migrated.pending_sequence, None);
+        assert!(!migrated.trial_started);
+
+        fs::remove_dir_all(base).unwrap();
     }
 
     #[test]

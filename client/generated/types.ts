@@ -81,6 +81,17 @@ css: string | null, };
 export type ThemeMode = "dark" | "light" | "both";
 
 /**
+ * The update channel an installation belongs to.
+ *
+ * The channel is part of the build, not a user setting. A stable package is
+ * compiled with `YAPMOD_UPDATE_CHANNEL=stable`, and a nightly package with
+ * `YAPMOD_UPDATE_CHANNEL=nightly`. Builds made before the channel existed
+ * fall back to their version metadata so an already installed nightly keeps
+ * receiving nightlies instead of silently moving to stable.
+ */
+export type UpdateChannel = "stable" | "nightly";
+
+/**
  * The update information the injected UI needs.
  */
 export type UpdateInfo = { 
@@ -89,10 +100,18 @@ export type UpdateInfo = {
  */
 current_version: string, 
 /**
- * The newest version published on GitHub.
+ * The newest version published on this installation's channel.
  */
 latest_version: string, 
 /**
  * Whether the published version is newer than the running one.
  */
-available: boolean, };
+available: boolean, 
+/**
+ * The channel this installation follows.
+ */
+channel: UpdateChannel, 
+/**
+ * Where the user can download the update.
+ */
+release_url: string, };

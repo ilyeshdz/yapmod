@@ -11,6 +11,16 @@ fn parse_version(version: &str) -> Vec<u64> {
         .collect()
 }
 
+/// Extracts the `nightly.YYYYMMDD.RUN` build sequence, when present.
+fn nightly_build(version: &Version) -> Option<Vec<u64>> {
+    let build = version.build.as_str().strip_prefix("nightly.")?;
+
+    build
+        .split('.')
+        .map(|part| part.parse::<u64>().ok())
+        .collect::<Option<Vec<_>>>()
+}
+
 /// Compares semantic versions, with a numeric fallback for legacy strings.
 pub fn compare_versions(left: &str, right: &str) -> Ordering {
     let left_semver = Version::parse(left.trim().trim_start_matches('v'));
@@ -21,18 +31,16 @@ pub fn compare_versions(left: &str, right: &str) -> Ordering {
         if precedence == Ordering::Equal {
             // Nightly versions use SemVer build metadata to stay compatible
             // with Linux package managers. Metadata is normally ignored by
-            // SemVer precedence, but a stable release of the same core version
-            // must still supersede that nightly in the update prompt.
-            let left_is_stable = left.build.is_empty();
-            let right_is_stable = right.build.is_empty();
-            let left_is_nightly = left.build.as_str().starts_with("nightly.");
-            let right_is_nightly = right.build.as_str().starts_with("nightly.");
-
-            if left_is_stable && right_is_nightly {
-                return Ordering::Greater;
-            }
-            if left_is_nightly && right_is_stable {
-                return Ordering::Less;
+            // SemVer precedence, so builds within the nightly channel are
+            // ordered by their date and run number here. A stable release of
+            // the same core version must still supersede that nightly.
+            let left_nightly = nightly_build(left);
+            let right_nightly = nightly_build(right);
+            match (left_nightly, right_nightly) {
+                (Some(left), Some(right)) => return left.cmp(&right),
+                (None, Some(_)) if left.build.is_empty() => return Ordering::Greater,
+                (Some(_), None) if right.build.is_empty() => return Ordering::Less,
+                _ => {}
             }
         }
         return precedence;
@@ -80,5 +88,30 @@ mod tests {
     fn stable_version_comparison_still_uses_semver_precedence() {
         assert!(is_newer("0.4.2", "0.4.1"));
         assert!(!is_newer("0.4.1", "0.4.2"));
+    }
+
+    #[test]
+    fn nightly_builds_are_ordered_within_the_channel() {
+        assert!(is_newer(
+            "0.5.1+nightly.20261028.1",
+            "0.5.1+nightly.20261027.12"
+        ));
+        assert!(is_newer(
+            "0.5.1+nightly.20261027.13",
+            "0.5.1+nightly.20261027.12"
+        ));
+        assert!(!is_newer(
+            "0.5.1+nightly.20261027.12",
+            "0.5.1+nightly.20261028.1"
+        ));
+        assert_eq!(
+            compare_versions("0.5.1+nightly.20261027.12", "0.5.1+nightly.20261027.12"),
+            Ordering::Equal
+        );
+    }
+
+    #[test]
+    fn stable_still_supersedes_a_nightly_with_the_same_core_version() {
+        assert!(is_newer("0.5.1", "0.5.1+nightly.20261027.12"));
     }
 }

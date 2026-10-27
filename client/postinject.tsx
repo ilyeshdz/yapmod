@@ -105,8 +105,8 @@ function installTopbarWindowControls(): void {
 }
 
 /**
- * Checks both update channels while the app is open. Client updates are staged
- * in the background and can be applied with one real process restart.
+ * Checks desktop and client updates while the app is open. Client updates are
+ * staged in the background and can be applied with one real process restart.
  */
 async function scheduleUpdatePrompts(): Promise<void> {
   const yapmod = getYapmod();
