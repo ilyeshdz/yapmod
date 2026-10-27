@@ -16,7 +16,7 @@ const outputDir = process.argv.includes("--dev") ? "public" : "dist";
 const output = resolve(process.cwd(), `${outputDir}/community-plugins`);
 const validId = /^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/;
 const manifestFields = new Set(["id", "name", "version", "author", "description", "license", "api", "tags", "settings", "stylesheet", "script"]);
-const settingFields = new Set(["id", "label", "description", "type", "default"]);
+const settingFields = new Set(["id", "label", "description", "type", "default", "accept"]);
 
 function fail(message) {
   throw new Error(`[community plugins] ${message}`);
@@ -94,6 +94,27 @@ function validateCss(css, folder) {
 const entries = readdirSync(source, { withFileTypes: true })
   .filter((entry) => !entry.name.startsWith(".") && (entry.isDirectory() || entry.isSymbolicLink()))
   .sort((left, right) => left.name.localeCompare(right.name));
+
+// Verification is maintained by the repository owners, not by plugin authors.
+// A manifest can never mark itself as verified.
+const verifiedPath = join(source, "verified.json");
+let verifiedIds;
+try {
+  verifiedIds = JSON.parse(readFileSync(verifiedPath, "utf8"));
+} catch (error) {
+  fail(`verified.json is invalid JSON (${error})`);
+}
+if (!Array.isArray(verifiedIds) ||
+    verifiedIds.some((id) => typeof id !== "string" || !validId.test(id)) ||
+    new Set(verifiedIds).size !== verifiedIds.length) {
+  fail("verified.json must be a list of unique plugin ids");
+}
+const verified = new Set(verifiedIds);
+const pluginFolders = new Set(entries.map((entry) => entry.name));
+for (const id of verified) {
+  if (!pluginFolders.has(id)) fail(`verified.json lists unknown plugin ${id}`);
+}
+
 const plugins = [];
 const files = [];
 
@@ -137,13 +158,29 @@ for (const entry of entries) {
     fail(`${folder}: settings must be a list of at most ${rules.maxSettings} entries`);
   }
   const settingIds = new Set();
+  const validSettingTypes = ["toggle", "text", "file", "color"];
   for (const setting of manifest.settings) {
     if (!setting || typeof setting.id !== "string" || !validId.test(setting.id) ||
         settingIds.has(setting.id) || typeof setting.label !== "string" ||
-        !setting.label.trim() || setting.label.length > 80 || setting.type !== "toggle" ||
-        typeof setting.default !== "boolean" ||
+        !setting.label.trim() || setting.label.length > 80 ||
+        !validSettingTypes.includes(setting.type) ||
         Object.keys(setting).some((key) => !settingFields.has(key)) ||
         (setting.description !== undefined && (typeof setting.description !== "string" || setting.description.length > 200))) {
+      fail(`${folder}: plugin setting is invalid or duplicated`);
+    }
+    // Validate default value matches the setting type
+    if (setting.type === "toggle") {
+      if (typeof setting.default !== "boolean") {
+        fail(`${folder}: plugin setting is invalid or duplicated`);
+      }
+    } else {
+      // text, file, color: default must be string or null
+      if (setting.default !== null && typeof setting.default !== "string") {
+        fail(`${folder}: plugin setting is invalid or duplicated`);
+      }
+    }
+    // Validate accept field is only used with file/text types
+    if (setting.accept !== undefined && typeof setting.accept !== "string") {
       fail(`${folder}: plugin setting is invalid or duplicated`);
     }
     settingIds.add(setting.id);
@@ -155,7 +192,11 @@ for (const entry of entries) {
   const scriptName = manifest.script;
   if (scriptName !== undefined && scriptName !== "plugin.js") fail(`${folder}: script must be named plugin.js`);
   const scriptPath = scriptName ? requireFile(folder, scriptName, rules.maxScriptBytes, "script") : null;
-  plugins.push({ ...manifest, stylesheet: cssName });
+  plugins.push({
+    ...manifest,
+    ...(verified.has(folder) ? { verified: true } : {}),
+    stylesheet: cssName,
+  });
   files.push({ folder, manifestPath, cssPath, scriptPath });
 }
 

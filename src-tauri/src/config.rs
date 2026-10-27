@@ -189,6 +189,18 @@ fn config_path(app: &AppHandle) -> ConfigResult<PathBuf> {
     Ok(app.path().app_config_dir()?.join("config.json"))
 }
 
+/// Ordinary plugin values (toggles, short text, colors, tokens) stay small.
+const MAX_PLUGIN_SETTING_BYTES: usize = 65_536;
+
+/// File-type plugin settings store their contents as a base64 data URI. Images
+/// picked through the native dialog are routinely larger than the normal
+/// setting limit, so data URIs get a dedicated, larger budget.
+const MAX_PLUGIN_DATA_URI_BYTES: usize = 8 * 1024 * 1024;
+
+fn value_fits(value: &Value, max_bytes: usize) -> bool {
+    serde_json::to_vec(value).is_ok_and(|bytes| bytes.len() <= max_bytes)
+}
+
 fn valid_setting(key: &str, value: &Value) -> bool {
     if key.len() > 64 {
         return false;
@@ -210,9 +222,11 @@ fn valid_setting(key: &str, value: &Value) -> bool {
                     .chars()
                     .all(|ch| ch.is_ascii_alphanumeric() || "-_".contains(ch))
         };
-        return valid_part(plugin_id)
-            && valid_part(storage_key)
-            && serde_json::to_vec(value).is_ok_and(|bytes| bytes.len() <= 65_536);
+        let max_bytes = match value {
+            Value::String(text) if text.starts_with("data:") => MAX_PLUGIN_DATA_URI_BYTES,
+            _ => MAX_PLUGIN_SETTING_BYTES,
+        };
+        return valid_part(plugin_id) && valid_part(storage_key) && value_fits(value, max_bytes);
     }
 
     match key {
@@ -281,7 +295,10 @@ fn purge_plugin_data(config: &mut Config, id: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Config, purge_plugin_data, valid_setting};
+    use super::{
+        Config, MAX_PLUGIN_DATA_URI_BYTES, MAX_PLUGIN_SETTING_BYTES, purge_plugin_data,
+        valid_setting,
+    };
     use serde_json::json;
 
     #[test]
@@ -338,6 +355,39 @@ mod tests {
         assert!(!valid_setting("plugin:../sample:option", &json!(true)));
         assert!(!valid_setting("plugin:sample:invalid.key", &json!(true)));
         assert!(!valid_setting("plugin:sample", &json!(true)));
+    }
+
+    #[test]
+    fn plugin_file_settings_accept_large_data_uris() {
+        let small = json!("data:image/png;base64,AAAA");
+        assert!(valid_setting("plugin:sample:opt_background-image", &small));
+
+        // Wallpapers picked through the native dialog are commonly a few
+        // megabytes once base64 encoded, which is well past the normal limit.
+        let data_uri = json!(format!(
+            "data:image/jpeg;base64,{}",
+            "A".repeat(3 * 1024 * 1024)
+        ));
+        assert!(valid_setting(
+            "plugin:sample:opt_background-image",
+            &data_uri
+        ));
+
+        // Non-file values keep the smaller limit.
+        let large_text = json!("A".repeat(MAX_PLUGIN_SETTING_BYTES));
+        assert!(!valid_setting("plugin:sample:opt_label", &large_text));
+    }
+
+    #[test]
+    fn plugin_setting_values_are_still_bounded() {
+        let oversized = json!(format!(
+            "data:image/png;base64,{}",
+            "A".repeat(MAX_PLUGIN_DATA_URI_BYTES)
+        ));
+        assert!(!valid_setting(
+            "plugin:sample:opt_background-image",
+            &oversized
+        ));
     }
 
     #[test]

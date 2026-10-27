@@ -1,4 +1,4 @@
-import { For, Show, JSX } from "solid-js";
+import { createSignal, For, Show, JSX } from "solid-js";
 import { render } from "solid-js/web";
 
 import type {
@@ -46,10 +46,15 @@ function PluginSettingInput(
   props: { setting: PluginSetting; draft: PluginSettingsDraft },
 ): JSX.Element {
   const { setting, draft } = props;
-  const value = () => draft.get(setting.id) ?? setting.default;
+  // The draft is a plain Map, so keep a signal alongside it. Without this the
+  // file row keeps showing the old path after the user picks a file.
+  const [value, setValue] = createSignal<PluginSettingValue>(
+    draft.get(setting.id) ?? setting.default,
+  );
 
   const update = (newValue: PluginSettingValue) => {
     draft.set(setting.id, newValue);
+    setValue(() => newValue);
   };
 
   if (setting.type === "toggle") {
@@ -97,11 +102,15 @@ function PluginSettingInput(
   }
 
   if (setting.type === "file") {
-    const currentValue = value() as string;
-    // The stored value is a data URI; show a short indicator instead of the raw string
-    const displayText = currentValue && currentValue.startsWith("data:")
-      ? "File selected"
-      : currentValue || "No file selected";
+    // The stored value is a data URI; show a short indicator instead of the raw string.
+    const displayText = () => {
+      const currentValue = value();
+      if (typeof currentValue !== "string" || !currentValue) return "No file selected";
+      if (currentValue.startsWith("data:")) return "File selected";
+      // Values saved before the data-URI change are plain paths. They cannot
+      // be read at runtime, so the user has to choose the file again.
+      return `${currentValue} (select again)`;
+    };
 
     return (
       <div class="yapmod-plugin-setting-row yapmod-plugin-setting-input-row">
@@ -116,7 +125,7 @@ function PluginSettingInput(
             class="yapmod-plugin-text-input yapmod-plugin-file-path"
             type="text"
             aria-label={`${setting.label} file`}
-            value={displayText}
+            value={displayText()}
             readOnly
             placeholder="No file selected"
           />

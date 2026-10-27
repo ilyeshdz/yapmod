@@ -1,8 +1,11 @@
-import { JSX } from "solid-js";
+import { JSX, Show } from "solid-js";
 import type { YapmodPluginInfo, CommunityPlugin } from "../../shared/types";
 import { Icon } from "../../components/icon";
 
 const PLUGIN_ICON_PATHS = {
+  verified: [
+    "M20 6 9 17l-5-5",
+  ],
   settings: [
     "M4 6h16M4 12h16M4 18h16",
     "M9 4v4M15 10v4M11 16v4",
@@ -13,6 +16,24 @@ const PLUGIN_ICON_PATHS = {
     "M8 13h8M8 17h6",
   ],
 } as const;
+
+/** Badge shown on plugins the catalog owners reviewed and verified. */
+function VerifiedBadge(): JSX.Element {
+  return (
+    <span
+      class="yapmod-plugin-verified"
+      title="Reviewed and verified by the Yapmod maintainers"
+    >
+      <Icon
+        class="yapmod-plugin-verified-icon"
+        size={13}
+        strokeWidth={2.6}
+        paths={[PLUGIN_ICON_PATHS.verified]}
+      />
+      Verified
+    </span>
+  );
+}
 
 export type InstalledPluginCardProps = {
   plugin: YapmodPluginInfo;
@@ -32,7 +53,10 @@ export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Elemen
     }}>
       <div class="yapmod-plugin-card-body">
         <div class="yapmod-plugin-card-title-row">
-          <h3 class="yapmod-plugin-card-name">{manifest.name}</h3>
+          <div class="yapmod-plugin-card-heading">
+            <h3 class="yapmod-plugin-card-name">{manifest.name}</h3>
+            <Show when={props.plugin.verified}><VerifiedBadge /></Show>
+          </div>
           <span classList={{
             "yapmod-plugin-state": true,
             "yapmod-plugin-state-active": props.plugin.enabled,
@@ -106,7 +130,10 @@ export function CommunityPluginCard(props: CommunityPluginCardProps): JSX.Elemen
     <article class="yapmod-plugin-card">
       <div class="yapmod-plugin-card-body">
         <div class="yapmod-plugin-card-title-row">
-          <h3 class="yapmod-plugin-card-name">{props.plugin.name}</h3>
+          <div class="yapmod-plugin-card-heading">
+            <h3 class="yapmod-plugin-card-name">{props.plugin.name}</h3>
+            <Show when={props.plugin.verified}><VerifiedBadge /></Show>
+          </div>
         </div>
         <p class="yapmod-plugin-card-meta">
           {[props.plugin.author, props.plugin.version ? `v${props.plugin.version}` : null, props.plugin.license].filter(Boolean).join(" · ")}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pick-plugin-file"
+description = "Enables the pick_plugin_file command without any pre-configured scope."
+commands.allow = ["pick_plugin_file"]
+
+[[permission]]
+identifier = "deny-pick-plugin-file"
+description = "Denies the pick_plugin_file command without any pre-configured scope."
+commands.deny = ["pick_plugin_file"]
