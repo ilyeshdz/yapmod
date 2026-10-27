@@ -1,0 +1,12 @@
+{
+  "id": "portal-theme",
+  "name": "Portal Theme",
+  "version": "1.0.0",
+  "author": "GLaDOS",
+  "description": "A portal theme",
+  "license": "MIT",
+  "mode": "dark",
+  "tags": ["portal", "glados", "dark"],
+  "api": 1,
+  "css": "theme.css"
+}
