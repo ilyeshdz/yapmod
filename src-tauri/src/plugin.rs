@@ -16,6 +16,10 @@ use crate::http;
 const MANIFEST_FILE: &str = "manifest.json";
 const CSS_FILE: &str = "plugin.css";
 const SCRIPT_FILE: &str = "plugin.js";
+/// Marker written only for packages installed from the verified community
+/// catalog. It is deliberately not part of the published package, so a plugin
+/// cannot mark itself as verified.
+const VERIFIED_FILE: &str = ".yapmod-verified";
 const COMMUNITY_PLUGINS_BASE: &str = if cfg!(debug_assertions) {
     "http://127.0.0.1:4321/yapmod/community-plugins"
 } else {
@@ -99,6 +103,8 @@ pub struct PluginBundle {
     pub manifest: PluginManifest,
     pub css: String,
     pub script: Option<String>,
+    /// True when the package was installed from a verified catalog entry.
+    pub verified: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -119,10 +125,12 @@ pub struct CommunityPlugin {
     pub settings: Vec<PluginSetting>,
     pub stylesheet: String,
     pub script: Option<String>,
+    /// Marked by the catalog owners after review, never by the plugin itself.
+    pub verified: bool,
 }
 
-impl From<PluginManifest> for CommunityPlugin {
-    fn from(manifest: PluginManifest) -> Self {
+impl CommunityPlugin {
+    fn new(manifest: PluginManifest, verified: bool) -> Self {
         Self {
             id: manifest.id,
             name: manifest.name,
@@ -135,7 +143,14 @@ impl From<PluginManifest> for CommunityPlugin {
             settings: manifest.settings,
             stylesheet: manifest.stylesheet,
             script: manifest.script,
+            verified,
         }
+    }
+}
+
+impl From<PluginManifest> for CommunityPlugin {
+    fn from(manifest: PluginManifest) -> Self {
+        Self::new(manifest, false)
     }
 }
 
@@ -151,6 +166,10 @@ struct PluginCatalog {
 struct PluginCatalogEntry {
     #[serde(flatten)]
     manifest: PluginManifest,
+    /// Set by the catalog build from `community-plugins/verified.json`.
+    /// Manifests cannot contain this field, so authors cannot self-declare.
+    #[serde(default)]
+    verified: bool,
 }
 
 static PICKED_PLUGIN_FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
@@ -408,6 +427,7 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
         manifest,
         css,
         script,
+        verified: folder.join(VERIFIED_FILE).is_file(),
     })
 }
 
@@ -456,7 +476,7 @@ async fn community_catalog() -> Result<PluginCatalog, String> {
     Ok(catalog)
 }
 
-async fn fetch_community_manifest(id: &str) -> Result<PluginManifest, String> {
+async fn fetch_community_manifest(id: &str) -> Result<(PluginManifest, bool), String> {
     if !valid_id(id) {
         return Err("that is not a valid plugin id".into());
     }
@@ -480,7 +500,7 @@ async fn fetch_community_manifest(id: &str) -> Result<PluginManifest, String> {
         return Err("the community plugin id does not match the catalog".into());
     }
     validate_manifest(&manifest)?;
-    Ok(manifest)
+    Ok((manifest, entry.verified))
 }
 
 fn install_bundle(
@@ -488,6 +508,7 @@ fn install_bundle(
     manifest_bytes: &[u8],
     css: &[u8],
     script: Option<&[u8]>,
+    verified: bool,
 ) -> Result<PluginBundle, String> {
     let parent = target
         .parent()
@@ -505,6 +526,9 @@ fn install_bundle(
         fs::write(target.join(CSS_FILE), css).map_err(|error| error.to_string())?;
         if let Some(script) = script {
             fs::write(target.join(SCRIPT_FILE), script).map_err(|error| error.to_string())?;
+        }
+        if verified {
+            fs::write(target.join(VERIFIED_FILE), b"1").map_err(|error| error.to_string())?;
         }
         read_bundle(target)
     })();
@@ -637,6 +661,7 @@ pub fn install_picked_plugin(
         &manifest_bytes,
         css_bytes,
         bundle.script.as_deref().map(str::as_bytes),
+        false,
     )
 }
 
@@ -687,7 +712,7 @@ pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, String> {
             continue;
         }
         validate_manifest(&entry.manifest)?;
-        result.push(entry.manifest.into());
+        result.push(CommunityPlugin::new(entry.manifest, entry.verified));
     }
     result.sort_by(|left: &CommunityPlugin, right| {
         left.name.to_lowercase().cmp(&right.name.to_lowercase())
@@ -697,7 +722,9 @@ pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, String> {
 
 #[tauri::command]
 pub async fn preview_community_plugin(id: String) -> Result<PluginManifest, String> {
-    fetch_community_manifest(&id).await
+    fetch_community_manifest(&id)
+        .await
+        .map(|(manifest, _)| manifest)
 }
 
 #[tauri::command]
@@ -706,7 +733,7 @@ pub async fn install_community_plugin(
     id: String,
     expected_manifest: PluginManifest,
 ) -> Result<PluginBundle, String> {
-    let manifest = fetch_community_manifest(&id).await?;
+    let (manifest, verified) = fetch_community_manifest(&id).await?;
     if manifest != expected_manifest {
         return Err("the community plugin changed after you reviewed its import warning".into());
     }
@@ -743,6 +770,7 @@ pub async fn install_community_plugin(
         &manifest_bytes,
         &css,
         script.as_deref(),
+        verified,
     )?;
     if installed.manifest != expected_manifest {
         return Err("the installed plugin differs from the reviewed manifest".into());
@@ -777,7 +805,10 @@ pub fn remove_plugin(app: AppHandle, id: String) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{PluginManifest, PluginSetting, valid_id, validate_css, validate_manifest};
+    use super::{
+        PluginCatalogEntry, PluginManifest, PluginSetting, valid_id, validate_css,
+        validate_manifest,
+    };
 
     fn manifest() -> PluginManifest {
         PluginManifest {
@@ -896,6 +927,38 @@ mod tests {
         ] {
             assert!(validate_css(css).is_err(), "accepted {css}");
         }
+    }
+
+    #[test]
+    fn catalog_verification_is_opt_in() {
+        let base = serde_json::json!({
+            "id": "sample-plugin",
+            "name": "Sample plugin",
+            "api": 1,
+            "stylesheet": "plugin.css",
+        });
+
+        let unverified: PluginCatalogEntry =
+            serde_json::from_value(base.clone()).expect("catalog entry should parse");
+        assert!(!unverified.verified);
+
+        let mut verified = base;
+        verified["verified"] = serde_json::json!(true);
+        let verified: PluginCatalogEntry =
+            serde_json::from_value(verified).expect("verified catalog entry should parse");
+        assert!(verified.verified);
+    }
+
+    #[test]
+    fn manifests_cannot_self_declare_verification() {
+        let manifest = serde_json::json!({
+            "id": "sample-plugin",
+            "name": "Sample plugin",
+            "api": 1,
+            "stylesheet": "plugin.css",
+            "verified": true,
+        });
+        assert!(serde_json::from_value::<PluginManifest>(manifest).is_err());
     }
 
     #[test]

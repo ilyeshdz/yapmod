@@ -257,6 +257,8 @@ export type PluginBundle = {
   manifest: PluginManifest;
   css: string;
   script: string | null;
+  /** True when the package was installed from a verified catalog entry. */
+  verified: boolean;
 };
 
 export type PluginCleanup = () => void | Promise<void>;
@@ -378,6 +380,9 @@ export type YapmodPluginApi = {
    *
    * The file is read at pick time, not at runtime — there is no generic
    * file-reading command. Plugins execute as trusted page code.
+   *
+   * Data URIs may be at most 8 MiB; other setting values are limited to
+   * 64 KiB.
    */
   readonly file: {
     /**
@@ -405,7 +410,11 @@ export type PluginDiagnostic = {
   at: string;
 };
 
-export type CommunityPlugin = PluginManifest & { tags: string[] };
+export type CommunityPlugin = PluginManifest & {
+  tags: string[];
+  /** True when the catalog owners reviewed and verified this plugin. */
+  verified: boolean;
+};
 
 export type YapmodPluginsApi = {
   list(): YapmodPluginInfo[];
@@ -422,6 +431,8 @@ export type YapmodPluginsApi = {
 export type YapmodPluginInfo = {
   manifest: PluginManifest;
   source: "installed";
+  /** True when the plugin was installed from a verified catalog entry. */
+  verified: boolean;
   enabled: boolean;
   busy: boolean;
   error: string | null;

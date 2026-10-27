@@ -656,6 +656,7 @@ function listPlugins(): YapmodPluginInfo[] {
   return [...registry.values()].map((entry) => ({
     manifest: entry.bundle.manifest,
     source: "installed",
+    verified: entry.bundle.verified,
     enabled: entry.enabled,
     busy: entry.busy,
     error: entry.error,
