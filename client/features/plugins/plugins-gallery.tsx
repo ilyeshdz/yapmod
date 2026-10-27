@@ -13,6 +13,7 @@ import type {
   YapmodPluginInfo,
   YapmodPluginsApi,
 } from "../../shared/types";
+import { getYapmod } from "../../core/scope";
 import {
   CommunityPluginCard,
   InstalledPluginCard,
@@ -145,12 +146,32 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
   }
 
   async function remove(plugin: YapmodPluginInfo): Promise<void> {
-    if (
-      !window.confirm(
-        `Remove ${plugin.manifest.name}? Its package files will be deleted from the plugins folder.`,
-      )
-    ) {
-      return;
+    const modalApi = getYapmod().modal;
+    let confirmed = false;
+
+    if (!modalApi) {
+      if (!window.confirm(`Remove ${plugin.manifest.name}? Its package files will be deleted.`)) {
+        return;
+      }
+      confirmed = true;
+    } else {
+      const modal = modalApi.show({
+        title: `Remove ${plugin.manifest.name}?`,
+        description: "Its package files will be deleted from the plugins folder.",
+        buttons: [
+          { label: "Cancel", variant: "secondary" },
+          {
+            label: "Remove plugin",
+            variant: "danger",
+            onClick: () => {
+              confirmed = true;
+            },
+          },
+        ],
+        autoFocus: true,
+      });
+      await modal.closed;
+      if (!confirmed) return;
     }
 
     try {
