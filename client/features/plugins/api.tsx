@@ -1,5 +1,5 @@
 import { getYapmod } from "../../core/scope";
-import { upsertStyle } from "../../shared/ui";
+import { upsertStyle, whenBodyReady } from "../../shared/ui";
 import { invokeCommand } from "../../core/tauri";
 import { render } from "solid-js/web";
 import { PluginGallery } from "./plugins-gallery";
@@ -752,8 +752,16 @@ export function installPluginApi(): void {
 
 /** Restores installed packages that were previously enabled and consented to. */
 export function initializePluginManager(): void {
-  void getYapmod().plugins?.refreshInstalled().catch((error: unknown) => {
-    console.error("[yapmod] could not load installed plugins", error);
+  // The preinject bundle runs at document start, before the page has a root
+  // element or a body. Plugins touch both while they activate: settings are
+  // mirrored onto <html>, and scripts commonly insert elements into the page.
+  // Enabling from here would throw, leave the plugin disabled, and show the
+  // mistake only after the user toggles it off and on again. Wait for the
+  // body first so a restored plugin can apply its stored settings.
+  whenBodyReady(() => {
+    void getYapmod().plugins?.refreshInstalled().catch((error: unknown) => {
+      console.error("[yapmod] could not load installed plugins", error);
+    });
   });
 }
 
