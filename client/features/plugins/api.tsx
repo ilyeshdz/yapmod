@@ -547,7 +547,10 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
            */
           async createBlobUrl(dataUri: string): Promise<string> {
             if (typeof dataUri !== "string" || !dataUri.startsWith("data:")) {
-              throw new Error("Expected a data URI from a file-type setting.");
+              throw new Error(
+                "Expected a data URI from a file-type setting. " +
+                  "If the setting contains a file path, the user needs to re-select the file.",
+              );
             }
             // Decode the base64 data URI to a Blob
             const base64Data = dataUri.split(",")[1];

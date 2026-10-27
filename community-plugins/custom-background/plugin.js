@@ -29,6 +29,13 @@ export default {
     async function loadBackgroundImage(dataUri) {
       if (!dataUri) return null;
 
+      // If the stored value is a legacy file path (not a data URI), the user
+      // needs to re-select the file through the settings dialog.
+      if (!dataUri.startsWith("data:")) {
+        api.log.warn("Background image setting contains a legacy file path; please re-select the file in plugin settings.");
+        return null;
+      }
+
       if (cachedDataUri === dataUri && cachedBlobUrl) {
         return cachedBlobUrl;
       }
