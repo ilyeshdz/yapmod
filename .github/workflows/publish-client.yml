@@ -121,6 +121,7 @@ jobs:
           MIN_APP_VERSION: ${{ inputs.min_app_version }}
           EXPIRES_AT: ${{ inputs.expires_at }}
           CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
           CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
           CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
         run: |
