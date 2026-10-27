@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '17 2 * * *'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build only; do not publish a release or client update
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: yapmod-nightly-release
@@ -17,16 +23,19 @@ jobs:
     uses: ./.github/workflows/build-app.yml
     with:
       nightly: true
+      ref: nightly
 
   publish:
-    if: github.repository == 'ilyeshdz/yapmod' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ilyeshdz/yapmod' && inputs.dry_run != true
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout
+      - name: Checkout nightly
         uses: actions/checkout@v4
+        with:
+          ref: nightly
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -58,11 +67,29 @@ jobs:
           yapmod-x86_64-unknown-linux-gnu-portable|yapmod_nightly_amd64_portable.tar.gz
           ARTIFACTS
 
+      - name: Read nightly revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Write nightly channel metadata
+        env:
+          APP_VERSION: ${{ needs.build.outputs.app_version }}
+          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg channel nightly \
+            --arg appVersion "$APP_VERSION" \
+            --arg commit "$NIGHTLY_SHA" \
+            '{channel:$channel,appVersion:$appVersion,commit:$commit}' \
+            > nightly-artifacts/yapmod-version.json
+
       - name: Move rolling nightly tag to this commit
         env:
-          GITHUB_SHA: ${{ github.sha }}
+          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
         run: |
-          git tag --force nightly "$GITHUB_SHA"
+          set -euo pipefail
+          git tag --force nightly "$NIGHTLY_SHA"
           git push --force origin refs/tags/nightly
 
       - name: Publish rolling nightly prerelease
@@ -71,12 +98,26 @@ jobs:
           tag_name: nightly
           name: Nightly v${{ needs.build.outputs.app_version }}
           body: |
-            Automated nightly prerelease built from commit ${{ github.sha }}.
+            Automated nightly prerelease built from the `nightly` branch at commit ${{ steps.revision.outputs.sha }}.
 
             App version: `${{ needs.build.outputs.app_version }}`
 
-            Nightly builds may be unstable. Install them only if you want to try changes that have not shipped in a stable release.
+            Nightly builds may be unstable. They use the nightly update channel and never publish stable artifacts or stable client update metadata.
           files: nightly-artifacts/*
           overwrite_files: true
           prerelease: true
           make_latest: false
+
+  client:
+    if: github.repository == 'ilyeshdz/yapmod' && inputs.dry_run != true
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/publish-client.yml
+    with:
+      channel: nightly
+      ref: nightly
+      min_app_version: ${{ needs.build.outputs.app_version }}
+    secrets: inherit

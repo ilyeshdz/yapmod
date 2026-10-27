@@ -1,0 +1,191 @@
+name: Publish client update
+
+on:
+  workflow_call:
+    inputs:
+      channel:
+        description: Update channel to publish
+        required: true
+        type: string
+      ref:
+        description: Git ref that contains the client to publish
+        required: true
+        type: string
+      release_sequence:
+        description: Optional explicit release sequence
+        required: false
+        type: string
+        default: ''
+      min_app_version:
+        description: Optional minimum compatible app version
+        required: false
+        type: string
+        default: ''
+      expires_at:
+        description: Optional manifest expiry as Unix seconds
+        required: false
+        type: string
+        default: ''
+      dry_run:
+        description: Build and validate the update without deploying it
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      CLIENT_UPDATE_SIGNING_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify the channel matches the source branch
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+
+          case "$CHANNEL" in
+            stable|nightly) ;;
+            *)
+              echo "Unknown update channel: $CHANNEL" >&2
+              exit 1
+              ;;
+          esac
+
+          git fetch --no-tags origin main nightly
+
+          if [ "$CHANNEL" = "nightly" ]; then
+            test "$(git rev-parse HEAD)" = "$(git rev-parse origin/nightly)" \
+              || { echo "Nightly updates must be published from the tip of the nightly branch" >&2; exit 1; }
+          else
+            git merge-base --is-ancestor HEAD origin/main \
+              || { echo "Stable updates must be published from main or a tag on main" >&2; exit 1; }
+          fi
+
+          echo "Publishing the $CHANNEL client from $(git rev-parse HEAD)"
+
+      - name: Checkout the stable website
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install and build the website and client
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm client:build
+          pnpm --dir site/web install --frozen-lockfile --ignore-workspace
+          pnpm --dir site/web build
+
+      - name: Preserve the other channel
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SKIP_CHANNEL: ${{ inputs.channel }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
+        run: node site/scripts/client-updates.mjs preserve
+
+      - name: Package and sign the client release
+        id: manifest
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_SEQUENCE: ${{ inputs.release_sequence }}
+          MIN_APP_VERSION: ${{ inputs.min_app_version }}
+          EXPIRES_AT: ${{ inputs.expires_at }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
+          CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+
+          CLIENT_VERSION=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/version.json", "utf8")).version)')
+          export CLIENT_VERSION
+
+          test -n "$CLIENT_UPDATE_SIGNING_KEY" || { echo "CLIENT_UPDATE_SIGNING_KEY secret is required"; exit 1; }
+          test -n "$CLIENT_UPDATE_PUBLIC_KEY" || { echo "CLIENT_UPDATE_PUBLIC_KEY repository variable is required"; exit 1; }
+
+          prepare_output=$(node site/scripts/client-updates.mjs prepare)
+          echo "$prepare_output"
+          eval "$prepare_output"
+
+          manifest_dir="site/web/dist/client-updates/$CHANNEL"
+          test -f "$manifest_dir/manifest.json" || { echo "The manifest was not generated"; exit 1; }
+
+          umask 077
+          printf '%s' "$CLIENT_UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/client-update-key.pem"
+          trap 'rm -f "$RUNNER_TEMP/client-update-key.pem" "$RUNNER_TEMP/manifest.sig.raw" "$RUNNER_TEMP/client-update-public.pem" "$RUNNER_TEMP/derived-public-key.txt"' EXIT
+
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout -outform DER \
+            | tail -c 32 | base64 -w0 > "$RUNNER_TEMP/derived-public-key.txt"
+          test "$(cat "$RUNNER_TEMP/derived-public-key.txt")" = "$CLIENT_UPDATE_PUBLIC_KEY" \
+            || { echo "signing key does not match CLIENT_UPDATE_PUBLIC_KEY"; exit 1; }
+
+          openssl pkeyutl -sign -rawin -inkey "$RUNNER_TEMP/client-update-key.pem" \
+            -in "$manifest_dir/manifest.json" \
+            -out "$RUNNER_TEMP/manifest.sig.raw"
+          base64 -w0 "$RUNNER_TEMP/manifest.sig.raw" > "$manifest_dir/manifest.sig"
+
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout \
+            -out "$RUNNER_TEMP/client-update-public.pem"
+          openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/client-update-public.pem" -rawin \
+            -in "$manifest_dir/manifest.json" \
+            -sigfile "$RUNNER_TEMP/manifest.sig.raw" > /dev/null
+
+          echo "release_sequence=$release_sequence" >> "$GITHUB_OUTPUT"
+          echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
+          echo "client_version=$client_version" >> "$GITHUB_OUTPUT"
+
+      - name: Update the legacy stable aliases
+        if: inputs.channel == 'stable'
+        run: |
+          set -euo pipefail
+          mkdir -p site/web/dist/client-updates
+          cp site/web/dist/client-updates/stable/manifest.json site/web/dist/client-updates/manifest.json
+          cp site/web/dist/client-updates/stable/manifest.sig site/web/dist/client-updates/manifest.sig
+          cp site/web/dist/client-updates/stable/bundle.json site/web/dist/client-updates/bundle.json
+
+      - name: Show the staged update
+        run: |
+          find site/web/dist/client-updates -maxdepth 2 -type f -print | sort
+
+      - name: Upload Pages artifact
+        if: inputs.dry_run != true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/web/dist
+
+      - name: Deploy client release and website
+        if: inputs.dry_run != true
+        id: deployment
+        uses: actions/deploy-pages@v4

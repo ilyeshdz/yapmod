@@ -7,6 +7,7 @@ on:
     paths:
       - 'web/**'
       - 'community-themes/**'
+      - 'scripts/client-updates.mjs'
       - '.github/workflows/web.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
@@ -54,48 +55,8 @@ jobs:
       - name: Preserve published client updates
         env:
           CLIENT_UPDATES_URL: https://ilyeshdz.github.io/yapmod/client-updates
-        run: |
-          set -euo pipefail
-
-          client_updates_dir="$RUNNER_TEMP/yapmod-client-updates"
-          mkdir -p "$client_updates_dir"
-
-          manifest_status=$(curl --silent --show-error --location \
-            --connect-timeout 10 --max-time 30 \
-            --header 'Cache-Control: no-cache' \
-            --output "$client_updates_dir/manifest.json" \
-            --write-out '%{http_code}' \
-            "$CLIENT_UPDATES_URL/manifest.json")
-
-          case "$manifest_status" in
-            200)
-              for asset in manifest.sig bundle.json; do
-                asset_status=$(curl --silent --show-error --location \
-                  --connect-timeout 10 --max-time 30 \
-                  --header 'Cache-Control: no-cache' \
-                  --output "$client_updates_dir/$asset" \
-                  --write-out '%{http_code}' \
-                  "$CLIENT_UPDATES_URL/$asset")
-                if [ "$asset_status" != "200" ]; then
-                  echo "Could not preserve client update asset $asset (HTTP $asset_status)" >&2
-                  exit 1
-                fi
-              done
-
-              mkdir -p web/dist/client-updates
-              cp "$client_updates_dir/manifest.json" \
-                "$client_updates_dir/manifest.sig" \
-                "$client_updates_dir/bundle.json" \
-                web/dist/client-updates/
-              ;;
-            404)
-              echo "No published client update manifest found; continuing without one."
-              ;;
-            *)
-              echo "Could not check the published client update manifest (HTTP $manifest_status)" >&2
-              exit 1
-              ;;
-          esac
+          OUTPUT_DIR: web/dist
+        run: node scripts/client-updates.mjs preserve
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -48,4 +48,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check client scripts and bundles
-        run: pnpm check:client
+        run: |
+          pnpm test:scripts
+          pnpm check:client
