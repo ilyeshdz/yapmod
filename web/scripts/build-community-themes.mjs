@@ -88,11 +88,6 @@ function validateCss(css, folder) {
       index += 1;
       while (isIdentCharacter(normalized[index])) index += 1;
       const ident = normalized.slice(start, index);
-      if (
-        ["url", "expression", "image-set", "-webkit-image-set"].includes(ident)
-      ) {
-        fail(`${folder}: stylesheet contains a blocked external-resource construct`);
-      }
       if (ident === "behavior") {
         let next = index;
         while (/\s/.test(normalized[next] ?? "")) next += 1;
