@@ -1,0 +1,42 @@
+{
+  "id": "custom-background",
+  "name": "Custom Background",
+  "version": "1.0.8",
+  "author": "Yapmod",
+  "description": "Set a custom background image and optionally change the accent color. Panels become slightly translucent so the image shows through.",
+  "api": 1,
+  "tags": ["background", "theme", "customization"],
+  "settings": [
+    {
+      "id": "background-image",
+      "label": "Background Image",
+      "description": "Select an image to use as the app background.",
+      "type": "file",
+      "default": null,
+      "accept": "image/*"
+    },
+    {
+      "id": "blur-amount",
+      "label": "Blur Amount",
+      "description": "Blur the background image to reduce distraction (0–20px).",
+      "type": "text",
+      "default": "0px"
+    },
+    {
+      "id": "accent-color",
+      "label": "Accent Color",
+      "description": "Override the primary accent color (buttons, links, highlights).",
+      "type": "color",
+      "default": "#7ee2a8"
+    },
+    {
+      "id": "enable-background",
+      "label": "Enable Background",
+      "description": "Toggle the custom background on and off.",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "stylesheet": "plugin.css",
+  "script": "plugin.js"
+}

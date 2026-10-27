@@ -1,0 +1,34 @@
+/* Custom Background Plugin */
+
+/* The image itself is applied to a dedicated fixed-position div (#yapmod-custom-bg-div)
+   inserted at the beginning of <body>, so it can be blurred without filtering the
+   whole page. Panels become translucent through the tokens injected by plugin.js,
+   following the same pattern as the standalone Custom Background theme.
+
+   The root element paints the fallback colour and the body stays transparent, so
+   the negative z-index background layer is visible above the page canvas. */
+
+html:root.yapmod-custom-bg {
+  background-color: var(--ym-custom-bg-page, #07080a) !important;
+}
+
+html:root.yapmod-custom-bg body {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* The background div sits behind all content with no interaction */
+#yapmod-custom-bg-div {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background-image: var(--ym-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  pointer-events: none;
+}
