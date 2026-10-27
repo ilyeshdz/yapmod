@@ -19,6 +19,22 @@ yapmod gives Yapper a real home on your computer: its own window, native integra
 - **Write code.** Fork the repository, set it up, and open a pull request.
 - **Improve the docs.** The documentation lives in `web/src/content/docs/` as Markdown files.
 
+## Branches and release channels
+
+- `main` is the stable branch and the default branch. Stable releases and
+  hotfixes are published from it.
+- `nightly` is the development branch. It builds the rolling nightly prerelease
+  and the nightly client update feed.
+
+Open pull requests against `nightly` unless the change is a stable hotfix. Never
+merge unreviewed development work directly into `main`; nightly is promoted by
+merging it into `main` deliberately. See [RELEASING.md](RELEASING.md) for the
+full release and promotion workflow.
+
+Local builds default to the stable update channel. Set
+`YAPMOD_UPDATE_CHANNEL=nightly` when building to exercise the nightly update
+path. A build never switches channels through an update.
+
 ## Getting started
 
 1. Fork the repository and clone it locally.

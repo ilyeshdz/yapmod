@@ -40,6 +40,12 @@ Grab the latest build from the [Releases](https://github.com/ilyeshdz/yapmod/rel
 - **macOS**: `.dmg` (Intel and Apple Silicon)
 - **Linux**: `.deb`, `.rpm`, or `.AppImage`
 
+These builds follow the **stable** channel. To try changes before they ship,
+install the [nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly)
+instead. Nightly builds update from the nightly feed only and are replaced each
+day. An installation stays on the channel it was built for; switching requires
+installing a build from the other channel.
+
 macOS builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
 
 ## Community
