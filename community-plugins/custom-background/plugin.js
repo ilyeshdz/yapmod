@@ -228,6 +228,11 @@ export default {
       const imagePath = api.settings.get("background-image");
       const blurAmount = api.settings.get("blur-amount") || "0px";
       const accentColor = api.settings.get("accent-color") || null;
+      const opacityValue = api.settings.get("background-opacity");
+      const parsedOpacity = Number(opacityValue ?? 100);
+      const opacity = Number.isFinite(parsedOpacity)
+          ? Math.max(0, Math.min(100, parsedOpacity))
+          : 100;
 
       if (!enabled || !imagePath) {
         clearBackground();
@@ -252,6 +257,9 @@ export default {
 
       // Create the background div and let the stylesheet pick up the image
       ensureBgDiv();
+
+      // Apply opacity to control background visibility
+      bgDiv.style.opacity = `${opacity / 100}`;
 
       // Apply blur to the background div, not the body
       if (blurAmount !== "0px" && blurAmount !== "0") {
@@ -313,6 +321,7 @@ export default {
     api.onCleanup(api.settings.onChange("blur-amount", () => applyBackground()));
     api.onCleanup(api.settings.onChange("accent-color", () => applyBackground()));
     api.onCleanup(api.settings.onChange("enable-background", () => applyBackground()));
+    api.onCleanup(api.settings.onChange("background-opacity", () => applyBackground()));
 
     // Clean up on plugin disable
     api.onCleanup(() => {
