@@ -33,35 +33,42 @@ import { genericIcon } from "../lib/os";
 <script>
   import { detectArch, detectOs, osIcons, osNames } from "../lib/os";
   import { assetUrl, latestRelease } from "../lib/releases";
+  import { onPageLoad } from "../lib/lifecycle";
 
-  (async () => {
-    const os = detectOs();
-    const button = document.getElementById("dl") as HTMLAnchorElement | null;
-    const label = document.getElementById("dl-os");
-    const icon = document.getElementById("dl-icon");
+  onPageLoad((signal) => {
+    void (async () => {
+      const button = document.getElementById("dl") as HTMLAnchorElement | null;
+      if (!button) return;
 
-    if (!os) return;
+      const os = detectOs();
+      if (!os) return;
 
-    if (label) label.textContent = `for ${osNames[os]}`;
-    if (icon) icon.innerHTML = osIcons[os];
+      const label = document.getElementById("dl-os");
+      const icon = document.getElementById("dl-icon");
 
-    const release = await latestRelease();
-    if (!release || !button) return;
+      if (label) label.textContent = `for ${osNames[os]}`;
+      if (icon) icon.innerHTML = osIcons[os];
 
-    let suffix: string | null = null;
-    if (os === "win") suffix = "_x64-setup.exe";
-    if (os === "linux") suffix = "_amd64.AppImage";
-    if (os === "mac") {
-      const arch = await detectArch();
-      suffix = arch === "arm" ? "_aarch64.dmg" : arch === "x86" ? "_x64.dmg" : null;
-    }
+      const release = await latestRelease();
+      if (!release || !button || signal.aborted) return;
 
-    const url = suffix ? assetUrl(release, suffix) : undefined;
-    if (url) {
-      button.href = url;
-    } else if (os === "mac") {
-      // We cannot tell which Mac this is, so let the visitor pick a build.
-      button.href = "#download";
-    }
-  })();
+      let suffix: string | null = null;
+      if (os === "win") suffix = "_x64-setup.exe";
+      if (os === "linux") suffix = "_amd64.AppImage";
+      if (os === "mac") {
+        const arch = await detectArch();
+        if (signal.aborted) return;
+
+        suffix = arch === "arm" ? "_aarch64.dmg" : arch === "x86" ? "_x64.dmg" : null;
+      }
+
+      const url = suffix ? assetUrl(release, suffix) : undefined;
+      if (url) {
+        button.href = url;
+      } else if (os === "mac") {
+        // We cannot tell which Mac this is, so let the visitor pick a build.
+        button.href = "#download";
+      }
+    })();
+  });
 </script>

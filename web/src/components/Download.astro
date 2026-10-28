@@ -106,51 +106,56 @@ const platforms: { os: OsKey; name: string; items: Item[] }[] = [
 <script>
   import { assetUrl, latestRelease } from "../lib/releases";
   import { detectArch, detectOs } from "../lib/os";
+  import { onPageLoad } from "../lib/lifecycle";
 
-  (async () => {
-    const os = detectOs();
+  onPageLoad((signal) => {
     const row = document.getElementById("dl-row");
+    if (!row) return;
 
-    if (os && row) {
-      // The visitor's platform goes first, that is the recommendation.
-      row.dataset.os = os;
-      document.querySelector(`.dl-item[data-os="${os}"] .dl-btn`)?.classList.add("g");
-    }
+    void (async () => {
+      const os = detectOs();
 
-    const release = await latestRelease();
-    if (!release) return;
+      if (os) {
+        // The visitor's platform goes first, that is the recommendation.
+        row.dataset.os = os;
+        document.querySelector(`.dl-item[data-os="${os}"] .dl-btn`)?.classList.add("g");
+      }
 
-    // Point every option at the exact file of the latest release.
-    document.querySelectorAll<HTMLAnchorElement>("a[data-suffix]").forEach((link) => {
-      const url = assetUrl(release, link.dataset.suffix ?? "");
-      if (url) link.href = url;
-    });
+      const release = await latestRelease();
+      if (!release || signal.aborted) return;
 
-    // On macOS, the build matching the visitor's chip comes first.
-    if (os === "mac") {
-      const arch = await detectArch();
-      const menu = document.querySelector("#dl-menu-mac");
-      const wanted = arch === "x86" ? "_x64.dmg" : "_aarch64.dmg";
-      const link = menu?.querySelector<HTMLAnchorElement>(`a[data-suffix="${wanted}"]`);
-      if (menu && link) menu.insertBefore(link, menu.firstElementChild);
-    }
+      // Point every option at the exact file of the latest release.
+      document.querySelectorAll<HTMLAnchorElement>("a[data-suffix]").forEach((link) => {
+        const url = assetUrl(release, link.dataset.suffix ?? "");
+        if (url) link.href = url;
+      });
 
-    // Keep the last menu anchored to the right edge of its button.
-    const items = Array.from(document.querySelectorAll<HTMLElement>(".dl-item"));
-    const last = items.find((item) => {
-      const order = Number(getComputedStyle(item).order);
-      return !items.some((other) => Number(getComputedStyle(other).order) > order);
-    });
-    last?.classList.add("last");
+      // On macOS, the build matching the visitor's chip comes first.
+      if (os === "mac") {
+        const arch = await detectArch();
+        if (signal.aborted) return;
 
-    const meta = document.getElementById("dl-meta");
-    if (meta) {
-      meta.innerHTML = `Version ${release.version} · Free and open source · Older builds are always available on the <a href="https://github.com/ilyeshdz/yapmod/releases" style="text-decoration: underline">releases page</a>.`;
-    }
-  })();
+        const menu = document.querySelector("#dl-menu-mac");
+        const wanted = arch === "x86" ? "_x64.dmg" : "_aarch64.dmg";
+        const link = menu?.querySelector<HTMLAnchorElement>(`a[data-suffix="${wanted}"]`);
+        if (menu && link) menu.insertBefore(link, menu.firstElementChild);
+      }
 
-  // Dropdown behaviour.
-  (() => {
+      // Keep the last menu anchored to the right edge of its button.
+      const items = Array.from(document.querySelectorAll<HTMLElement>(".dl-item"));
+      const last = items.find((item) => {
+        const order = Number(getComputedStyle(item).order);
+        return !items.some((other) => Number(getComputedStyle(other).order) > order);
+      });
+      last?.classList.add("last");
+
+      const meta = document.getElementById("dl-meta");
+      if (meta) {
+        meta.innerHTML = `Version ${release.version} · Free and open source · Older builds are always available on the <a href="https://github.com/ilyeshdz/yapmod/releases" style="text-decoration: underline">releases page</a>.`;
+      }
+    })();
+
+    // Dropdown behaviour.
     const items = Array.from(document.querySelectorAll<HTMLElement>(".dl-item"));
 
     const closeAll = (except?: HTMLElement) => {
@@ -166,23 +171,35 @@ const platforms: { os: OsKey; name: string; items: Item[] }[] = [
       const menu = item.querySelector<HTMLElement>(".dl-menu");
       if (!button || !menu) continue;
 
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const open = menu.hasAttribute("hidden");
-        closeAll(item);
-        menu.toggleAttribute("hidden", !open);
-        button.setAttribute("aria-expanded", String(open));
-      });
+      button.addEventListener(
+        "click",
+        (event) => {
+          event.stopPropagation();
+          const open = menu.hasAttribute("hidden");
+          closeAll(item);
+          menu.toggleAttribute("hidden", !open);
+          button.setAttribute("aria-expanded", String(open));
+        },
+        { signal },
+      );
 
-      menu.addEventListener("click", (event) => {
-        if ((event.target as HTMLElement).closest("a")) closeAll();
-      });
+      menu.addEventListener(
+        "click",
+        (event) => {
+          if ((event.target as HTMLElement).closest("a")) closeAll();
+        },
+        { signal },
+      );
     }
 
-    document.addEventListener("click", () => closeAll());
+    document.addEventListener("click", () => closeAll(), { signal });
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeAll();
-    });
-  })();
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") closeAll();
+      },
+      { signal },
+    );
+  });
 </script>

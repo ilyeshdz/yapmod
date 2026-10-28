@@ -184,118 +184,134 @@
 
 <script>
   import { excerpt, loadIndex, searchIndex } from "../../lib/search";
+  import { onPageLoad } from "../../lib/lifecycle";
 
-  const dialog = document.getElementById("search-palette") as HTMLDialogElement | null;
-  const input = document.getElementById("palette-input") as HTMLInputElement | null;
-  const results = document.getElementById("palette-results") as HTMLUListElement | null;
+  onPageLoad((signal) => {
+    const dialog = document.getElementById("search-palette") as HTMLDialogElement | null;
+    const input = document.getElementById("palette-input") as HTMLInputElement | null;
+    const results = document.getElementById("palette-results") as HTMLUListElement | null;
 
-  let matches: Awaited<ReturnType<typeof loadIndex>> = [];
-  let active = 0;
+    if (!dialog || !input || !results) return;
 
-  const render = (query: string) => {
-    if (!results) return;
+    let matches: Awaited<ReturnType<typeof loadIndex>> = [];
+    let active = 0;
 
-    results.innerHTML = "";
+    const render = (query: string) => {
+      results.innerHTML = "";
 
-    if (matches.length === 0) {
-      const empty = document.createElement("li");
-      empty.className = "empty";
-      empty.textContent = query ? "Nothing found." : "Type to search the documentation.";
-      results.append(empty);
-      return;
-    }
+      if (matches.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "empty";
+        empty.textContent = query ? "Nothing found." : "Type to search the documentation.";
+        results.append(empty);
+        return;
+      }
 
-    matches.forEach((item, index) => {
-      const li = document.createElement("li");
+      matches.forEach((item, index) => {
+        const li = document.createElement("li");
 
-      const link = document.createElement("a");
-      link.href = item.url;
-      link.className = index === active ? "on" : "";
+        const link = document.createElement("a");
+        link.href = item.url;
+        link.className = index === active ? "on" : "";
 
-      const row = document.createElement("div");
-      row.className = "row";
+        const row = document.createElement("div");
+        row.className = "row";
 
-      const title = document.createElement("strong");
-      title.textContent = item.title;
+        const title = document.createElement("strong");
+        title.textContent = item.title;
 
-      const group = document.createElement("span");
-      group.className = "group";
-      group.textContent = item.group;
+        const group = document.createElement("span");
+        group.className = "group";
+        group.textContent = item.group;
 
-      const snippet = document.createElement("div");
-      snippet.className = "snippet";
-      snippet.textContent = item.description || excerpt(item.text, query);
+        const snippet = document.createElement("div");
+        snippet.className = "snippet";
+        snippet.textContent = item.description || excerpt(item.text, query);
 
-      row.append(title, group);
-      link.append(row, snippet);
-      li.append(link);
-      results.append(li);
-    });
-  };
+        row.append(title, group);
+        link.append(row, snippet);
+        li.append(link);
+        results.append(li);
+      });
+    };
 
-  const update = async () => {
-    const query = input?.value ?? "";
-    const index = await loadIndex();
+    const update = async () => {
+      const query = input.value;
+      const index = await loadIndex();
 
-    matches = searchIndex(index, query);
-    active = 0;
-    render(query);
-  };
+      if (signal.aborted) return;
 
-  const open = () => {
-    if (!dialog || !input) return;
+      matches = searchIndex(index, query);
+      active = 0;
+      render(query);
+    };
 
-    if (!dialog.open) dialog.showModal();
-    input.focus();
-    input.select();
-    void update();
-  };
+    const open = () => {
+      if (!dialog.open) dialog.showModal();
+      input.focus();
+      input.select();
+      void update();
+    };
 
-  // Cmd+K (or Ctrl+K) opens the palette from anywhere on the page.
-  document.addEventListener("keydown", (event) => {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      open();
-      return;
-    }
+    // Cmd+K (or Ctrl+K) opens the palette from anywhere on the page.
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+          event.preventDefault();
+          open();
+          return;
+        }
 
-    if (!dialog?.open) return;
+        if (!dialog.open) return;
 
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      if (matches.length === 0) return;
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (matches.length === 0) return;
 
-      active = (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
-      render(input?.value ?? "");
-      results?.querySelectorAll("a")[active]?.scrollIntoView({ block: "nearest" });
-    }
+          active =
+            (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
+          render(input.value);
+          results.querySelectorAll("a")[active]?.scrollIntoView({ block: "nearest" });
+        }
 
-    if (event.key === "Enter" && matches[active]) {
-      event.preventDefault();
-      window.location.href = matches[active].url;
+        if (event.key === "Enter" && matches[active]) {
+          event.preventDefault();
+          window.location.href = matches[active].url;
+        }
+      },
+      { signal },
+    );
+
+    input.addEventListener("input", update, { signal });
+
+    // Clicking the backdrop closes the palette.
+    dialog.addEventListener(
+      "click",
+      (event) => {
+        if (event.target === dialog) dialog.close();
+      },
+      { signal },
+    );
+
+    dialog.addEventListener(
+      "close",
+      () => {
+        input.value = "";
+        matches = [];
+      },
+      { signal },
+    );
+
+    // The sidebar search opens the palette as well, so there is one place to type.
+    const sidebarInput = document.getElementById("docs-search") as HTMLButtonElement | null;
+
+    sidebarInput?.addEventListener("click", open, { signal });
+
+    // Make the shortcut discoverable.
+    for (const hint of document.querySelectorAll<HTMLElement>(".search-hint")) {
+      const isMac = /mac/i.test(navigator.platform || "");
+      hint.textContent = isMac ? "⌘K" : "Ctrl K";
     }
   });
-
-  input?.addEventListener("input", update);
-
-  // Clicking the backdrop closes the palette.
-  dialog?.addEventListener("click", (event) => {
-    if (event.target === dialog) dialog.close();
-  });
-
-  dialog?.addEventListener("close", () => {
-    if (input) input.value = "";
-    matches = [];
-  });
-
-  // The sidebar search opens the palette as well, so there is one place to type.
-  const sidebarInput = document.getElementById("docs-search") as HTMLButtonElement | null;
-
-  sidebarInput?.addEventListener("click", open);
-
-  // Make the shortcut discoverable.
-  for (const hint of document.querySelectorAll<HTMLElement>(".search-hint")) {
-    const isMac = /mac/i.test(navigator.platform || "");
-    hint.textContent = isMac ? "⌘K" : "Ctrl K";
-  }
 </script>

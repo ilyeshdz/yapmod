@@ -31,22 +31,28 @@
 </button>
 
 <script>
-  (() => {
+  import { onPageLoad } from "../lib/lifecycle";
+
+  onPageLoad((signal) => {
     const button = document.getElementById("theme-toggle");
     if (!button) return;
 
-    button.addEventListener("click", () => {
-      const root = document.documentElement;
-      const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-      const current = root.dataset.theme || (prefersLight ? "light" : "dark");
-      const next = current === "dark" ? "light" : "dark";
+    button.addEventListener(
+      "click",
+      () => {
+        const root = document.documentElement;
+        const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+        const current = root.dataset.theme || (prefersLight ? "light" : "dark");
+        const next = current === "dark" ? "light" : "dark";
 
-      root.dataset.theme = next;
-      try {
-        localStorage.setItem("yapmod-theme", next);
-      } catch {
-        // Ignore storage failures, the theme still applies for this session.
-      }
-    });
-  })();
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem("yapmod-theme", next);
+        } catch {
+          // Ignore storage failures, the theme still applies for this session.
+        }
+      },
+      { signal },
+    );
+  });
 </script>

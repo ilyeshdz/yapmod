@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import logo from "../assets/yapmod-logo.png";
 import "../styles/global.css";
 
@@ -26,6 +27,7 @@ const favicon = new URL(`${base}/favicon.svg`, Astro.site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href={favicon} />
+    <ClientRouter />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="yapmod" />

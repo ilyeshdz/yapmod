@@ -94,78 +94,93 @@ const areaInfo = area ? areaMeta[area] : null;
 </BaseLayout>
 
 <script>
-  // Copy buttons on every code block.
-  for (const pre of document.querySelectorAll<HTMLElement>(".prose pre")) {
-    if (pre.parentElement?.classList.contains("code-block")) continue;
+  import { onPageLoad } from "../lib/lifecycle";
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "code-block";
-    pre.replaceWith(wrapper);
-    wrapper.append(pre);
+  onPageLoad((signal) => {
+    if (!document.getElementById("docs-sidebar")) return;
 
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "copy-btn";
-    button.textContent = "Copy";
-    button.setAttribute("aria-label", "Copy the code to the clipboard");
+    // Copy buttons on every code block.
+    for (const pre of document.querySelectorAll<HTMLElement>(".prose pre")) {
+      if (pre.parentElement?.classList.contains("code-block")) continue;
 
-    button.addEventListener("click", async () => {
-      const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block";
+      pre.replaceWith(wrapper);
+      wrapper.append(pre);
 
-      try {
-        await navigator.clipboard.writeText(code);
-        button.textContent = "Copied";
-      } catch {
-        button.textContent = "Press Ctrl+C";
-      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "copy-btn";
+      button.textContent = "Copy";
+      button.setAttribute("aria-label", "Copy the code to the clipboard");
 
-      setTimeout(() => (button.textContent = "Copy"), 1500);
-    });
+      button.addEventListener(
+        "click",
+        async () => {
+          const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
 
-    wrapper.append(button);
-  }
+          try {
+            await navigator.clipboard.writeText(code);
+            button.textContent = "Copied";
+          } catch {
+            button.textContent = "Press Ctrl+C";
+          }
 
-  // The sidebar toggles on small screens.
-  const toggle = document.getElementById("docs-menu");
-  const sidebar = document.getElementById("docs-sidebar");
+          setTimeout(() => (button.textContent = "Copy"), 1500);
+        },
+        { signal },
+      );
 
-  toggle?.addEventListener("click", () => {
-    const open = sidebar?.classList.toggle("open") ?? false;
-    toggle.setAttribute("aria-expanded", String(open));
-  });
-
-  // Keep the sidebar where the reader left it when they follow a link.
-  // A full navigation would otherwise reset its own scroll position.
-  if (sidebar) {
-    const key = `yapmod:docs-sidebar:${sidebar.dataset.sidebarArea ?? "main"}`;
-
-    try {
-      const saved = sessionStorage.getItem(key);
-
-      if (saved !== null) {
-        sidebar.scrollTop = Number(saved);
-      }
-    } catch {
-      // Session storage can be unavailable; the sidebar still works.
+      wrapper.append(button);
     }
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    // The sidebar toggles on small screens.
+    const toggle = document.getElementById("docs-menu");
+    const sidebar = document.getElementById("docs-sidebar");
 
-    sidebar.addEventListener(
-      "scroll",
+    toggle?.addEventListener(
+      "click",
       () => {
-        clearTimeout(timer);
-
-        timer = setTimeout(() => {
-          try {
-            sessionStorage.setItem(key, String(sidebar.scrollTop));
-          } catch {
-            // Ignore storage failures.
-          }
-        }, 120);
+        const open = sidebar?.classList.toggle("open") ?? false;
+        toggle.setAttribute("aria-expanded", String(open));
       },
-      { passive: true },
+      { signal },
     );
-  }
 
+    // Keep the sidebar where the reader left it when they follow a link.
+    // A navigation would otherwise reset its own scroll position.
+    if (sidebar) {
+      const key = `yapmod:docs-sidebar:${sidebar.dataset.sidebarArea ?? "main"}`;
+
+      try {
+        const saved = sessionStorage.getItem(key);
+
+        if (saved !== null) {
+          sidebar.scrollTop = Number(saved);
+        }
+      } catch {
+        // Session storage can be unavailable; the sidebar still works.
+      }
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      sidebar.addEventListener(
+        "scroll",
+        () => {
+          clearTimeout(timer);
+
+          timer = setTimeout(() => {
+            try {
+              sessionStorage.setItem(key, String(sidebar.scrollTop));
+            } catch {
+              // Ignore storage failures.
+            }
+          }, 120);
+        },
+        { passive: true, signal },
+      );
+
+      signal.addEventListener("abort", () => clearTimeout(timer));
+    }
+  });
 </script>
