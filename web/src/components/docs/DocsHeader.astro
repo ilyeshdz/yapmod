@@ -1,6 +1,12 @@
 ---
 import ThemeToggle from "../ThemeToggle.astro";
+import { type DocArea } from "../../lib/docs";
 
+interface Props {
+  area?: DocArea;
+}
+
+const { area } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 ---
 
@@ -15,8 +21,9 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
   <nav class="header-links" aria-label="Site">
     <a href={`${base}/`}>Home</a>
+    <a href={`${base}/docs/plugins`} class:list={{ on: area === "plugins" }}>Plugins</a>
+    <a href={`${base}/docs/themes`} class:list={{ on: area === "themes" }}>Themes</a>
     <a href="https://github.com/ilyeshdz/yapmod">GitHub</a>
-    <a href="https://github.com/ilyeshdz/yapmod/issues">Issues</a>
   </nav>
 
   <div class="header-actions">
@@ -82,10 +89,17 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
   .header-links a {
     text-decoration: none;
     color: var(--m);
+    padding: 4px 0;
+    border-bottom: 2px solid transparent;
   }
 
   .header-links a:hover {
     color: var(--t);
+  }
+
+  .header-links a.on {
+    color: var(--t);
+    border-bottom-color: var(--accent);
   }
 
   .header-actions {

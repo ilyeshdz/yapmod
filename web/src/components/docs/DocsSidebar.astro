@@ -1,17 +1,20 @@
 ---
-import { docUrl, groupDocs } from "../../lib/docs";
+import { areaMeta, areaUrl, docUrl, groupDocs, type DocArea } from "../../lib/docs";
 import type { DocEntry } from "../../lib/docs";
 
 interface Props {
   docs: DocEntry[];
   current: string;
+  area?: DocArea;
 }
 
-const { docs, current } = Astro.props;
+const { docs, current, area } = Astro.props;
 const groups = groupDocs(docs);
+const mainDocs = docs.filter((doc) => !doc.data.area);
+const mainGroups = groupDocs(mainDocs);
 ---
 
-<aside id="docs-sidebar">
+<aside id="docs-sidebar" data-sidebar-area={area ?? "main"}>
   <div class="search">
     <button id="docs-search" type="button" aria-label="Search the docs (Command K)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -23,23 +26,56 @@ const groups = groupDocs(docs);
     </button>
   </div>
 
-  <nav aria-label="Documentation">
-    <ul class="overview">
-      <li>
-        <a
-          href={docUrl("index")}
-          class:list={{ on: current === "index" }}
-          aria-current={current === "index" ? "page" : undefined}
-          data-title="overview"
-          data-description="everything about yapmod at a glance"
-        >
-          Overview
-        </a>
-      </li>
-    </ul>
+  {
+    area ? (
+      <div class="area-switch" aria-label="Developer documentation">
+        <a href={docUrl("index")} class="all-docs">Documentation</a>
+        <div class="area-tabs">
+          {(Object.keys(areaMeta) as DocArea[]).map((key) => (
+            <a
+              href={areaUrl(key)}
+              class:list={{ on: key === area }}
+              aria-current={key === area ? "page" : undefined}
+            >
+              {areaMeta[key].short}
+            </a>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <nav class="developer-entry" aria-label="Developer documentation">
+        <p class="entry-label">Build for yapmod</p>
+        {(Object.keys(areaMeta) as DocArea[]).map((key) => (
+          <a href={areaUrl(key)} class={`entry-card entry-${key}`}>
+            <span>{areaMeta[key].label}</span>
+            <small>{areaMeta[key].description}</small>
+          </a>
+        ))}
+      </nav>
+    )
+  }
+
+  <nav aria-label={area ? `${areaMeta[area].label} documentation` : "Documentation"}>
+    {
+      !area && (
+        <ul class="overview">
+          <li>
+            <a
+              href={docUrl("index")}
+              class:list={{ on: current === "index" }}
+              aria-current={current === "index" ? "page" : undefined}
+              data-title="overview"
+              data-description="everything about yapmod at a glance"
+            >
+              Overview
+            </a>
+          </li>
+        </ul>
+      )
+    }
 
     {
-      [...groups.entries()].map(([group, entries]) => (
+      [...(area ? groups : mainGroups).entries()].map(([group, entries]) => (
         <>
           <h4>{group}</h4>
           <ul>
@@ -125,6 +161,95 @@ const groups = groupDocs(docs);
     white-space: nowrap;
   }
 
+  .developer-entry {
+    display: grid;
+    gap: 8px;
+    margin: 0 0 22px;
+  }
+
+  .entry-label {
+    margin: 0 0 2px;
+    font: 700 11px Figtree, sans-serif;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--m);
+  }
+
+  .entry-card {
+    display: block;
+    padding: 12px 13px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--s);
+    text-decoration: none;
+    color: var(--t);
+  }
+
+  .entry-card:hover {
+    border-color: var(--accent);
+  }
+
+  .entry-card span {
+    display: block;
+    font: 700 15px Sora, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .entry-card small {
+    display: block;
+    margin-top: 3px;
+    color: var(--m);
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  .area-switch {
+    margin: 0 0 20px;
+  }
+
+  .all-docs {
+    display: block;
+    margin: 0 0 10px;
+    color: var(--m);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .all-docs:hover {
+    color: var(--t);
+  }
+
+  .area-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    border: 1.5px solid var(--line);
+    border-radius: 11px;
+    background: var(--s);
+  }
+
+  .area-tabs a {
+    padding: 7px 10px;
+    margin: 0;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--m);
+    text-decoration: none;
+  }
+
+  .area-tabs a:hover {
+    color: var(--t);
+  }
+
+  .area-tabs a.on {
+    background: var(--accent-soft);
+    color: var(--t);
+  }
+
   h4 {
     margin: 20px 0 6px;
     font: 700 12px Figtree, sans-serif;
@@ -143,7 +268,7 @@ const groups = groupDocs(docs);
     padding: 0;
   }
 
-  aside a {
+  aside nav a {
     display: block;
     padding: 6px 12px;
     margin-left: -12px;
@@ -154,14 +279,29 @@ const groups = groupDocs(docs);
     font-weight: 500;
   }
 
-  aside a:hover {
+  aside nav a:hover {
     color: var(--t);
   }
 
-  aside a.on {
+  aside nav a.on {
     background: var(--accent-soft);
     color: var(--t);
     font-weight: 600;
+  }
+
+  aside nav a.entry-card {
+    margin-left: 0;
+    padding: 12px 13px;
+    font-weight: 400;
+  }
+
+  aside nav a.all-docs {
+    margin-left: 0;
+    padding: 0;
+  }
+
+  .area-tabs a {
+    margin-left: 0;
   }
 
   .hidden-by-search {

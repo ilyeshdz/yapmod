@@ -18,8 +18,8 @@ External links open in your default browser. A theme can change the Yapper inter
 
 ## Next steps
 
-- [Install yapmod](install)
-- [Release channels](release-channels)
-- [Explore desktop features](desktop-features)
-- [Use themes](themes)
-- [Troubleshoot a problem](troubleshooting)
+- [Install yapmod](/yapmod/docs/install)
+- [Release channels](/yapmod/docs/release-channels)
+- [Explore desktop features](/yapmod/docs/desktop-features)
+- [Use themes](/yapmod/docs/using-themes)
+- [Troubleshoot a problem](/yapmod/docs/troubleshooting)

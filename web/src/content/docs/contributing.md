@@ -12,13 +12,13 @@ yapmod is made by the people who use it. Whether you write code, report what bre
 
 - **Report a bug.** Open an [issue](https://github.com/ilyeshdz/yapmod/issues) with what happened, your operating system and your yapmod version.
 - **Suggest a feature.** Tell us what you would like yapmod to do and why.
-- **Write code.** Fork the repository, set it up with [Run from source](run-from-source), and open a pull request.
-- **Improve the docs.** These pages live in `web/src/content/docs`, one Markdown file per page. Add a file with the frontmatter it needs, and it appears in the sidebar.
+- **Write code.** Fork the repository, set it up with [Run from source](/yapmod/docs/run-from-source), and open a pull request.
+- **Improve the docs.** These pages live in `web/src/content/docs`, one file per page. Add a file with the frontmatter it needs, and it appears in the sidebar. Developer pages set `area: plugins` or `area: themes`; pages that use documentation components are `.mdx`. Run `pnpm docs:generate` from `web/` after changing the source types or Community rules the reference tables are generated from.
 
 ## Working on a change
 
 1. For anything larger than a small fix, [open an issue](https://github.com/ilyeshdz/yapmod/issues) first so the direction is agreed on.
-2. Fork the repository and set it up with [Run from source](run-from-source).
+2. Fork the repository and set it up with [Run from source](/yapmod/docs/run-from-source).
 3. Keep your pull request focused. One clear change is easier to review than several at once.
 4. Match the style of the code around you, and run the checks below before you push.
 
@@ -30,6 +30,7 @@ yapmod is made by the people who use it. Whether you write code, report what bre
 | Types generated from Rust | `pnpm types:generate` |
 | Formatting and lints of the Rust code | `cargo fmt --check` and `cargo clippy` |
 | The Rust unit tests | `cargo test` |
+| Website types, generated docs data and build | `pnpm check:web` |
 
 ## A note on accuracy
 

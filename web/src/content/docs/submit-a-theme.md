@@ -1,8 +1,9 @@
 ---
 title: Submit a theme
-group: Contributing
-order: 3
-eyebrow: Themes
+group: Publish
+order: 1
+area: themes
+eyebrow: Publish
 description: Publish a theme in the Yapmod community gallery.
 ---
 
@@ -12,9 +13,9 @@ edit a catalog file.
 
 ## Before you submit
 
-1. Create and test your theme using the format in [Creating a theme](creating-themes).
+1. Create and test your theme using the format in [Structure and manifest](/yapmod/docs/themes/manifest).
 2. Add a preview image and set its file name in the manifest's `preview` field.
-   Community previews must be PNG, JPEG, WebP, GIF or SVG and smaller than 4 MB.
+   Community previews must be PNG, JPEG, WebP, GIF or SVG and smaller than 4 MB. The full set of limits is in [Structure and manifest](/yapmod/docs/themes/manifest#limits).
 3. Keep the stylesheet under 1 MB. Include the theme's license and make sure
    you have permission to share the theme and preview.
 

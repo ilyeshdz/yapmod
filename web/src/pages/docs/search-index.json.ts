@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
-import { docUrl, plainText } from "../../lib/docs";
+import { areaMeta, docUrl, plainText } from "../../lib/docs";
 
 export const prerender = true;
 
@@ -12,7 +12,7 @@ export const GET: APIRoute = async () => {
 
   const index = docs.map((doc) => ({
     title: doc.data.title,
-    group: doc.data.group,
+    group: doc.data.area ? areaMeta[doc.data.area].label : doc.data.group,
     description: doc.data.description ?? "",
     url: docUrl(doc.id),
     text: plainText(doc.body),

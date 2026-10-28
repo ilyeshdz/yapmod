@@ -4,16 +4,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/build-community-plugins.mjs --dev && node scripts/build-community-themes.mjs --dev && astro dev",
-    "build": "astro build && node scripts/build-community-plugins.mjs && node scripts/build-community-themes.mjs",
+    "dev": "node scripts/generate-docs-data.mjs && node scripts/build-community-plugins.mjs --dev && node scripts/build-community-themes.mjs --dev && astro dev",
+    "build": "node scripts/generate-docs-data.mjs && astro build && node scripts/build-community-plugins.mjs && node scripts/build-community-themes.mjs",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "node scripts/generate-docs-data.mjs --check && astro check",
+    "docs:generate": "node scripts/generate-docs-data.mjs"
   },
   "dependencies": {
     "astro": "^7.4.1"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.11",
+    "@astrojs/mdx": "^8.1.1",
     "@types/node": "^26.6.5",
     "typescript": "~6.0.3"
   }

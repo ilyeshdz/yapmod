@@ -105,8 +105,9 @@ The website in `web/` is a separate Astro project. Run these commands from that 
 | --- | --- |
 | `pnpm dev` | Starts the site on `localhost:4321`. |
 | `pnpm build` | Builds the site into `dist/`. |
-| `pnpm check` | Type-checks the Astro components. |
+| `pnpm check` | Type-checks the Astro components and verifies the generated docs data. |
+| `pnpm docs:generate` | Regenerates the source-derived documentation references. |
 
 ## Where to look next
 
-- [Contributing](contributing) for how to get a change in.
+- [Contributing](/yapmod/docs/contributing) for how to get a change in.

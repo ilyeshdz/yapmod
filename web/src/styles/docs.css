@@ -212,3 +212,166 @@
     padding: 30px 20px 80px;
   }
 }
+
+/* developer navigation ------------------------------------------------------ */
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--m);
+}
+
+.breadcrumbs a {
+  color: var(--m);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--t);
+}
+
+.breadcrumbs span[aria-current="page"] {
+  color: var(--t);
+}
+
+/* callouts ------------------------------------------------------------------ */
+
+.prose .callout {
+  margin: 22px 0;
+  padding: 16px 20px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--s);
+}
+
+.prose .callout-warning {
+  border-color: color-mix(in srgb, #f5b544 45%, var(--line));
+  background: color-mix(in srgb, #f5b544 8%, var(--s));
+}
+
+.prose .callout-tip {
+  border-color: color-mix(in srgb, #3fcf82 45%, var(--line));
+  background: color-mix(in srgb, #3fcf82 8%, var(--s));
+}
+
+.prose .callout-title {
+  margin: 0 0 6px;
+  font: 700 12px Figtree, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--m);
+}
+
+.prose .callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.prose .callout-body > :first-child {
+  margin-top: 0;
+}
+
+/* generated API reference --------------------------------------------------- */
+
+.prose .api-type {
+  margin: 18px 0 30px;
+  padding: 18px 20px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--s);
+}
+
+.prose .api-type > p {
+  margin: 0 0 12px;
+}
+
+.prose .api-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--m);
+}
+
+.prose .api-source code {
+  font-size: 11.5px;
+}
+
+.api-kind,
+.api-flag {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1.5px solid var(--line);
+  border-radius: 99px;
+  background: var(--bg);
+  color: var(--m);
+  font: 700 10px/1.6 Figtree, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.api-flag {
+  margin-left: 6px;
+  font-size: 9px;
+}
+
+.prose pre.api-signature {
+  max-height: 460px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.prose .api-members {
+  margin-top: 14px;
+}
+
+.prose .api-members table {
+  margin: 0;
+}
+
+.prose .api-members td:first-child {
+  white-space: nowrap;
+}
+
+.prose .api-members td:nth-child(2) {
+  min-width: 180px;
+}
+
+.prose .api-members td {
+  font-size: 14px;
+}
+
+/* theme token and limit tables ---------------------------------------------- */
+
+.token-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  background: var(--swatch);
+  vertical-align: -2px;
+}
+
+.prose .token-note {
+  margin-top: -4px;
+  font-size: 13px;
+  color: var(--m);
+}
+
+.prose .token-table code,
+.prose .limits-table code {
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--m);
+}
