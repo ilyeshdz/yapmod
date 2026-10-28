@@ -3,7 +3,7 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "045b1f973f4df267",
+  "sourceHash": "2061e059a5ec4bf6",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
@@ -423,7 +423,7 @@
       "name": "YapmodPluginSettingsApi",
       "kind": "type",
       "description": "Manifest-declared settings, scoped to one plugin.",
-      "declaration": "export type YapmodPluginSettingsApi = { get(id: string): PluginSettingValue; all(): Readonly<Record<string, PluginSettingValue>>; onChange(id: string, listener: (value: PluginSettingValue) => void): () => void;\n};",
+      "declaration": "export type YapmodPluginSettingsApi = { get(id: string): PluginSettingValue; all(): Readonly<Record<string, PluginSettingValue>>; onChange(id: string, listener: (value: PluginSettingValue) => void): () => void; registerPanel(panel: PluginSettingsPanel): () => void; openPanel(id?: string): void; refreshPanel(id?: string): void;\n};",
       "members": [
         {
           "name": "get",
@@ -445,8 +445,136 @@
           "optional": false,
           "readonly": false,
           "description": "Subscribes to changes of one declared setting. Returns a cleanup function to unsubscribe."
+        },
+        {
+          "name": "registerPanel",
+          "type": "(panel: PluginSettingsPanel) => () => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Registers a settings panel in the Yapper settings sidebar. Registering the same panel id again replaces the previous panel. Returns an unregister function; the panel is also removed when the plugin is disabled."
+        },
+        {
+          "name": "openPanel",
+          "type": "(id?: string) => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Opens a panel registered by this plugin, opening the settings dialog first when necessary. Defaults to the `\"main\"` panel."
+        },
+        {
+          "name": "refreshPanel",
+          "type": "(id?: string) => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Re-renders the declarative `items` of a panel. With no id, refreshes every panel registered by this plugin."
         }
       ]
+    },
+    "PluginSettingsPanel": {
+      "name": "PluginSettingsPanel",
+      "kind": "type",
+      "description": "A settings panel contributed by a plugin. Panels appear in the sidebar of the Yapper settings dialog, next to yapmod's own sections. Register one with `api.settings.registerPanel()` while the plugin is active; the registration is removed automatically when the plugin is disabled.",
+      "declaration": "export type PluginSettingsPanel = { id?: string; label: string; description?: string; icon?: \"monitor\" | \"palette\" | \"history\" | \"puzzle\"; group?: string; order?: number; items?: SettingsItem[]; render?: (\n    host: HTMLElement,\n    context: SettingsContext,\n  ) => void | (() => void); onShow?: () => void; onHide?: () => void;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Local id of the panel, unique within the plugin. Defaults to `\"main\"`. yapmod namespaces it with the plugin id, so two plugins cannot collide."
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "Title shown in the sidebar and above the panel."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Optional short explanation shown under the title."
+        },
+        {
+          "name": "icon",
+          "type": "\"monitor\" | \"palette\" | \"history\" | \"puzzle\"",
+          "optional": true,
+          "readonly": false,
+          "description": "Optional built-in icon for the sidebar entry."
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Sidebar group that contains the panel. Defaults to `\"Plugins\"`."
+        },
+        {
+          "name": "order",
+          "type": "number",
+          "optional": true,
+          "readonly": false,
+          "description": "Sort position within the group. Lower values appear first."
+        },
+        {
+          "name": "items",
+          "type": "SettingsItem[]",
+          "optional": true,
+          "readonly": false,
+          "description": "Declarative controls rendered by yapmod. Re-read `value` fields and update them in `onChange` so `refreshPanel()` can re-render the form."
+        },
+        {
+          "name": "render",
+          "type": "(\n    host: HTMLElement,\n    context: SettingsContext,\n  ) => void | (() => void)",
+          "optional": true,
+          "readonly": false,
+          "description": "Custom content mounted into the panel body. Return a cleanup function to release listeners or other resources when the panel is destroyed."
+        },
+        {
+          "name": "onShow",
+          "type": "() => void",
+          "optional": true,
+          "readonly": false,
+          "description": "Called when the panel becomes visible."
+        },
+        {
+          "name": "onHide",
+          "type": "() => void",
+          "optional": true,
+          "readonly": false,
+          "description": "Called when the panel is hidden."
+        }
+      ]
+    },
+    "SettingsContext": {
+      "name": "SettingsContext",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type SettingsContext = {\n  readonly id: string;\n  refresh(): void;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "refresh",
+          "type": "() => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "SettingsItem": {
+      "name": "SettingsItem",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type SettingsItem =\n  | {\n      type: \"toggle\";\n      id: string;\n      label: string;\n      description?: string;\n      value: boolean;\n      disabled?: boolean;\n      onChange: (value: boolean) => void;\n    }\n  | {\n      type: \"select\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      options: SettingOption[];\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"text\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      placeholder?: string;\n      maxLength?: number;\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"number\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min?: number;\n      max?: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"button\";\n      id: string;\n      label: string;\n      variant?: \"primary\" | \"secondary\" | \"danger\";\n      onClick: () => void;\n    }\n  | {\n      type: \"custom\";\n      id: string;\n      label?: string;\n      description?: string;\n      render: (\n        host: HTMLElement,\n        context: SettingsContext,\n      ) => void | (() => void);\n    };",
+      "members": []
     },
     "YapmodPluginNotifyApi": {
       "name": "YapmodPluginNotifyApi",

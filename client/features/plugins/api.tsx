@@ -17,6 +17,7 @@ import type {
   PluginManifest,
   PluginSetting,
   PluginSettingValue,
+  PluginSettingsPanel,
   YapmodPluginInfo,
   YapmodPluginApi,
   YapmodPluginModule,
@@ -417,6 +418,112 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         return getYapmod().store?.get<PluginSettingValue>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
       };
 
+      const panels = new Map<string, { sectionId: string; unregister: () => void }>();
+      let panelsActive = true;
+
+      const unregisterPanel = (id: string): void => {
+        const panel = panels.get(id);
+
+        if (!panel) return;
+
+        // Remove the entry first so a cleanup that runs twice is harmless.
+        panels.delete(id);
+        panel.unregister();
+      };
+
+      const registerPanel = (panel: PluginSettingsPanel): (() => void) => {
+        const settings = getYapmod().settings;
+
+        if (!panel || typeof panel !== "object") {
+          throw new Error("A plugin settings panel must be an object.");
+        }
+
+        const localId = panel.id ?? "main";
+        if (typeof localId !== "string" || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(localId)) {
+          throw new Error("The plugin settings panel id must contain 1–24 letters, numbers, underscores, or hyphens.");
+        }
+        if (typeof panel.label !== "string" || !panel.label.trim() || panel.label.length > 80) {
+          throw new Error("The plugin settings panel label must contain 1–80 characters.");
+        }
+        if (panel.description !== undefined && (typeof panel.description !== "string" || panel.description.length > 200)) {
+          throw new Error("The plugin settings panel description must be at most 200 characters.");
+        }
+        if (panel.group !== undefined && (typeof panel.group !== "string" || panel.group.trim().length > 60)) {
+          throw new Error("The plugin settings panel group must be at most 60 characters.");
+        }
+        if (panel.icon !== undefined && !["monitor", "palette", "history", "puzzle"].includes(panel.icon)) {
+          throw new Error("The plugin settings panel icon is not supported.");
+        }
+        if (panel.order !== undefined && (typeof panel.order !== "number" || !Number.isFinite(panel.order))) {
+          throw new Error("The plugin settings panel order must be a finite number.");
+        }
+        if (panel.items !== undefined && (!Array.isArray(panel.items) || panel.items.length > 32)) {
+          throw new Error("The plugin settings panel accepts at most 32 items.");
+        }
+        if (panel.render !== undefined && typeof panel.render !== "function") {
+          throw new Error("The plugin settings panel render value must be a function.");
+        }
+        if (panel.onShow !== undefined && typeof panel.onShow !== "function") {
+          throw new Error("The plugin settings panel onShow value must be a function.");
+        }
+        if (panel.onHide !== undefined && typeof panel.onHide !== "function") {
+          throw new Error("The plugin settings panel onHide value must be a function.");
+        }
+
+        if (!settings || !panelsActive) {
+          return () => {};
+        }
+
+        const sectionId = `plugin-panel-${manifest.id}-${localId}`;
+
+        unregisterPanel(localId);
+
+        const unregister = settings.register({
+          id: sectionId,
+          label: panel.label,
+          description: panel.description,
+          icon: panel.icon,
+          group: panel.group?.trim() || "Plugins",
+          order: panel.order ?? 0,
+          items: panel.items,
+          render: panel.render,
+          onShow: panel.onShow,
+          onHide: panel.onHide,
+        });
+
+        panels.set(localId, { sectionId, unregister });
+
+        return () => unregisterPanel(localId);
+      };
+
+      const openPanel = (id = "main"): void => {
+        const panel = panels.get(id);
+
+        if (panel) {
+          getYapmod().settings?.open(panel.sectionId);
+        }
+      };
+
+      const refreshPanel = (id?: string): void => {
+        const settings = getYapmod().settings;
+
+        if (!settings) return;
+
+        if (id !== undefined) {
+          const panel = panels.get(id);
+
+          if (panel) {
+            settings.refresh(panel.sectionId);
+          }
+
+          return;
+        }
+
+        for (const panel of panels.values()) {
+          settings.refresh(panel.sectionId);
+        }
+      };
+
       const api: YapmodPluginApi = Object.freeze({
         apiVersion: 1,
         id: manifest.id,
@@ -463,6 +570,9 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
               }
             }) ?? (() => {});
           },
+          registerPanel,
+          openPanel,
+          refreshPanel,
         }),
         styles: Object.freeze({
           add(css: string): PluginCleanup {
@@ -585,6 +695,15 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
       entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
+      // Panels are owned by the plugin lifecycle even if the plugin does not
+      // keep the unregister function returned by registerPanel().
+      entry.cleanup.push(() => {
+        panelsActive = false;
+
+        for (const id of [...panels.keys()]) {
+          unregisterPanel(id);
+        }
+      });
       // Run callbacks registered through `api.onCleanup`. This is registered
       // before activation so callbacks survive an activation that throws.
       entry.cleanup.push(async () => {

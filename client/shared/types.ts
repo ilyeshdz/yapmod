@@ -324,6 +324,49 @@ export type YapmodPluginStorageApi = {
   onChange<T = unknown>(key: string, listener: (value: T | undefined) => void): () => void;
 };
 
+/**
+ * A settings panel contributed by a plugin.
+ *
+ * Panels appear in the sidebar of the Yapper settings dialog, next to
+ * yapmod's own sections. Register one with `api.settings.registerPanel()`
+ * while the plugin is active; the registration is removed automatically when
+ * the plugin is disabled.
+ */
+export type PluginSettingsPanel = {
+  /**
+   * Local id of the panel, unique within the plugin. Defaults to `"main"`.
+   * yapmod namespaces it with the plugin id, so two plugins cannot collide.
+   */
+  id?: string;
+  /** Title shown in the sidebar and above the panel. */
+  label: string;
+  /** Optional short explanation shown under the title. */
+  description?: string;
+  /** Optional built-in icon for the sidebar entry. */
+  icon?: "monitor" | "palette" | "history" | "puzzle";
+  /** Sidebar group that contains the panel. Defaults to `"Plugins"`. */
+  group?: string;
+  /** Sort position within the group. Lower values appear first. */
+  order?: number;
+  /**
+   * Declarative controls rendered by yapmod. Re-read `value` fields and
+   * update them in `onChange` so `refreshPanel()` can re-render the form.
+   */
+  items?: SettingsItem[];
+  /**
+   * Custom content mounted into the panel body. Return a cleanup function to
+   * release listeners or other resources when the panel is destroyed.
+   */
+  render?: (
+    host: HTMLElement,
+    context: SettingsContext,
+  ) => void | (() => void);
+  /** Called when the panel becomes visible. */
+  onShow?: () => void;
+  /** Called when the panel is hidden. */
+  onHide?: () => void;
+};
+
 /** Manifest-declared settings, scoped to one plugin. */
 export type YapmodPluginSettingsApi = {
   /** Reads the current value of a declared setting. */
@@ -335,6 +378,24 @@ export type YapmodPluginSettingsApi = {
    * Returns a cleanup function to unsubscribe.
    */
   onChange(id: string, listener: (value: PluginSettingValue) => void): () => void;
+  /**
+   * Registers a settings panel in the Yapper settings sidebar.
+   *
+   * Registering the same panel id again replaces the previous panel. Returns
+   * an unregister function; the panel is also removed when the plugin is
+   * disabled.
+   */
+  registerPanel(panel: PluginSettingsPanel): () => void;
+  /**
+   * Opens a panel registered by this plugin, opening the settings dialog
+   * first when necessary. Defaults to the `"main"` panel.
+   */
+  openPanel(id?: string): void;
+  /**
+   * Re-renders the declarative `items` of a panel. With no id, refreshes
+   * every panel registered by this plugin.
+   */
+  refreshPanel(id?: string): void;
 };
 
 export type YapmodPluginApi = {

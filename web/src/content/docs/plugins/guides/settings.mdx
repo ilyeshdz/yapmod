@@ -86,7 +86,36 @@ api.onCleanup(api.settings.onChange("badge-color", render));
 
 The settings dialog saves all values together. `onChange` fires for the keys whose stored values changed.
 
-## 5. Remember plugin state
+## 5. Add a settings panel
+
+Manifest settings are rendered in the plugin card's settings dialog. If the plugin needs a larger form, or controls that read from `api.storage`, register a panel in Yapper's settings sidebar instead:
+
+```js
+api.settings.registerPanel({
+  id: "activity",
+  label: "Activity badge",
+  description: "Configure the live counters.",
+  icon: "puzzle",
+  items: [
+    {
+      type: "toggle",
+      id: "show-badge",
+      label: "Show activity badge",
+      value: api.storage.get("show-badge", true),
+      onChange: (value) => {
+        api.storage.set("show-badge", value);
+        render();
+      },
+    },
+  ],
+});
+```
+
+The panel defaults to the **Plugins** group and is removed automatically when the plugin is disabled. Use `api.settings.openPanel("activity")` to send the user to it, and `api.settings.refreshPanel("activity")` after storing a value outside the form.
+
+See [Settings panels](/yapmod/docs/plugins/api/storage-settings#settings-panels) for the full panel shape and custom `render` content.
+
+## 6. Remember plugin state
 
 Settings are for user choices. Use storage for values the plugin maintains:
 
@@ -103,7 +132,7 @@ api.onCleanup(stop);
 
 Keep storage small. A count, a timestamp or a short preference fits. A log of every request does not.
 
-## 6. Use the DOM attributes for simple CSS
+## 7. Use the DOM attributes for simple CSS
 
 yapmod sets:
 

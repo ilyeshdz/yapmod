@@ -96,6 +96,100 @@ api.onCleanup(stop);
 
 The settings dialog saves values to the store. The listener fires when the stored value changes, so a plugin does not need to poll.
 
+## Settings panels
+
+A plugin can add its own panel to the sidebar of the Yapper settings dialog. Panels are grouped with the other plugin panels, and they work like yapmod's own **Yapmod**, **Themes** and **Plugins** sections: the user opens Settings from Yapper and picks the panel from the sidebar.
+
+Panels are UI, not persistent values. Keep the values a panel edits in `api.storage` or in manifest-declared settings.
+
+### `settings.registerPanel(panel)`
+
+Registers a panel and returns a function that removes it again. The panel is also removed automatically when the plugin is disabled, so registering it is usually enough:
+
+```js
+export default {
+  activate(api) {
+    api.settings.registerPanel({
+      id: "activity",
+      label: "Activity",
+      description: "Choose what the activity badge counts.",
+      icon: "puzzle",
+      items: [
+        {
+          type: "toggle",
+          id: "count-http",
+          label: "Count HTTP requests",
+          value: api.storage.get("count-http", true),
+          onChange: (value) => {
+            api.storage.set("count-http", value);
+          },
+        },
+        {
+          type: "text",
+          id: "label",
+          label: "Badge label",
+          value: api.storage.get("label", "Activity"),
+          onChange: (value) => {
+            api.storage.set("label", value);
+          },
+        },
+      ],
+    });
+  },
+};
+```
+
+<ApiType name="PluginSettingsPanel" signature={false} />
+
+The panel `id` is local to the plugin and defaults to `"main"`. yapmod namespaces it with the plugin id, so two plugins can both use a panel called `main`. Registering the same id again replaces the previous panel.
+
+`label` and `description` become the sidebar entry and the heading of the panel. `icon` accepts the same built-in icons as yapmod's own sections: `"monitor"`, `"palette"`, `"history"` and `"puzzle"`. Panels appear in the `"Plugins"` group by default; use `group` to give a plugin its own group and `order` to sort within it.
+
+### Items or custom content
+
+`items` uses the same declarative controls as yapmod's sections: `toggle`, `select`, `text`, `number`, `button` and `custom`. Update the item's `value` in `onChange` and call `settings.refreshPanel()` when a stored value changes elsewhere and the form should reflect it.
+
+For anything the declarative controls cannot express, use `render(host, context)`. The function receives an empty element inside the panel:
+
+```js
+api.settings.registerPanel({
+  label: "Activity",
+  render(host, context) {
+    const status = document.createElement("p");
+    status.textContent = `${api.storage.get("requests", 0)} requests observed`;
+    host.append(status);
+
+    const stop = api.storage.onChange("requests", (value) => {
+      status.textContent = `${value ?? 0} requests observed`;
+    });
+
+    return stop;
+  },
+});
+```
+
+The optional cleanup returned by `render` runs when the panel is destroyed. Register any listeners there, not only with `api.onCleanup()`, so they are released even if the panel is replaced while the plugin stays enabled.
+
+### `settings.openPanel(id?)`
+
+Opens the settings dialog and selects a panel registered by this plugin. The id defaults to `"main"`. It is useful for an action that should send the user straight to its configuration.
+
+```js
+api.settings.openPanel("activity");
+```
+
+### `settings.refreshPanel(id?)`
+
+Re-renders the declarative `items` of one panel, or of every panel registered by the plugin when no id is passed. Values are read again during the new render.
+
+```js
+api.settings.refreshPanel();
+```
+
+<Callout type="note" title="Panels are plugin UI">
+A panel is not a permission boundary and does not add a setting to the manifest. It is rendered by yapmod because it is registered in the settings sidebar; the plugin still runs as trusted page code.
+</Callout>
+
 ## Root attributes
 
 yapmod mirrors declared settings onto `<html>`:
