@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
+import preact from "@astrojs/preact";
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,15 +11,15 @@ export default defineConfig({
     "/docs/creating-plugins": "/yapmod/docs/plugins/getting-started",
     "/docs/creating-themes": "/yapmod/docs/themes/getting-started",
   },
-  integrations: [mdx()],
+  integrations: [mdx(), preact()],
   server: {
     host: "127.0.0.1",
   },
   build: {
     format: "directory",
-    // Inline the CSS so a client-side navigation never depends on a separate
-    // hashed stylesheet request. A missing or stale stylesheet file otherwise
-    // leaves the whole page unstyled after a ClientRouter swap.
+    // Inline the CSS so userland navigation never depends on a separate hashed
+    // stylesheet request. Keeps every docs page styled on first paint and on
+    // client-side route changes.
     inlineStylesheets: "always",
   },
   devToolbar: {

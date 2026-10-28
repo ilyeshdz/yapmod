@@ -33,9 +33,11 @@ import { genericIcon } from "../lib/os";
 <script>
   import { detectArch, detectOs, osIcons, osNames } from "../lib/os";
   import { assetUrl, latestRelease } from "../lib/releases";
-  import { onPageLoad } from "../lib/lifecycle";
 
-  onPageLoad((signal) => {
+  function init() {
+    const controller = new AbortController();
+    const { signal } = controller;
+
     void (async () => {
       const button = document.getElementById("dl") as HTMLAnchorElement | null;
       if (!button) return;
@@ -70,5 +72,7 @@ import { genericIcon } from "../lib/os";
         button.href = "#download";
       }
     })();
-  });
+  }
+
+  init();
 </script>

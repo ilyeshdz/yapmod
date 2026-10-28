@@ -1,5 +1,5 @@
 ---
-import ThemeToggle from "../ThemeToggle.astro";
+import ThemeToggle from "../ThemeToggle.tsx";
 import { type DocArea } from "../../lib/docs";
 
 interface Props {
@@ -27,7 +27,7 @@ const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
   </nav>
 
   <div class="header-actions">
-    <ThemeToggle />
+    <ThemeToggle client:load />
     <a class="btn sm g" href="https://github.com/ilyeshdz/yapmod/releases">Download</a>
   </div>
 

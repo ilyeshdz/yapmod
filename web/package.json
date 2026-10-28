@@ -11,7 +11,10 @@
     "docs:generate": "node scripts/generate-docs-data.mjs"
   },
   "dependencies": {
-    "astro": "^7.4.1"
+    "@astrojs/preact": "^6.1.1",
+    "astro": "^7.4.1",
+    "preact": "^11.1.0",
+    "preact-router": "^4.1.2"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.11",

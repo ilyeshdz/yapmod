@@ -3,6 +3,40 @@
    The layout of the docs pages plus the typography of the Markdown content.
    --------------------------------------------------------------------------- */
 
+/* Client-side navigation progress bar. It lives outside the swapped layout so
+   it keeps animating while the next page is fetched. */
+.docs-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  width: 100%;
+  height: 2px;
+  background: var(--g);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 0.4s ease,
+    opacity 0.2s ease;
+}
+
+.docs-progress.on {
+  opacity: 1;
+  transform: scaleX(0.85);
+  transition:
+    transform 1.2s ease-out,
+    opacity 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-progress,
+  .docs-progress.on {
+    transition: none;
+  }
+}
+
 .docs-layout {
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr) 230px;

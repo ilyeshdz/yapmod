@@ -1,0 +1,146 @@
+  .palette {
+    width: min(640px, calc(100vw - 32px));
+    padding: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    background: var(--s);
+    color: var(--t);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+
+  .palette::backdrop {
+    background: rgba(10, 6, 12, 0.6);
+    backdrop-filter: blur(3px);
+  }
+
+  .palette .palette-box {
+    display: flex;
+    flex-direction: column;
+    max-height: min(70vh, 560px);
+  }
+
+  .palette .palette-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1.5px solid var(--line);
+  }
+
+  .palette .palette-field > svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: var(--m);
+  }
+
+  .palette .palette-field input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--t);
+    font: 500 17px Figtree, sans-serif;
+    outline: none;
+  }
+
+  .palette .palette-field input::placeholder {
+    color: var(--m);
+  }
+
+  /* The native clear button is loud, the palette has its own affordances. */
+  .palette .palette-field input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .palette kbd {
+    padding: 2px 6px;
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    font: 600 11px Figtree, sans-serif;
+    color: var(--m);
+    white-space: nowrap;
+  }
+
+  .palette .palette-results {
+    list-style: none;
+    margin: 0;
+    padding: 8px;
+    overflow-y: auto;
+  }
+
+  .palette .palette-results li + li {
+    margin-top: 2px;
+  }
+
+  .palette .palette-results a {
+    display: block;
+    padding: 10px 12px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--t);
+  }
+
+  .palette .palette-results a.on,
+  .palette .palette-results a:hover {
+    background: var(--accent-soft);
+  }
+
+  .palette .palette-results .row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .palette .palette-results strong {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .palette .palette-results .group {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: 99px;
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    color: var(--m);
+    font: 700 10px/1.6 Figtree, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .palette .palette-results .snippet {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+    margin-top: 3px;
+    color: var(--m);
+    font-size: 13.5px;
+    line-height: 1.45;
+  }
+
+  .palette .palette-results .empty {
+    padding: 22px 12px;
+    color: var(--m);
+    font-size: 15px;
+    text-align: center;
+  }
+
+  .palette .palette-footer {
+    display: flex;
+    gap: 18px;
+    padding: 12px 18px;
+    border-top: 1.5px solid var(--line);
+    color: var(--m);
+    font-size: 13px;
+  }
+
+  .palette .palette-footer span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }

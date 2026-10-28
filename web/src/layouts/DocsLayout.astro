@@ -6,7 +6,8 @@ import DocsSidebar from "../components/docs/DocsSidebar.astro";
 import DocsToc from "../components/docs/DocsToc.astro";
 import PrevNext from "../components/docs/PrevNext.astro";
 import Footer from "../components/Footer.astro";
-import SearchPalette from "../components/docs/SearchPalette.astro";
+import SearchPalette from "../components/docs/SearchPalette.tsx";
+import DocsRouter from "../components/docs/DocsRouter.tsx";
 import { areaMeta, docUrl, docsInArea, sortDocs, type DocArea } from "../lib/docs";
 import "../styles/docs.css";
 
@@ -90,97 +91,6 @@ const areaInfo = area ? areaMeta[area] : null;
 
   <Footer />
 
-  <SearchPalette />
+  <SearchPalette client:idle />
+  <DocsRouter client:load />
 </BaseLayout>
-
-<script>
-  import { onPageLoad } from "../lib/lifecycle";
-
-  onPageLoad((signal) => {
-    if (!document.getElementById("docs-sidebar")) return;
-
-    // Copy buttons on every code block.
-    for (const pre of document.querySelectorAll<HTMLElement>(".prose pre")) {
-      if (pre.parentElement?.classList.contains("code-block")) continue;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "code-block";
-      pre.replaceWith(wrapper);
-      wrapper.append(pre);
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "copy-btn";
-      button.textContent = "Copy";
-      button.setAttribute("aria-label", "Copy the code to the clipboard");
-
-      button.addEventListener(
-        "click",
-        async () => {
-          const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
-
-          try {
-            await navigator.clipboard.writeText(code);
-            button.textContent = "Copied";
-          } catch {
-            button.textContent = "Press Ctrl+C";
-          }
-
-          setTimeout(() => (button.textContent = "Copy"), 1500);
-        },
-        { signal },
-      );
-
-      wrapper.append(button);
-    }
-
-    // The sidebar toggles on small screens.
-    const toggle = document.getElementById("docs-menu");
-    const sidebar = document.getElementById("docs-sidebar");
-
-    toggle?.addEventListener(
-      "click",
-      () => {
-        const open = sidebar?.classList.toggle("open") ?? false;
-        toggle.setAttribute("aria-expanded", String(open));
-      },
-      { signal },
-    );
-
-    // Keep the sidebar where the reader left it when they follow a link.
-    // A navigation would otherwise reset its own scroll position.
-    if (sidebar) {
-      const key = `yapmod:docs-sidebar:${sidebar.dataset.sidebarArea ?? "main"}`;
-
-      try {
-        const saved = sessionStorage.getItem(key);
-
-        if (saved !== null) {
-          sidebar.scrollTop = Number(saved);
-        }
-      } catch {
-        // Session storage can be unavailable; the sidebar still works.
-      }
-
-      let timer: ReturnType<typeof setTimeout> | undefined;
-
-      sidebar.addEventListener(
-        "scroll",
-        () => {
-          clearTimeout(timer);
-
-          timer = setTimeout(() => {
-            try {
-              sessionStorage.setItem(key, String(sidebar.scrollTop));
-            } catch {
-              // Ignore storage failures.
-            }
-          }, 120);
-        },
-        { passive: true, signal },
-      );
-
-      signal.addEventListener("abort", () => clearTimeout(timer));
-    }
-  });
-</script>

@@ -106,9 +106,11 @@ const platforms: { os: OsKey; name: string; items: Item[] }[] = [
 <script>
   import { assetUrl, latestRelease } from "../lib/releases";
   import { detectArch, detectOs } from "../lib/os";
-  import { onPageLoad } from "../lib/lifecycle";
 
-  onPageLoad((signal) => {
+  function init() {
+    const controller = new AbortController();
+    const { signal } = controller;
+
     const row = document.getElementById("dl-row");
     if (!row) return;
 
@@ -201,5 +203,7 @@ const platforms: { os: OsKey; name: string; items: Item[] }[] = [
       },
       { signal },
     );
-  });
+  }
+
+  init();
 </script>
