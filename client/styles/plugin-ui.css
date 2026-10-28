@@ -1,0 +1,259 @@
+/* Shared components for plugin interfaces */
+
+.yapmod-ui-icon {
+  display: block;
+  flex: none;
+}
+
+.yapmod-ui-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.yapmod-ui-toolbar-text {
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 0.8em;
+}
+
+.yapmod-ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: var(--ym-radius, var(--radius, 10px));
+  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--ym-text, var(--text, #ececf1));
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.yapmod-ui-button:hover:not(:disabled),
+.yapmod-ui-button:focus-visible {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  outline: none;
+}
+
+.yapmod-ui-button:focus-visible {
+  box-shadow: 0 0 0 2px var(--ym-accent-soft, var(--accent-soft, rgba(255, 107, 74, 0.3)));
+}
+
+.yapmod-ui-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.yapmod-ui-button-small {
+  padding: 4px 7px;
+  font-size: 0.75em;
+}
+
+.yapmod-ui-button-medium {
+  padding: 6px 11px;
+  font-size: 0.82em;
+}
+
+.yapmod-ui-button-icon {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.yapmod-ui-button-small.yapmod-ui-button-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.yapmod-ui-button-primary {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  background: var(--ym-accent, var(--accent, #ff6b4a));
+  color: var(--ym-on-accent, var(--on-accent, #ffffff));
+}
+
+.yapmod-ui-button-primary:hover:not(:disabled),
+.yapmod-ui-button-primary:focus-visible {
+  border-color: var(--ym-accent-hover, var(--accent-hover, #ff5a35));
+  background: var(--ym-accent-hover, var(--accent-hover, #ff5a35));
+}
+
+.yapmod-ui-button-danger {
+  color: var(--ym-danger, var(--danger, #f2555a));
+}
+
+.yapmod-ui-button-danger:hover:not(:disabled),
+.yapmod-ui-button-danger:focus-visible {
+  border-color: var(--ym-danger, var(--danger, #f2555a));
+  background: color-mix(in srgb, var(--ym-danger, var(--danger, #f2555a)) 12%, transparent);
+}
+
+.yapmod-ui-button-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+}
+
+.yapmod-ui-button-ghost:hover:not(:disabled),
+.yapmod-ui-button-ghost:focus-visible {
+  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--ym-text, var(--text, #ececf1));
+}
+
+.yapmod-ui-input,
+.yapmod-ui-select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: var(--ym-radius, var(--radius, 10px));
+  background: var(--ym-bg-input, var(--bg-input, rgba(127, 127, 127, 0.08)));
+  color: var(--ym-text, var(--text, #ececf1));
+  font: inherit;
+  font-size: 0.85em;
+}
+
+.yapmod-ui-input:focus,
+.yapmod-ui-select:focus {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  outline: none;
+}
+
+.yapmod-ui-input:disabled,
+.yapmod-ui-select:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.yapmod-ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.yapmod-ui-field-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.yapmod-ui-field-label {
+  color: var(--ym-text, var(--text, #ececf1));
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.yapmod-ui-field-description,
+.yapmod-ui-toggle-description {
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 0.78em;
+  line-height: 1.4;
+}
+
+.yapmod-ui-field-control {
+  display: flex;
+  min-width: 0;
+}
+
+.yapmod-ui-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.yapmod-ui-toggle-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.yapmod-ui-toggle-label {
+  font-size: 0.85em;
+}
+
+.yapmod-ui-switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 19px;
+  margin: 0;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: 999px;
+  background: var(--ym-bg-input, var(--bg-input, rgba(127, 127, 127, 0.15)));
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.yapmod-ui-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.yapmod-ui-switch:checked {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  background: var(--ym-accent-soft, var(--accent-soft, rgba(255, 107, 74, 0.25)));
+}
+
+.yapmod-ui-switch:checked::after {
+  background: var(--ym-accent, var(--accent, #ff6b4a));
+  transform: translateX(15px);
+}
+
+.yapmod-ui-switch:focus-visible {
+  outline: 2px solid var(--ym-accent, var(--accent, #ff6b4a));
+  outline-offset: 2px;
+}
+
+.yapmod-ui-switch:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.yapmod-ui-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: 999px;
+  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 0.7em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.yapmod-ui-badge[data-tone="accent"] {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  color: var(--ym-accent, var(--accent, #ff6b4a));
+}
+
+.yapmod-ui-badge[data-tone="success"] {
+  border-color: color-mix(in srgb, var(--ym-success, var(--success, #3fcf82)) 45%, transparent);
+  color: var(--ym-success, var(--success, #3fcf82));
+}
+
+.yapmod-ui-badge[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--ym-warning, var(--warning, #f5b544)) 45%, transparent);
+  color: var(--ym-warning, var(--warning, #f5b544));
+}
+
+.yapmod-ui-badge[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--ym-danger, var(--danger, #f2555a)) 45%, transparent);
+  color: var(--ym-danger, var(--danger, #f2555a));
+}

@@ -9,18 +9,44 @@ description: Add in-page controls, banners, notifications and dialogs that clean
 
 import Callout from "../../../../components/docs/Callout.astro";
 
-Plugins have no component library. Build UI with the DOM, keep it namespaced with the plugin id, and remove it during cleanup. Use the host helpers for feedback that should match yapmod.
+Use `api.ui` for buttons, icons, inputs, selects, toggles, fields, toolbars and badges so a plugin matches the host interface without rebuilding its controls. For anything else, build UI with the DOM, keep it namespaced with the plugin id, and remove it during cleanup.
 
 ## Choose the surface
 
 | Surface | Use it for |
 | --- | --- |
 | Package CSS | Permanent styling of existing page elements. |
+| `api.ui` | Themed controls for panels, popovers and forms. |
 | `api.banner()` | One short, dismissible message below the topbar. |
 | `api.modal` | A real dialog that needs focus management and buttons. |
 | `api.settings.registerPanel()` | A persistent configuration screen in the settings sidebar. |
 | `api.notify` | An operating-system notification for something happening in the background. |
-| DOM nodes | A control that belongs inside the page, such as a badge or a panel. |
+| DOM nodes | Content that belongs inside the page, such as a badge or a panel. |
+
+## Shared components
+
+`api.ui` creates regular DOM elements that follow the active theme:
+
+```js
+const count = api.ui.badge("0", { tone: "accent" });
+
+const addButton = api.ui.button({
+  icon: "plus",
+  title: "Add an entry",
+  variant: "primary",
+  onClick: () => addEntry(),
+});
+
+const toolbar = api.ui.toolbar(
+  api.ui.icon("history", { size: 16 }),
+  count,
+  addButton,
+);
+```
+
+Use `icon` alone with a `title` for compact actions, and keep `label` for actions that need text. Wrap a control in `api.ui.field()` to get a label and description, and use `api.ui.toggle()` for an on/off row. The [UI components reference](/yapmod/docs/plugins/api/components) lists every factory and option.
+
+The components own their event listeners through the options you pass. Removing the parent node is enough to clean them up.
 
 ## A namespaced control
 
@@ -33,16 +59,18 @@ function mount() {
   const panel = document.createElement("div");
   panel.id = ID;
   panel.className = "activity-panel";
-  panel.innerHTML = `
-    <strong>Activity</strong>
-    <span data-count>0</span>
-  `;
+  panel.append(
+    api.ui.toolbar(
+      api.ui.icon("history", { size: 16 }),
+      api.ui.badge("0", { tone: "accent" }),
+    ),
+  );
   document.body.append(panel);
   return panel;
 }
 ```
 
-Use `api.id` in ids and classes so two plugins cannot accidentally claim the same element. Do not replace existing page nodes unless that is the point of the plugin.
+Use `api.id` in ids and classes so two plugins cannot accidentally claim the same element. Do not replace existing page nodes unless that is the point of the plugin. Avoid styling `.yapmod-ui-*` classes directly; wrap the component or use its variant options instead.
 
 ## Banners
 

@@ -611,6 +611,33 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           warn: (...args: unknown[]) => console.warn(logPrefix, ...args),
           error: (...args: unknown[]) => console.error(logPrefix, ...args),
         }),
+        ui: getYapmod().ui ?? Object.freeze({
+          icons: Object.freeze([]),
+          icon() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          button() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          input() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          select() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          toggle() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          field() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          toolbar() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          badge() {
+            throw new Error("The plugin UI API is not available.");
+          },
+        }),
         onCleanup(cleanup: PluginCleanup): void {
           if (typeof cleanup !== "function") {
             throw new Error("Plugin cleanup must be a function.");

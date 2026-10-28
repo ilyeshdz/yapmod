@@ -81,9 +81,26 @@ Always test:
 - a plugin with the same page elements as another plugin;
 - a theme active alongside the plugin.
 
+## Use the shared interface components
+
+`api.ui` provides the same buttons, icons, inputs, selects, toggles, fields, toolbars and badges that yapmod uses. They already follow the active theme, keyboard focus styles and the light/dark tokens, so a panel stays consistent without custom control CSS:
+
+```js
+const save = api.ui.button({
+  icon: "save",
+  title: "Save",
+  variant: "primary",
+  onClick: () => saveNow(),
+});
+
+host.append(api.ui.toolbar(api.ui.badge("Ready", { tone: "success" }), save));
+```
+
+Prefer `icon` with a `title` for compact actions, and keep a text label when the action is not obvious. Use a `field` to pair a control with its label and description, and a `toggle` for binary settings rendered inside a custom panel. See [UI components](/yapmod/docs/plugins/api/components) for every option.
+
 ## Style defensively
 
-Scope CSS to your own nodes or to the tokens the app exposes. Avoid global resets on `*`, `body` or broad element selectors. Use `!important` only when you have verified it is necessary and documented why.
+Scope CSS to your own nodes or to the tokens the app exposes. Avoid global resets on `*`, `body` or broad element selectors. Use `!important` only when you have verified it is necessary and documented why. Do not restyle `.yapmod-ui-*` classes directly; use a variant or wrap the component and style the wrapper instead.
 
 ## Document the plugin in the package
 

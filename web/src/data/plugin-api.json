@@ -3,13 +3,13 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "2061e059a5ec4bf6",
+  "sourceHash": "bc57644e65c7e62d",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
       "kind": "type",
       "description": null,
-      "declaration": "export type YapmodPluginApi = { readonly apiVersion: 1;\n  readonly id: string;\n  readonly manifest: Readonly<PluginManifest>;\n  readonly storage: YapmodPluginStorageApi;\n  readonly settings: YapmodPluginSettingsApi;\n  readonly styles: {\n    add(css: string): PluginCleanup;\n  };\n  readonly webSocket: WebSocketInspector;\n  readonly http: HTTPInspector; readonly log: YapmodPluginLogger; onCleanup(cleanup: PluginCleanup): void;\n  banner(message: string): void; readonly modal: YapmodModalApi; readonly notify: YapmodPluginNotifyApi; readonly file: { createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  };\n};",
+      "declaration": "export type YapmodPluginApi = { readonly apiVersion: 1;\n  readonly id: string;\n  readonly manifest: Readonly<PluginManifest>;\n  readonly storage: YapmodPluginStorageApi;\n  readonly settings: YapmodPluginSettingsApi;\n  readonly styles: {\n    add(css: string): PluginCleanup;\n  };\n  readonly webSocket: WebSocketInspector;\n  readonly http: HTTPInspector; readonly log: YapmodPluginLogger; readonly ui: YapmodPluginUiApi; onCleanup(cleanup: PluginCleanup): void;\n  banner(message: string): void; readonly modal: YapmodModalApi; readonly notify: YapmodPluginNotifyApi; readonly file: { createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  };\n};",
       "members": [
         {
           "name": "apiVersion",
@@ -73,6 +73,13 @@
           "optional": false,
           "readonly": true,
           "description": "Namespaced console logger for this plugin."
+        },
+        {
+          "name": "ui",
+          "type": "YapmodPluginUiApi",
+          "optional": false,
+          "readonly": true,
+          "description": "Themed UI components for plugin interfaces: buttons, icons, toolbars, fields, inputs, selects, toggles and badges."
         },
         {
           "name": "onCleanup",
@@ -575,6 +582,428 @@
       "description": null,
       "declaration": "export type SettingsItem =\n  | {\n      type: \"toggle\";\n      id: string;\n      label: string;\n      description?: string;\n      value: boolean;\n      disabled?: boolean;\n      onChange: (value: boolean) => void;\n    }\n  | {\n      type: \"select\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      options: SettingOption[];\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"text\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      placeholder?: string;\n      maxLength?: number;\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"number\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min?: number;\n      max?: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"button\";\n      id: string;\n      label: string;\n      variant?: \"primary\" | \"secondary\" | \"danger\";\n      onClick: () => void;\n    }\n  | {\n      type: \"custom\";\n      id: string;\n      label?: string;\n      description?: string;\n      render: (\n        host: HTMLElement,\n        context: SettingsContext,\n      ) => void | (() => void);\n    };",
       "members": []
+    },
+    "YapmodPluginUiApi": {
+      "name": "YapmodPluginUiApi",
+      "kind": "type",
+      "description": "Components for plugin interfaces. The components use yapmod's visual language and current theme tokens, so plugins do not have to recreate buttons, fields and status badges from scratch. Every factory returns a normal DOM element that can be appended, moved or removed like any other node.",
+      "declaration": "export type YapmodPluginUiApi = { readonly icons: readonly PluginUiIconName[]; icon(name: PluginUiIconName, options?: PluginUiIconOptions): SVGSVGElement; button(options?: PluginUiButtonOptions): HTMLButtonElement; input(options?: PluginUiInputOptions): HTMLInputElement; select(options: PluginUiSelectOptions): HTMLSelectElement; toggle(options: PluginUiToggleOptions): HTMLElement; field(options: PluginUiFieldOptions): HTMLElement; toolbar(...children: (Node | string)[]): HTMLElement; badge(text: string, options?: PluginUiBadgeOptions): HTMLElement;\n};",
+      "members": [
+        {
+          "name": "icons",
+          "type": "readonly PluginUiIconName[]",
+          "optional": false,
+          "readonly": true,
+          "description": "Icons that can be passed to `icon()` and `button()`."
+        },
+        {
+          "name": "icon",
+          "type": "(name: PluginUiIconName, options?: PluginUiIconOptions) => SVGSVGElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates an SVG icon."
+        },
+        {
+          "name": "button",
+          "type": "(options?: PluginUiButtonOptions) => HTMLButtonElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a themed button with an optional icon."
+        },
+        {
+          "name": "input",
+          "type": "(options?: PluginUiInputOptions) => HTMLInputElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a themed text input."
+        },
+        {
+          "name": "select",
+          "type": "(options: PluginUiSelectOptions) => HTMLSelectElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a themed native select control."
+        },
+        {
+          "name": "toggle",
+          "type": "(options: PluginUiToggleOptions) => HTMLElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a label, description and switch in one row."
+        },
+        {
+          "name": "field",
+          "type": "(options: PluginUiFieldOptions) => HTMLElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Wraps a control with a label and optional description."
+        },
+        {
+          "name": "toolbar",
+          "type": "(...children: (Node | string)[]) => HTMLElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a horizontal toolbar. Strings are rendered as text."
+        },
+        {
+          "name": "badge",
+          "type": "(text: string, options?: PluginUiBadgeOptions) => HTMLElement",
+          "optional": false,
+          "readonly": false,
+          "description": "Creates a small status badge."
+        }
+      ]
+    },
+    "PluginUiIconName": {
+      "name": "PluginUiIconName",
+      "kind": "type",
+      "description": "Built-in icons available to plugin UI components.",
+      "declaration": "export type PluginUiIconName =\n  | \"monitor\"\n  | \"palette\"\n  | \"history\"\n  | \"puzzle\"\n  | \"code\"\n  | \"save\"\n  | \"trash\"\n  | \"float\"\n  | \"dock\"\n  | \"close\"\n  | \"check\"\n  | \"copy\"\n  | \"refresh\"\n  | \"plus\"\n  | \"search\"\n  | \"settings\";",
+      "members": []
+    },
+    "PluginUiIconOptions": {
+      "name": "PluginUiIconOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiIconOptions = { size?: number; label?: string; class?: string;\n};",
+      "members": [
+        {
+          "name": "size",
+          "type": "number",
+          "optional": true,
+          "readonly": false,
+          "description": "Size in pixels. Defaults to the component's own size."
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Accessible label. Without one the icon is decorative."
+        },
+        {
+          "name": "class",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Extra classes appended to the generated SVG element."
+        }
+      ]
+    },
+    "PluginUiButtonVariant": {
+      "name": "PluginUiButtonVariant",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiButtonVariant =\n  | \"primary\"\n  | \"secondary\"\n  | \"danger\"\n  | \"ghost\";",
+      "members": []
+    },
+    "PluginUiButtonSize": {
+      "name": "PluginUiButtonSize",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiButtonSize = \"small\" | \"medium\";",
+      "members": []
+    },
+    "PluginUiButtonOptions": {
+      "name": "PluginUiButtonOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiButtonOptions = { label?: string; icon?: PluginUiIconName; title?: string;\n  variant?: PluginUiButtonVariant;\n  size?: PluginUiButtonSize;\n  disabled?: boolean; class?: string;\n  onClick?: (event: MouseEvent) => void;\n};",
+      "members": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Text shown next to the icon, or alone when there is no icon."
+        },
+        {
+          "name": "icon",
+          "type": "PluginUiIconName",
+          "optional": true,
+          "readonly": false,
+          "description": "Built-in icon shown before the label."
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Tooltip and accessible name. Prefer this for icon-only buttons."
+        },
+        {
+          "name": "variant",
+          "type": "PluginUiButtonVariant",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "size",
+          "type": "PluginUiButtonSize",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "class",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Extra classes appended to the generated button element."
+        },
+        {
+          "name": "onClick",
+          "type": "(event: MouseEvent) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginUiInputOptions": {
+      "name": "PluginUiInputOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiInputOptions = {\n  type?: \"text\" | \"search\" | \"number\" | \"url\";\n  value?: string;\n  placeholder?: string;\n  ariaLabel?: string;\n  disabled?: boolean;\n  onInput?: (value: string) => void;\n  onChange?: (value: string) => void;\n};",
+      "members": [
+        {
+          "name": "type",
+          "type": "\"text\" | \"search\" | \"number\" | \"url\"",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "placeholder",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "ariaLabel",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onInput",
+          "type": "(value: string) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onChange",
+          "type": "(value: string) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginUiSelectOption": {
+      "name": "PluginUiSelectOption",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiSelectOption = {\n  value: string;\n  label: string;\n  disabled?: boolean;\n};",
+      "members": [
+        {
+          "name": "value",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginUiSelectOptions": {
+      "name": "PluginUiSelectOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiSelectOptions = {\n  value?: string;\n  options: PluginUiSelectOption[];\n  ariaLabel?: string;\n  disabled?: boolean;\n  onChange?: (value: string) => void;\n};",
+      "members": [
+        {
+          "name": "value",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "options",
+          "type": "PluginUiSelectOption[]",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "ariaLabel",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onChange",
+          "type": "(value: string) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginUiToggleOptions": {
+      "name": "PluginUiToggleOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiToggleOptions = {\n  label: string;\n  description?: string;\n  checked?: boolean;\n  disabled?: boolean;\n  onChange?: (checked: boolean) => void;\n};",
+      "members": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "checked",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onChange",
+          "type": "(checked: boolean) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginUiFieldOptions": {
+      "name": "PluginUiFieldOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiFieldOptions = {\n  label?: string;\n  description?: string; control: HTMLElement; htmlFor?: string;\n};",
+      "members": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "control",
+          "type": "HTMLElement",
+          "optional": false,
+          "readonly": false,
+          "description": "The control rendered under the label."
+        },
+        {
+          "name": "htmlFor",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "`id` of the control, used to connect the label element."
+        }
+      ]
+    },
+    "PluginUiBadgeTone": {
+      "name": "PluginUiBadgeTone",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiBadgeTone =\n  | \"neutral\"\n  | \"accent\"\n  | \"success\"\n  | \"warning\"\n  | \"danger\";",
+      "members": []
+    },
+    "PluginUiBadgeOptions": {
+      "name": "PluginUiBadgeOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginUiBadgeOptions = {\n  tone?: PluginUiBadgeTone; title?: string;\n};",
+      "members": [
+        {
+          "name": "tone",
+          "type": "PluginUiBadgeTone",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Tooltip text for the badge."
+        }
+      ]
     },
     "YapmodPluginNotifyApi": {
       "name": "YapmodPluginNotifyApi",

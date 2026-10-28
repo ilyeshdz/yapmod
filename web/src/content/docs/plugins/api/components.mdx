@@ -1,0 +1,148 @@
+---
+title: UI components
+group: API reference
+order: 5
+area: plugins
+eyebrow: API
+description: Themed buttons, icons, fields and controls for plugin interfaces.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+`api.ui` provides the small set of interface primitives that yapmod itself uses. The components follow the active theme through the `--ym-*` tokens, so a plugin does not have to recreate button, field and badge styling or guess between light and dark mode.
+
+Every factory returns a normal DOM element. Append it, move it, or remove it like any other node.
+
+```js
+const save = api.ui.button({
+  label: "Save",
+  icon: "save",
+  variant: "primary",
+  onClick: () => saveNow(),
+});
+
+const toolbar = api.ui.toolbar(
+  api.ui.badge("Ready", { tone: "success" }),
+  save,
+);
+
+host.append(toolbar);
+```
+
+<ApiType name="YapmodPluginUiApi" signature={false} />
+
+## Buttons
+
+<ApiType name="PluginUiButtonOptions" signature={false} />
+
+`label` is optional. Use `icon` alone for compact icon buttons and set `title` so the button keeps an accessible name:
+
+```js
+const remove = api.ui.button({
+  icon: "trash",
+  title: "Remove item",
+  variant: "danger",
+  size: "small",
+  onClick: () => removeItem(),
+});
+```
+
+`variant` accepts `primary`, `secondary`, `danger` and `ghost`. `size` accepts `small` and `medium`. The `onClick` handler receives the original mouse event.
+
+## Icons
+
+<ApiType name="PluginUiIconOptions" signature={false} />
+
+Icons are decorative by default. Pass `label` when the icon carries meaning without nearby text:
+
+```js
+const icon = api.ui.icon("code", { size: 18 });
+const warning = api.ui.icon("refresh", { size: 16, label: "Refresh" });
+```
+
+Available names:
+
+<ApiType name="PluginUiIconName" signature={false} />
+
+## Toolbars
+
+`api.ui.toolbar(...children)` creates a horizontal container with consistent spacing. Strings are wrapped in a muted text span.
+
+```js
+const toolbar = api.ui.toolbar(
+  "3 files",
+  api.ui.button({ icon: "plus", title: "Add file" }),
+  api.ui.button({ icon: "refresh", title: "Refresh", variant: "ghost" }),
+);
+```
+
+## Fields and controls
+
+<ApiType name="PluginUiFieldOptions" signature={false} />
+
+Wrap a control with a field to get a consistent label and description:
+
+```js
+const input = api.ui.input({
+  value: currentName,
+  placeholder: "New name",
+  ariaLabel: "Name",
+  onChange: (value) => {
+    currentName = value;
+  },
+});
+
+host.append(api.ui.field({
+  label: "Name",
+  description: "Shown in the toolbar.",
+  control: input,
+}));
+```
+
+<ApiType name="PluginUiInputOptions" signature={false} />
+
+<ApiType name="PluginUiSelectOptions" signature={false} />
+
+<ApiType name="PluginUiSelectOption" signature={false} />
+
+<ApiType name="PluginUiToggleOptions" signature={false} />
+
+A toggle returns the whole clickable row, including the label and description:
+
+```js
+const row = api.ui.toggle({
+  label: "Enable badge",
+  description: "Show a small counter in the corner.",
+  checked: api.storage.get("badge", true),
+  onChange: (checked) => api.storage.set("badge", checked),
+});
+```
+
+## Badges
+
+<ApiType name="PluginUiBadgeOptions" signature={false} />
+
+Badges are useful for status text. Update the label through `textContent` and the tone through `dataset.tone`:
+
+```js
+const status = api.ui.badge("Saving…", { tone: "warning" });
+
+status.textContent = "Saved";
+status.dataset.tone = "success";
+```
+
+<ApiType name="PluginUiBadgeTone" signature={false} />
+
+## Cleanup
+
+Components create regular elements, so removing the parent from the page is enough. Event listeners attached through the component options are owned by the returned element. If you keep a reference, call `remove()` when the plugin or panel is destroyed.
+
+<Callout type="tip" title="Prefer components over bespoke controls">
+Use `api.ui` for controls that belong to the host interface, and keep custom DOM for content that is genuinely specific to your plugin. This keeps plugins visually consistent and makes theme changes apply automatically.
+</Callout>
+
+## Related types
+
+<ApiType name="PluginUiButtonVariant" />
+<ApiType name="PluginUiButtonSize" />

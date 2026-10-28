@@ -1,62 +1,133 @@
 /**
  * Quick CSS Plugin
  *
- * Adds a settings panel with a lightweight CSS editor. The editor is built
- * only when the panel is first opened, applies CSS live, and saves to plugin
- * storage automatically. The editor can be detached into a draggable window
- * that stays above the Yapper interface while the user works on a theme.
+ * Adds a settings panel with a Monaco CSS editor. Monaco is fetched lazily the
+ * first time the panel opens; a small textarea fallback keeps the plugin usable
+ * when the CDN cannot be reached. CSS is applied live and saved automatically.
+ * The editor can be detached into a draggable window above the Yapper page.
  */
 
 const STORAGE_KEY = "css";
 const STYLE_ID = "quick-css-user-style";
 const SAVE_DELAY = 400;
-const PLACEHOLDER = `/* Custom CSS for Yapper. Changes are applied as you type. */
-:root {
-  --accent: #ff6b4a;
+const MONACO_VERSION = "0.52.2";
+const MONACO_BASE = `https://cdn.jsdelivr.net/npm/monaco-editor@${MONACO_VERSION}/min`;
+const MONACO_THEME = "quick-css";
+
+let monacoPromise = null;
+let monacoWorkerUrl = null;
+
+function isLightMode() {
+  const root = document.documentElement;
+
+  if (root.dataset.yapmodMode) return root.dataset.yapmodMode === "light";
+  if (root.dataset.theme) return root.dataset.theme === "light";
+
+  return window.matchMedia("(prefers-color-scheme: light)").matches;
 }
-`;
 
-/**
- * Highlights comments, strings, at-rules, colors, properties, numbers and
- * punctuation. This is intentionally small: a full CSS parser is unnecessary
- * for an editor that only renders text.
- */
-const TOKEN_PATTERN = /(\/\*[\s\S]*?(?:\*\/|$))|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(@[-\w]+)|(#[0-9a-fA-F]{3,8}\b)|((?:--)?[-\w]+)(?=\s*:)|(\b\d+(?:\.\d+)?(?:[a-z%]+)?\b)|([{}();:,])/g;
+function readToken(styles, name, fallback) {
+  return styles.getPropertyValue(name).trim() || fallback;
+}
 
-function escapeHtml(value) {
-  return value.replace(/[&<>]/g, (character) => {
-    if (character === "&") return "&amp;";
-    if (character === "<") return "&lt;";
-    if (character === ">") return "&gt;";
-    return '"';
+function defineMonacoTheme(monaco) {
+  const light = isLightMode();
+  const styles = window.getComputedStyle(document.documentElement);
+  const token = (name, fallback) => readToken(styles, name, fallback);
+  const background = token("--ym-bg-main", light ? "#ffffff" : "#222329");
+  const foreground = token("--ym-text", light ? "#1d1f23" : "#ececf1");
+
+  monaco.editor.defineTheme(MONACO_THEME, {
+    base: light ? "vs" : "vs-dark",
+    inherit: true,
+    rules: [],
+    colors: {
+      "editor.background": background,
+      "editor.foreground": foreground,
+      "editorGutter.background": background,
+      "editorLineNumber.foreground": token("--ym-text-faint", "#6e6f7b"),
+      "editorLineNumber.activeForeground": token("--ym-text-muted", "#9c9daa"),
+      "editorCursor.foreground": token("--ym-accent", "#ff6b4a"),
+      "editor.selectionBackground": token("--ym-accent-soft", "#ff6b4a29"),
+      "editor.lineHighlightBackground": token("--ym-bg-hover", "#2f3038"),
+      "editorIndentGuide.background1": token("--ym-border", "#ffffff12"),
+      "editorWidget.background": token("--ym-bg-elev", "#2b2c33"),
+      "editorWidget.border": token("--ym-border", "#ffffff12"),
+      "editorSuggestWidget.background": token("--ym-bg-elev", "#2b2c33"),
+      "editorSuggestWidget.border": token("--ym-border", "#ffffff12"),
+      "editorSuggestWidget.selectedBackground": token("--ym-bg-active", "#383944"),
+      "editorHoverWidget.background": token("--ym-bg-elev", "#2b2c33"),
+      "editorHoverWidget.border": token("--ym-border", "#ffffff12"),
+    },
   });
 }
 
-function highlightCss(css) {
-  let html = "";
-  let lastIndex = 0;
-  let match;
-
-  TOKEN_PATTERN.lastIndex = 0;
-
-  while ((match = TOKEN_PATTERN.exec(css)) !== null) {
-    html += escapeHtml(css.slice(lastIndex, match.index));
-
-    let kind = "punct";
-    if (match[1]) kind = "comment";
-    else if (match[2]) kind = "string";
-    else if (match[3]) kind = "at-rule";
-    else if (match[4]) kind = "value";
-    else if (match[5]) kind = "property";
-    else if (match[6]) kind = "number";
-
-    html += `<span class="quick-css-token-${kind}">${escapeHtml(match[0])}</span>`;
-    lastIndex = match.index + match[0].length;
+/** Loads the Monaco AMD bundle only when the editor is first opened. */
+function loadMonaco() {
+  if (window.monaco) {
+    return Promise.resolve(window.monaco);
   }
 
-  html += escapeHtml(css.slice(lastIndex));
+  if (monacoPromise) {
+    return monacoPromise;
+  }
 
-  return html || " ";
+  monacoPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-quick-css-monaco]');
+    existing?.remove();
+
+    monacoWorkerUrl ??= URL.createObjectURL(new Blob(
+      [
+        `self.MonacoEnvironment = { baseUrl: '${MONACO_BASE}/' };`,
+        `importScripts('${MONACO_BASE}/vs/base/worker/workerMain.js');`,
+      ],
+      { type: "text/javascript" },
+    ));
+
+    window.MonacoEnvironment = {
+      getWorkerUrl() {
+        return monacoWorkerUrl;
+      },
+    };
+
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      script.remove();
+      reject(new Error("Timed out while loading Monaco."));
+    }, 20000);
+
+    script.src = `${MONACO_BASE}/vs/loader.js`;
+    script.async = true;
+    script.dataset.quickCssMonaco = "true";
+
+    script.onload = () => {
+      window.clearTimeout(timeout);
+
+      const loader = window.require;
+
+      if (!loader || typeof loader.config !== "function") {
+        reject(new Error("The Monaco loader did not initialize."));
+        return;
+      }
+
+      loader.config({ paths: { vs: `${MONACO_BASE}/vs` } });
+      loader(["vs/editor/editor.main"], () => resolve(window.monaco), reject);
+    };
+
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      script.remove();
+      reject(new Error("Could not download Monaco."));
+    };
+
+    document.head.append(script);
+  }).catch((error) => {
+    monacoPromise = null;
+    document.querySelector('script[data-quick-css-monaco]')?.remove();
+    throw error;
+  });
+
+  return monacoPromise;
 }
 
 function node(tag, className, text) {
@@ -66,89 +137,112 @@ function node(tag, className, text) {
   return element;
 }
 
-function button(label, className, onClick) {
-  const element = node("button", className, label);
-  element.type = "button";
-  element.addEventListener("click", onClick);
-  return element;
-}
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function createEditor({ host, initialCss, applyCss, saveCss }) {
+function createEditor({ api, host, initialCss, applyCss, saveCss }) {
   const shell = node("div", "quick-css-shell");
-  const toolbar = node("div", "quick-css-toolbar");
-  const actions = node("div", "quick-css-actions");
-  const status = node("span", "quick-css-status");
-  const floatButton = button("Float editor", "quick-css-btn", toggleFloat);
-  const clearButton = button("Clear", "quick-css-btn quick-css-btn-danger", clearEditor);
+  const toolbarStart = node("div", "quick-css-toolbar-group");
+  const toolbarEnd = node("div", "quick-css-toolbar-group");
+  const title = node("span", "quick-css-title");
+  const status = api.ui.badge("Saved", { tone: "success" });
 
-  status.dataset.state = "saved";
-  status.textContent = "Saved";
+  title.append(api.ui.icon("code", { size: 15 }), node("span", undefined, "styles.css"));
+  toolbarStart.append(title, status);
 
-  actions.append(floatButton, clearButton);
-  toolbar.append(actions, status);
+  const saveButton = api.ui.button({
+    icon: "save",
+    title: "Save now",
+    variant: "ghost",
+    size: "small",
+    onClick: saveNow,
+  });
+  const floatButton = api.ui.button({
+    icon: "float",
+    title: "Float editor",
+    variant: "ghost",
+    size: "small",
+    onClick: toggleFloat,
+  });
+  const clearButton = api.ui.button({
+    icon: "trash",
+    title: "Clear CSS",
+    variant: "danger",
+    size: "small",
+    onClick: clearEditor,
+  });
 
+  toolbarEnd.append(saveButton, floatButton, clearButton);
+
+  const toolbar = api.ui.toolbar(toolbarStart, toolbarEnd);
   const hint = node(
     "p",
     "quick-css-hint",
-    "CSS is applied to Yapper immediately. Changes save automatically while the plugin is enabled.",
+    "CSS is applied immediately and saved automatically. Monaco loads on first open.",
   );
 
   const editor = node("div", "quick-css-editor");
-  const gutter = node("pre", "quick-css-gutter");
-  gutter.setAttribute("aria-hidden", "true");
+  const editorHost = node("div", "quick-css-editor-host");
+  const loading = node("div", "quick-css-loading");
 
-  const code = node("div", "quick-css-code");
-  const highlight = node("pre", "quick-css-highlight");
-  highlight.setAttribute("aria-hidden", "true");
-  const highlightedCode = node("code");
-  highlight.append(highlightedCode);
-
-  const textarea = node("textarea", "quick-css-input");
-  textarea.value = initialCss;
-  textarea.placeholder = PLACEHOLDER;
-  textarea.spellcheck = false;
-  textarea.setAttribute("wrap", "off");
-  textarea.setAttribute("aria-label", "Custom CSS");
-
-  code.append(highlight, textarea);
-  editor.append(gutter, code);
+  loading.append(
+    api.ui.icon("refresh", { size: 24, class: "quick-css-loading-icon" }),
+    node("span", undefined, "Loading Monaco…"),
+  );
+  editorHost.append(loading);
+  editor.append(editorHost);
 
   const footer = node("div", "quick-css-footer");
-  const meta = node("span", "quick-css-meta");
-  footer.append(meta);
+  const meta = node("span", "quick-css-meta", "Preparing editor…");
+  const engine = api.ui.badge("Loading", { tone: "accent" });
+
+  footer.append(meta, engine);
 
   shell.append(toolbar, hint, editor, footer);
   host.append(shell);
 
+  let monacoEditor = null;
+  let fallback = null;
+  let destroyed = false;
   let saveTimer = null;
   let frame = null;
   let placeholder = null;
   let removeDrag = null;
+  let changeDisposable = null;
+  let cursorDisposable = null;
+  let themeObserver = null;
 
-  function setStatus(text, state) {
+  function setStatus(text, tone) {
     status.textContent = text;
-    status.dataset.state = state;
+    status.dataset.tone = tone;
   }
 
-  function syncScroll() {
-    highlight.scrollTop = textarea.scrollTop;
-    highlight.scrollLeft = textarea.scrollLeft;
-    gutter.scrollTop = textarea.scrollTop;
+  function setEngine(text, tone) {
+    engine.textContent = text;
+    engine.dataset.tone = tone;
   }
 
-  function renderEditor() {
-    const value = textarea.value;
-    const lines = value.split("\n");
+  function getValue() {
+    if (monacoEditor) return monacoEditor.getValue();
+    if (fallback) return fallback.value;
+    return initialCss;
+  }
+
+  function renderMeta(value) {
     const characters = value.length;
+    const suffix = `${characters} ${characters === 1 ? "char" : "chars"}`;
 
-    highlightedCode.innerHTML = highlightCss(value);
-    gutter.textContent = lines.map((_, index) => index + 1).join("\n");
-    meta.textContent = `${lines.length} ${lines.length === 1 ? "line" : "lines"} · ${characters} ${characters === 1 ? "character" : "characters"}`;
-    syncScroll();
+    if (monacoEditor) {
+      const position = monacoEditor.getPosition();
+      const line = position?.lineNumber ?? 1;
+      const column = position?.column ?? 1;
+      meta.textContent = `Ln ${line}, Col ${column} · ${suffix}`;
+      return;
+    }
+
+    const lines = value.split("\n").length;
+    meta.textContent = `${lines} ${lines === 1 ? "line" : "lines"} · ${suffix}`;
   }
 
   function saveNow() {
@@ -157,14 +251,16 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
       saveTimer = null;
     }
 
-    saveCss(textarea.value);
-    setStatus("Saved", "saved");
+    const value = getValue();
+    saveCss(value);
+    setStatus("Saved", "success");
+    renderMeta(value);
   }
 
-  function updateFromInput() {
-    renderEditor();
-    applyCss(textarea.value);
-    setStatus("Saving…", "saving");
+  function handleChange(value) {
+    renderMeta(value);
+    applyCss(value);
+    setStatus("Saving…", "warning");
 
     if (saveTimer !== null) {
       window.clearTimeout(saveTimer);
@@ -173,61 +269,60 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     saveTimer = window.setTimeout(saveNow, SAVE_DELAY);
   }
 
-  function insertNewline() {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const value = textarea.value;
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const line = value.slice(lineStart, start);
-    const indent = (line.match(/^[\t ]*/) || [""])[0];
-    const extra = /\{\s*$/.test(value.slice(0, start)) ? "  " : "";
-
-    textarea.setRangeText(`\n${indent}${extra}`, start, end, "end");
-    updateFromInput();
+  function relayout() {
+    window.requestAnimationFrame(() => monacoEditor?.layout());
   }
 
-  function indentSelection(outdent) {
-    const value = textarea.value;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
+  function mountMonaco(monaco) {
+    if (destroyed) return;
 
-    if (!outdent && start === end) {
-      textarea.setRangeText("  ", start, end, "end");
-      updateFromInput();
-      return;
-    }
+    defineMonacoTheme(monaco);
+    editorHost.replaceChildren();
 
-    const blockStart = value.lastIndexOf("\n", start - 1) + 1;
-    const blockEndBreak = value.indexOf("\n", end);
-    const blockEnd = blockEndBreak === -1 ? value.length : blockEndBreak;
-    const lines = value.slice(blockStart, blockEnd).split("\n");
-    let firstDelta = 0;
-    let totalDelta = 0;
+    monacoEditor = monaco.editor.create(editorHost, {
+      value: initialCss,
+      language: "css",
+      theme: MONACO_THEME,
+      ariaLabel: "Custom CSS",
+      automaticLayout: true,
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontSize: 13,
+      lineHeight: 20,
+      tabSize: 2,
+      insertSpaces: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      wordWrap: "off",
+      fixedOverflowWidgets: true,
+      renderLineHighlight: "all",
+      padding: { top: 10, bottom: 10 },
+      scrollbar: {
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10,
+      },
+    });
 
-    const changed = lines.map((line, index) => {
-      if (outdent) {
-        const match = line.match(/^ {1,2}/);
-        if (!match) return line;
+    monacoEditor.getModel()?.updateOptions({ tabSize: 2, insertSpaces: true });
+    changeDisposable = monacoEditor.onDidChangeModelContent(() => handleChange(monacoEditor.getValue()));
+    cursorDisposable = monacoEditor.onDidChangeCursorPosition(() => renderMeta(monacoEditor.getValue()));
+    monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveNow);
 
-        const delta = -match[0].length;
-        if (index === 0) firstDelta = delta;
-        totalDelta += delta;
-        return line.slice(match[0].length);
-      }
+    themeObserver = new MutationObserver(() => {
+      defineMonacoTheme(monaco);
+      monaco.editor.setTheme(MONACO_THEME);
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-yapmod-mode", "data-theme"],
+    });
 
-      if (index === 0) firstDelta = 2;
-      totalDelta += 2;
-      return `  ${line}`;
-    }).join("\n");
-
-    textarea.setRangeText(changed, blockStart, blockEnd, "start");
-    const nextStart = Math.max(blockStart, start + firstDelta);
-    const nextEnd = Math.max(nextStart, end + totalDelta);
-    textarea.setSelectionRange(nextStart, nextEnd);
-    updateFromInput();
+    setEngine("Monaco", "accent");
+    setStatus("Saved", "success");
+    renderMeta(initialCss);
+    monacoEditor.layout();
   }
 
-  function onKeyDown(event) {
+  function onFallbackKeyDown(event) {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       saveNow();
@@ -236,24 +331,60 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
 
     if (event.key === "Tab") {
       event.preventDefault();
-      indentSelection(event.shiftKey);
-      return;
-    }
 
-    if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
-      event.preventDefault();
-      insertNewline();
+      const start = fallback.selectionStart;
+      const end = fallback.selectionEnd;
+      fallback.setRangeText("  ", start, end, "end");
+      handleChange(fallback.value);
     }
   }
 
+  function mountFallback(error) {
+    if (destroyed) return;
+
+    api.log.warn("Monaco could not be loaded; using the basic editor.", error);
+    editorHost.replaceChildren();
+
+    fallback = node("textarea", "quick-css-fallback");
+    fallback.value = initialCss;
+    fallback.spellcheck = false;
+    fallback.setAttribute("wrap", "off");
+    fallback.setAttribute("aria-label", "Custom CSS");
+    fallback.addEventListener("input", () => handleChange(fallback.value));
+    fallback.addEventListener("keydown", onFallbackKeyDown);
+    editorHost.append(fallback);
+
+    setEngine("Basic editor", "warning");
+    setStatus("Saved", "success");
+    renderMeta(initialCss);
+    fallback.focus();
+  }
+
+  function focus() {
+    window.requestAnimationFrame(() => {
+      monacoEditor?.layout();
+
+      if (monacoEditor) {
+        monacoEditor.focus();
+      } else {
+        fallback?.focus();
+      }
+    });
+  }
+
   function clearEditor() {
-    if (!textarea.value) return;
+    if (!getValue()) return;
     if (!window.confirm("Clear all custom CSS?")) return;
 
-    textarea.value = "";
-    updateFromInput();
+    if (monacoEditor) {
+      monacoEditor.setValue("");
+    } else if (fallback) {
+      fallback.value = "";
+      handleChange("");
+    }
+
     saveNow();
-    textarea.focus();
+    focus();
   }
 
   function keepOnScreen() {
@@ -334,6 +465,16 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     };
   }
 
+  function setFloatButton(floating) {
+    floatButton.replaceChildren(
+      api.ui.icon(floating ? "dock" : "float", { size: 15 }),
+    );
+
+    const title = floating ? "Dock editor" : "Float editor";
+    floatButton.title = title;
+    floatButton.setAttribute("aria-label", title);
+  }
+
   function floatEditor() {
     if (frame) return;
 
@@ -342,10 +483,18 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     frame.setAttribute("aria-label", "Quick CSS editor");
 
     const header = node("div", "quick-css-float-header");
-    const title = node("span", "quick-css-float-title", "Quick CSS");
+    const headerTitle = node("span", "quick-css-float-title");
     const dragHint = node("span", "quick-css-float-hint", "Drag to move · resize from the corner");
-    const dockButton = button("Dock", "quick-css-btn quick-css-btn-small", dockEditor);
-    header.append(title, dragHint, dockButton);
+    const dockButton = api.ui.button({
+      icon: "dock",
+      title: "Dock editor",
+      variant: "ghost",
+      size: "small",
+      onClick: dockEditor,
+    });
+
+    headerTitle.append(api.ui.icon("code", { size: 15 }), node("span", undefined, "Quick CSS"));
+    header.append(headerTitle, dragHint, dockButton);
 
     const body = node("div", "quick-css-float-body");
     body.append(shell);
@@ -354,7 +503,7 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     placeholder = node(
       "p",
       "quick-css-placeholder",
-      "The editor is floating above the app. Drag its header to move it, or choose Dock to put it back.",
+      "The editor is floating above the app. Drag its header to move it, or dock it to return.",
     );
 
     host.append(placeholder);
@@ -367,16 +516,14 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     frame.style.bottom = "auto";
 
     removeDrag = makeDraggable(frame, header);
-    floatButton.textContent = "Dock editor";
+    setFloatButton(true);
     window.addEventListener("resize", keepOnScreen);
-    textarea.focus();
-    syncScroll();
+    relayout();
+    focus();
   }
 
   function dockEditor() {
     if (!frame) return;
-
-    const scrollTop = textarea.scrollTop;
 
     host.append(shell);
     placeholder?.remove();
@@ -387,10 +534,9 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     frame = null;
     window.removeEventListener("resize", keepOnScreen);
 
-    floatButton.textContent = "Float editor";
-    textarea.focus();
-    textarea.scrollTop = scrollTop;
-    syncScroll();
+    setFloatButton(false);
+    relayout();
+    focus();
   }
 
   function toggleFloat() {
@@ -401,17 +547,25 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     }
   }
 
-  function focus() {
-    window.requestAnimationFrame(() => textarea.focus());
-  }
-
   function destroy() {
+    destroyed = true;
+
     if (saveTimer !== null) {
       window.clearTimeout(saveTimer);
       saveTimer = null;
     }
 
-    saveCss(textarea.value);
+    saveCss(getValue());
+    themeObserver?.disconnect();
+    themeObserver = null;
+    changeDisposable?.dispose();
+    changeDisposable = null;
+    cursorDisposable?.dispose();
+    cursorDisposable = null;
+    monacoEditor?.dispose();
+    monacoEditor = null;
+    fallback?.remove();
+    fallback = null;
     removeDrag?.();
     removeDrag = null;
     window.removeEventListener("resize", keepOnScreen);
@@ -422,12 +576,7 @@ function createEditor({ host, initialCss, applyCss, saveCss }) {
     shell.remove();
   }
 
-  textarea.addEventListener("input", updateFromInput);
-  textarea.addEventListener("scroll", syncScroll, { passive: true });
-  textarea.addEventListener("keydown", onKeyDown);
-
-  renderEditor();
-  applyCss(initialCss);
+  loadMonaco().then(mountMonaco).catch(mountFallback);
 
   return { focus, destroy };
 }
@@ -459,6 +608,7 @@ export default {
       order: 0,
       render(host) {
         editor = createEditor({
+          api,
           host,
           initialCss: css,
           applyCss(value) {

@@ -367,6 +367,140 @@ export type PluginSettingsPanel = {
   onHide?: () => void;
 };
 
+/** Built-in icons available to plugin UI components. */
+export type PluginUiIconName =
+  | "monitor"
+  | "palette"
+  | "history"
+  | "puzzle"
+  | "code"
+  | "save"
+  | "trash"
+  | "float"
+  | "dock"
+  | "close"
+  | "check"
+  | "copy"
+  | "refresh"
+  | "plus"
+  | "search"
+  | "settings";
+
+export type PluginUiIconOptions = {
+  /** Size in pixels. Defaults to the component's own size. */
+  size?: number;
+  /** Accessible label. Without one the icon is decorative. */
+  label?: string;
+  /** Extra classes appended to the generated SVG element. */
+  class?: string;
+};
+
+export type PluginUiButtonVariant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost";
+
+export type PluginUiButtonSize = "small" | "medium";
+
+export type PluginUiButtonOptions = {
+  /** Text shown next to the icon, or alone when there is no icon. */
+  label?: string;
+  /** Built-in icon shown before the label. */
+  icon?: PluginUiIconName;
+  /** Tooltip and accessible name. Prefer this for icon-only buttons. */
+  title?: string;
+  variant?: PluginUiButtonVariant;
+  size?: PluginUiButtonSize;
+  disabled?: boolean;
+  /** Extra classes appended to the generated button element. */
+  class?: string;
+  onClick?: (event: MouseEvent) => void;
+};
+
+export type PluginUiInputOptions = {
+  type?: "text" | "search" | "number" | "url";
+  value?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+  disabled?: boolean;
+  onInput?: (value: string) => void;
+  onChange?: (value: string) => void;
+};
+
+export type PluginUiSelectOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
+
+export type PluginUiSelectOptions = {
+  value?: string;
+  options: PluginUiSelectOption[];
+  ariaLabel?: string;
+  disabled?: boolean;
+  onChange?: (value: string) => void;
+};
+
+export type PluginUiToggleOptions = {
+  label: string;
+  description?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  onChange?: (checked: boolean) => void;
+};
+
+export type PluginUiFieldOptions = {
+  label?: string;
+  description?: string;
+  /** The control rendered under the label. */
+  control: HTMLElement;
+  /** `id` of the control, used to connect the label element. */
+  htmlFor?: string;
+};
+
+export type PluginUiBadgeTone =
+  | "neutral"
+  | "accent"
+  | "success"
+  | "warning"
+  | "danger";
+
+export type PluginUiBadgeOptions = {
+  tone?: PluginUiBadgeTone;
+  /** Tooltip text for the badge. */
+  title?: string;
+};
+
+/**
+ * Components for plugin interfaces.
+ *
+ * The components use yapmod's visual language and current theme tokens, so
+ * plugins do not have to recreate buttons, fields and status badges from
+ * scratch. Every factory returns a normal DOM element that can be appended,
+ * moved or removed like any other node.
+ */
+export type YapmodPluginUiApi = {
+  /** Icons that can be passed to `icon()` and `button()`. */
+  readonly icons: readonly PluginUiIconName[];
+  /** Creates an SVG icon. */
+  icon(name: PluginUiIconName, options?: PluginUiIconOptions): SVGSVGElement;
+  /** Creates a themed button with an optional icon. */
+  button(options?: PluginUiButtonOptions): HTMLButtonElement;
+  /** Creates a themed text input. */
+  input(options?: PluginUiInputOptions): HTMLInputElement;
+  /** Creates a themed native select control. */
+  select(options: PluginUiSelectOptions): HTMLSelectElement;
+  /** Creates a label, description and switch in one row. */
+  toggle(options: PluginUiToggleOptions): HTMLElement;
+  /** Wraps a control with a label and optional description. */
+  field(options: PluginUiFieldOptions): HTMLElement;
+  /** Creates a horizontal toolbar. Strings are rendered as text. */
+  toolbar(...children: (Node | string)[]): HTMLElement;
+  /** Creates a small status badge. */
+  badge(text: string, options?: PluginUiBadgeOptions): HTMLElement;
+};
+
 /** Manifest-declared settings, scoped to one plugin. */
 export type YapmodPluginSettingsApi = {
   /** Reads the current value of a declared setting. */
@@ -412,6 +546,11 @@ export type YapmodPluginApi = {
   readonly http: HTTPInspector;
   /** Namespaced console logger for this plugin. */
   readonly log: YapmodPluginLogger;
+  /**
+   * Themed UI components for plugin interfaces: buttons, icons, toolbars,
+   * fields, inputs, selects, toggles and badges.
+   */
+  readonly ui: YapmodPluginUiApi;
   /**
    * Registers a cleanup callback that runs automatically when the plugin is
    * disabled, even if `activate` later throws. Callbacks run in reverse
@@ -805,6 +944,8 @@ export type YapmodGlobal = {
   webSocket?: WebSocketInspector;
   /** Low-level HTTP inspection layer for plugins. */
   http?: HTTPInspector;
+  /** Themed UI components shared by plugin interfaces. */
+  ui?: YapmodPluginUiApi;
 };
 
 export type YapmodScope = typeof globalThis & {
