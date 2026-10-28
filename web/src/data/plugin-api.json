@@ -1,0 +1,1153 @@
+{
+  "generatedFrom": [
+    "client/shared/types.ts",
+    "client/features/banners/api.tsx"
+  ],
+  "sourceHash": "045b1f973f4df267",
+  "types": {
+    "YapmodPluginApi": {
+      "name": "YapmodPluginApi",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type YapmodPluginApi = { readonly apiVersion: 1;\n  readonly id: string;\n  readonly manifest: Readonly<PluginManifest>;\n  readonly storage: YapmodPluginStorageApi;\n  readonly settings: YapmodPluginSettingsApi;\n  readonly styles: {\n    add(css: string): PluginCleanup;\n  };\n  readonly webSocket: WebSocketInspector;\n  readonly http: HTTPInspector; readonly log: YapmodPluginLogger; onCleanup(cleanup: PluginCleanup): void;\n  banner(message: string): void; readonly modal: YapmodModalApi; readonly notify: YapmodPluginNotifyApi; readonly file: { createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  };\n};",
+      "members": [
+        {
+          "name": "apiVersion",
+          "type": "1",
+          "optional": false,
+          "readonly": true,
+          "description": "The plugin format implemented by this API."
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "manifest",
+          "type": "Readonly<PluginManifest>",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "storage",
+          "type": "YapmodPluginStorageApi",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "settings",
+          "type": "YapmodPluginSettingsApi",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "styles",
+          "type": "{\n    add(css: string): PluginCleanup;\n  }",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "webSocket",
+          "type": "WebSocketInspector",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "http",
+          "type": "HTTPInspector",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        },
+        {
+          "name": "log",
+          "type": "YapmodPluginLogger",
+          "optional": false,
+          "readonly": true,
+          "description": "Namespaced console logger for this plugin."
+        },
+        {
+          "name": "onCleanup",
+          "type": "(cleanup: PluginCleanup) => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Registers a cleanup callback that runs automatically when the plugin is disabled, even if `activate` later throws. Callbacks run in reverse registration order. Use this for helpers created during activation instead of returning one large cleanup closure. The cleanup returned by `activate` is also supported."
+        },
+        {
+          "name": "banner",
+          "type": "(message: string) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "modal",
+          "type": "YapmodModalApi",
+          "optional": false,
+          "readonly": true,
+          "description": "Opens modal dialogs in the Yapper window. Plugins can create consent dialogs, settings forms, or any other UI that requires user interaction."
+        },
+        {
+          "name": "notify",
+          "type": "YapmodPluginNotifyApi",
+          "optional": false,
+          "readonly": true,
+          "description": "Shows system notifications that appear in the OS notification center. Useful for alerting users about events even when the app is in the background."
+        },
+        {
+          "name": "file",
+          "type": "{ createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  }",
+          "optional": false,
+          "readonly": true,
+          "description": "File utilities for working with file-type settings. When a plugin declares a **file** setting, the user picks a file and the plugin receives a base64 data URI (e.g. \"data:image/png;base64,...\") as the setting value. Use `createBlobUrl()` to convert it to a blob URL for use in CSS or image elements. The file is read at pick time, not at runtime — there is no generic file-reading command. Plugins execute as trusted page code. Data URIs may be at most 8 MiB; other setting values are limited to 64 KiB."
+        }
+      ]
+    },
+    "YapmodPluginModule": {
+      "name": "YapmodPluginModule",
+      "kind": "type",
+      "description": "The default export of a `plugin.js` ES module.",
+      "declaration": "export type YapmodPluginModule = {\n  activate(api: YapmodPluginApi): PluginActivation;\n};",
+      "members": [
+        {
+          "name": "activate",
+          "type": "(api: YapmodPluginApi) => PluginActivation",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginActivation": {
+      "name": "PluginActivation",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginActivation = void | PluginCleanup | Promise<void | PluginCleanup>;",
+      "members": []
+    },
+    "PluginCleanup": {
+      "name": "PluginCleanup",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginCleanup = () => void | Promise<void>;",
+      "members": []
+    },
+    "PluginManifest": {
+      "name": "PluginManifest",
+      "kind": "type",
+      "description": "Metadata supplied by an installed plugin package.",
+      "declaration": "export type PluginManifest = {\n  id: string;\n  name: string;\n  version?: string;\n  author?: string;\n  description?: string;\n  license?: string;\n  tags?: string[]; api: 1;\n  settings: PluginSetting[];\n  stylesheet: string;\n  script?: string;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "author",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "license",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "tags",
+          "type": "string[]",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "api",
+          "type": "1",
+          "optional": false,
+          "readonly": false,
+          "description": "The plugin format this package targets. Version 1 supports CSS and optional DOM scripts."
+        },
+        {
+          "name": "settings",
+          "type": "PluginSetting[]",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "stylesheet",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "script",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginSetting": {
+      "name": "PluginSetting",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginSetting = {\n  id: string;\n  label: string;\n  description?: string;\n} & (\n  | { type: \"toggle\"; default: boolean }\n  | { type: \"text\"; default: string | null; accept?: string }\n  | { type: \"file\"; default: string | null; accept?: string }\n  | { type: \"color\"; default: string | null }\n);",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginSettingValue": {
+      "name": "PluginSettingValue",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginSettingValue = boolean | string | null;",
+      "members": []
+    },
+    "PluginDiagnostic": {
+      "name": "PluginDiagnostic",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginDiagnostic = {\n  operation: \"load\" | \"activate\" | \"deactivate\" | \"cleanup\";\n  message: string;\n  at: string;\n};",
+      "members": [
+        {
+          "name": "operation",
+          "type": "\"load\" | \"activate\" | \"deactivate\" | \"cleanup\"",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "at",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "YapmodPluginInfo": {
+      "name": "YapmodPluginInfo",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type YapmodPluginInfo = {\n  manifest: PluginManifest;\n  source: \"installed\"; verified: boolean;\n  enabled: boolean;\n  busy: boolean;\n  error: string | null;\n  diagnostic: PluginDiagnostic | null;\n};",
+      "members": [
+        {
+          "name": "manifest",
+          "type": "PluginManifest",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "source",
+          "type": "\"installed\"",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "verified",
+          "type": "boolean",
+          "optional": false,
+          "readonly": false,
+          "description": "True when the plugin was installed from a verified catalog entry."
+        },
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "busy",
+          "type": "boolean",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "error",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "diagnostic",
+          "type": "PluginDiagnostic | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "YapmodPluginLogger": {
+      "name": "YapmodPluginLogger",
+      "kind": "type",
+      "description": "Namespaced console logger handed to a plugin. Every message is prefixed with the plugin id, so plugin output is easy to tell apart from yapmod and host-app logs.",
+      "declaration": "export type YapmodPluginLogger = {\n  debug(...args: unknown[]): void;\n  info(...args: unknown[]): void;\n  warn(...args: unknown[]): void;\n  error(...args: unknown[]): void;\n};",
+      "members": [
+        {
+          "name": "debug",
+          "type": "(...args: unknown[]) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "info",
+          "type": "(...args: unknown[]) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "warn",
+          "type": "(...args: unknown[]) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "error",
+          "type": "(...args: unknown[]) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "YapmodPluginStorageApi": {
+      "name": "YapmodPluginStorageApi",
+      "kind": "type",
+      "description": "Per-plugin key/value storage. Keys are namespaced by the plugin id.",
+      "declaration": "export type YapmodPluginStorageApi = { get<T>(key: string, fallback?: T): T; set(key: string, value: unknown): void; keys(): string[]; onChange<T = unknown>(key: string, listener: (value: T | undefined) => void): () => void;\n};",
+      "members": [
+        {
+          "name": "get",
+          "type": "(key: string, fallback?: T) => T",
+          "optional": false,
+          "readonly": false,
+          "description": "Returns the stored value, or `fallback` when the key has no value."
+        },
+        {
+          "name": "set",
+          "type": "(key: string, value: unknown) => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Stores a JSON-serializable value. Writes are persisted in the background."
+        },
+        {
+          "name": "keys",
+          "type": "() => string[]",
+          "optional": false,
+          "readonly": false,
+          "description": "Lists the keys this plugin currently has a value for."
+        },
+        {
+          "name": "onChange",
+          "type": "(key: string, listener: (value: T | undefined) => void) => () => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Subscribes to changes of one key for this plugin. Returns a cleanup function to unsubscribe."
+        }
+      ]
+    },
+    "YapmodPluginSettingsApi": {
+      "name": "YapmodPluginSettingsApi",
+      "kind": "type",
+      "description": "Manifest-declared settings, scoped to one plugin.",
+      "declaration": "export type YapmodPluginSettingsApi = { get(id: string): PluginSettingValue; all(): Readonly<Record<string, PluginSettingValue>>; onChange(id: string, listener: (value: PluginSettingValue) => void): () => void;\n};",
+      "members": [
+        {
+          "name": "get",
+          "type": "(id: string) => PluginSettingValue",
+          "optional": false,
+          "readonly": false,
+          "description": "Reads the current value of a declared setting."
+        },
+        {
+          "name": "all",
+          "type": "() => Readonly<Record<string, PluginSettingValue>>",
+          "optional": false,
+          "readonly": false,
+          "description": "Returns a snapshot of every declared setting."
+        },
+        {
+          "name": "onChange",
+          "type": "(id: string, listener: (value: PluginSettingValue) => void) => () => void",
+          "optional": false,
+          "readonly": false,
+          "description": "Subscribes to changes of one declared setting. Returns a cleanup function to unsubscribe."
+        }
+      ]
+    },
+    "YapmodPluginNotifyApi": {
+      "name": "YapmodPluginNotifyApi",
+      "kind": "type",
+      "description": "Shows system notifications from a plugin. Notifications appear in the OS notification center.",
+      "declaration": "export type YapmodPluginNotifyApi = { show(options: PluginNotifyOptions): { close(): void };\n};",
+      "members": [
+        {
+          "name": "show",
+          "type": "(options: PluginNotifyOptions) => { close(): void }",
+          "optional": false,
+          "readonly": false,
+          "description": "Shows a system notification. Returns a handle that can be used to close the notification programmatically."
+        }
+      ]
+    },
+    "PluginNotifyOptions": {
+      "name": "PluginNotifyOptions",
+      "kind": "type",
+      "description": "Options for showing a system notification from a plugin.",
+      "declaration": "export type PluginNotifyOptions = { title: string; body?: string; tag?: string; onClick?: () => void;\n};",
+      "members": [
+        {
+          "name": "title",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "The notification title."
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "The notification body text."
+        },
+        {
+          "name": "tag",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "A unique tag to deduplicate notifications. If omitted, the title is used as the tag."
+        },
+        {
+          "name": "onClick",
+          "type": "() => void",
+          "optional": true,
+          "readonly": false,
+          "description": "Handler called when the user clicks the notification."
+        }
+      ]
+    },
+    "HTTPInspector": {
+      "name": "HTTPInspector",
+      "kind": "type",
+      "description": "Inspects HTTP requests flowing through the application via `fetch()`. Provides access to observed incoming (response) and outgoing (request) messages. Requests and responses can be modified using interceptors.",
+      "declaration": "export type HTTPInspector = { exchanges: { subscribe(handler: HTTPMessageHandler): () => void;\n  }; outgoing: { subscribe(handler: HTTPOutgoingMessageHandler): () => void; use(interceptor: HTTPOutgoingInterceptor): () => void;\n  }; responses: { use(interceptor: HTTPResponseInterceptor): () => void;\n  };\n};",
+      "members": [
+        {
+          "name": "exchanges",
+          "type": "{ subscribe(handler: HTTPMessageHandler): () => void;\n  }",
+          "optional": false,
+          "readonly": false,
+          "description": "Complete HTTP exchanges (request + response). This channel fires after the response is received."
+        },
+        {
+          "name": "outgoing",
+          "type": "{ subscribe(handler: HTTPOutgoingMessageHandler): () => void; use(interceptor: HTTPOutgoingInterceptor): () => void;\n  }",
+          "optional": false,
+          "readonly": false,
+          "description": "Outgoing HTTP requests (fires immediately when the request is sent)."
+        },
+        {
+          "name": "responses",
+          "type": "{ use(interceptor: HTTPResponseInterceptor): () => void;\n  }",
+          "optional": false,
+          "readonly": false,
+          "description": "HTTP responses that can be intercepted and modified before delivery. Interceptors run asynchronously after the response is received but before it is returned to the caller."
+        }
+      ]
+    },
+    "HTTPMessage": {
+      "name": "HTTPMessage",
+      "kind": "type",
+      "description": "A single observed HTTP exchange with request and response metadata. The `requestBody` and `responseBody` fields are immutable snapshots captured at the time of observation. For binary payloads (ArrayBuffer, ArrayBufferView), the data is copied so that mutating the original argument does not corrupt the observed snapshot. For Blob payloads, the data is represented as a `BlobSnapshot` since Blobs cannot be read synchronously. Consumers should treat body fields as read-only.",
+      "declaration": "export type HTTPMessage = { url: string; method: string; requestHeaders: [string, string][]; requestBody?: string | ArrayBuffer | BlobSnapshot; status: number; statusText: string; responseHeaders: [string, string][]; responseBody?: string | ArrayBuffer | BlobSnapshot; timestamp: number; duration: number;\n};",
+      "members": [
+        {
+          "name": "url",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "The request URL."
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "HTTP method (GET, POST, etc.)."
+        },
+        {
+          "name": "requestHeaders",
+          "type": "[string, string][]",
+          "optional": false,
+          "readonly": false,
+          "description": "Request headers as an ordered array of [name, value] pairs."
+        },
+        {
+          "name": "requestBody",
+          "type": "string | ArrayBuffer | BlobSnapshot",
+          "optional": true,
+          "readonly": false,
+          "description": "Request body, captured as an immutable snapshot (undefined for no-body methods)."
+        },
+        {
+          "name": "status",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "Response status code (e.g. 200, 404)."
+        },
+        {
+          "name": "statusText",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "Response status text (e.g. \"OK\", \"Not Found\")."
+        },
+        {
+          "name": "responseHeaders",
+          "type": "[string, string][]",
+          "optional": false,
+          "readonly": false,
+          "description": "Response headers as an ordered array of [name, value] pairs."
+        },
+        {
+          "name": "responseBody",
+          "type": "string | ArrayBuffer | BlobSnapshot",
+          "optional": true,
+          "readonly": false,
+          "description": "Response body, captured as an immutable snapshot."
+        },
+        {
+          "name": "timestamp",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "When the request was sent (epoch ms)."
+        },
+        {
+          "name": "duration",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "Duration of the request in milliseconds."
+        }
+      ]
+    },
+    "HTTPOutgoingMessage": {
+      "name": "HTTPOutgoingMessage",
+      "kind": "type",
+      "description": "A single observed outgoing HTTP request (before response is available). Used by the outgoing channel so that subscribers fire immediately when the request is sent, without waiting for the response.",
+      "declaration": "export type HTTPOutgoingMessage = { url: string; method: string; requestHeaders: [string, string][]; requestBody?: string | ArrayBuffer | BlobSnapshot; timestamp: number;\n};",
+      "members": [
+        {
+          "name": "url",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "The request URL."
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "HTTP method (GET, POST, etc.)."
+        },
+        {
+          "name": "requestHeaders",
+          "type": "[string, string][]",
+          "optional": false,
+          "readonly": false,
+          "description": "Request headers as an ordered array of [name, value] pairs."
+        },
+        {
+          "name": "requestBody",
+          "type": "string | ArrayBuffer | BlobSnapshot",
+          "optional": true,
+          "readonly": false,
+          "description": "Request body, captured as an immutable snapshot (undefined for no-body methods)."
+        },
+        {
+          "name": "timestamp",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "When the request was sent (epoch ms)."
+        }
+      ]
+    },
+    "HTTPOutgoingRequestPatch": {
+      "name": "HTTPOutgoingRequestPatch",
+      "kind": "type",
+      "description": "A set of overrides returned by an outgoing HTTP interceptor. Omitted fields keep the current request value. `headers` replaces the full header set; use the interceptor's `requestHeaders` to build a modified set. `body` replaces the request body; pass `null` to remove it.",
+      "declaration": "export type HTTPOutgoingRequestPatch = { url?: string | URL; method?: string; headers?: HeadersInit; body?: BodyInit | null;\n};",
+      "members": [
+        {
+          "name": "url",
+          "type": "string | URL",
+          "optional": true,
+          "readonly": false,
+          "description": "Replacement URL. A `URL` is converted to a string."
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Replacement HTTP method."
+        },
+        {
+          "name": "headers",
+          "type": "HeadersInit",
+          "optional": true,
+          "readonly": false,
+          "description": "Replacement headers."
+        },
+        {
+          "name": "body",
+          "type": "BodyInit | null",
+          "optional": true,
+          "readonly": false,
+          "description": "Replacement body. Pass `null` to send no body."
+        }
+      ]
+    },
+    "HTTPOutgoingInterceptor": {
+      "name": "HTTPOutgoingInterceptor",
+      "kind": "type",
+      "description": "Interceptor for outgoing HTTP requests. Receives the request metadata and may return overrides to change the URL, method, headers, or body before the request is transmitted. Interceptors run asynchronously in registration order. Each interceptor receives the request as modified by the previous one. - Returning `undefined` (void) means no change. - Returning a patch applies those fields to the current request. - If an interceptor throws or returns an invalid patch, every modification in the chain is discarded and the original request is sent unchanged. Request delivery is never suppressed by an interceptor.",
+      "declaration": "export type HTTPOutgoingInterceptor = (\n  request: HTTPOutgoingMessage,\n) => HTTPOutgoingRequestPatch | void | Promise<HTTPOutgoingRequestPatch | void>;",
+      "members": []
+    },
+    "HTTPResponseInterceptor": {
+      "name": "HTTPResponseInterceptor",
+      "kind": "type",
+      "description": "Interceptor for HTTP responses. Receives the complete exchange (request + response) and may return a modified `Response` object to replace the original response. Interceptors run asynchronously in registration order after the response is received but before it is delivered to the caller. - Returning `undefined` (void) means no change — the original response is kept. - Returning a `Response` object replaces the original response. - If an interceptor throws, the original response is delivered and the error is logged. Response delivery is never suppressed by an interceptor.",
+      "declaration": "export type HTTPResponseInterceptor = (\n  exchange: HTTPMessage,\n) => Response | void | Promise<Response | void>;",
+      "members": []
+    },
+    "HTTPMessageHandler": {
+      "name": "HTTPMessageHandler",
+      "kind": "type",
+      "description": "Callback invoked when a new HTTP exchange is observed.",
+      "declaration": "export type HTTPMessageHandler = (message: HTTPMessage) => void;",
+      "members": []
+    },
+    "HTTPOutgoingMessageHandler": {
+      "name": "HTTPOutgoingMessageHandler",
+      "kind": "type",
+      "description": "Callback invoked when a new outgoing HTTP request is observed.",
+      "declaration": "export type HTTPOutgoingMessageHandler = (message: HTTPOutgoingMessage) => void;",
+      "members": []
+    },
+    "WebSocketInspector": {
+      "name": "WebSocketInspector",
+      "kind": "type",
+      "description": "Inspects WebSocket messages flowing through the application. Provides access to observed incoming and outgoing messages. Messages can be modified before delivery or transmission using interceptors.",
+      "declaration": "export type WebSocketInspector = { incoming: { subscribe(handler: WebSocketMessageHandler): () => void; use(interceptor: WebSocketIncomingInterceptor): () => void;\n  }; outgoing: { subscribe(handler: WebSocketMessageHandler): () => void; use(interceptor: WebSocketOutgoingInterceptor): () => void;\n  };\n};",
+      "members": [
+        {
+          "name": "incoming",
+          "type": "{ subscribe(handler: WebSocketMessageHandler): () => void; use(interceptor: WebSocketIncomingInterceptor): () => void;\n  }",
+          "optional": false,
+          "readonly": false,
+          "description": "Messages received by the application from a WebSocket server."
+        },
+        {
+          "name": "outgoing",
+          "type": "{ subscribe(handler: WebSocketMessageHandler): () => void; use(interceptor: WebSocketOutgoingInterceptor): () => void;\n  }",
+          "optional": false,
+          "readonly": false,
+          "description": "Messages sent by the application through a WebSocket connection."
+        }
+      ]
+    },
+    "WebSocketMessage": {
+      "name": "WebSocketMessage",
+      "kind": "type",
+      "description": "A single observed WebSocket message with basic connection metadata. The `data` field is an immutable snapshot of the message payload at the time it was observed. For binary payloads (ArrayBuffer, ArrayBufferView), the data is copied so that mutating the original send argument does not corrupt the observed snapshot. For Blob payloads, the data is represented as a `BlobSnapshot` since Blobs cannot be read synchronously. Consumers should treat `data` as read-only.",
+      "declaration": "export type WebSocketMessage = { url: string; data: string | ArrayBuffer | BlobSnapshot; timestamp: number;\n};",
+      "members": [
+        {
+          "name": "url",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "The URL the WebSocket was created with."
+        },
+        {
+          "name": "data",
+          "type": "string | ArrayBuffer | BlobSnapshot",
+          "optional": false,
+          "readonly": false,
+          "description": "The message payload, captured as an immutable snapshot. - Strings remain strings. - ArrayBuffer and ArrayBufferView payloads are copied into a new ArrayBuffer. - Blob payloads are represented as a BlobSnapshot (cannot be read synchronously)."
+        },
+        {
+          "name": "timestamp",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "When the message was observed (epoch ms)."
+        }
+      ]
+    },
+    "WebSocketMessageHandler": {
+      "name": "WebSocketMessageHandler",
+      "kind": "type",
+      "description": "Callback invoked when a new WebSocket message is observed.",
+      "declaration": "export type WebSocketMessageHandler = (message: WebSocketMessage) => void;",
+      "members": []
+    },
+    "BlobSnapshot": {
+      "name": "BlobSnapshot",
+      "kind": "type",
+      "description": "Represents a Blob payload that could not be read synchronously. Since reading a Blob requires an asynchronous API, the inspector stores a snapshot describing the blob's metadata instead of its contents.",
+      "declaration": "export type BlobSnapshot = { __blob: true; type: string; size: number;\n};",
+      "members": [
+        {
+          "name": "__blob",
+          "type": "true",
+          "optional": false,
+          "readonly": false,
+          "description": "Identifies this as a Blob snapshot."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": "The Blob's reported type (MIME type), if available."
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "optional": false,
+          "readonly": false,
+          "description": "The Blob's reported size in bytes."
+        }
+      ]
+    },
+    "WebSocketOutgoingInterceptor": {
+      "name": "WebSocketOutgoingInterceptor",
+      "kind": "type",
+      "description": "Interceptor for outgoing WebSocket messages. Receives the message data and connection metadata, and may return a replacement payload to send instead. Interceptors run synchronously in registration order before the original `send()` call. Each interceptor receives the latest payload produced by the previous interceptor. - Returning `undefined` (void) means no change — the current payload is kept. - Returning a valid WebSocket payload (`string`, `ArrayBuffer`, `ArrayBufferView`, or `Blob`) replaces the current payload. - If an interceptor throws, all modifications from the entire interception chain are discarded and the original payload is sent unchanged. - If an interceptor returns an invalid type, it is treated as a failure: the entire chain is discarded and the original payload is sent. Message delivery is never suppressed by an interceptor.",
+      "declaration": "export type WebSocketOutgoingInterceptor = (\n  message: WebSocketMessage,\n) => string | ArrayBuffer | ArrayBufferView | Blob | void;",
+      "members": []
+    },
+    "WebSocketIncomingInterceptor": {
+      "name": "WebSocketIncomingInterceptor",
+      "kind": "type",
+      "description": "Interceptor for incoming WebSocket messages. Receives the message and may return replacement data to deliver to the application instead. Interceptors run synchronously in registration order as each message is received. Each interceptor receives the latest payload produced by the previous interceptor. - Returning `undefined` (void) means no change — the current payload is kept. - Returning a valid WebSocket payload (`string`, `ArrayBuffer`, `ArrayBufferView`, or `Blob`) replaces the delivered payload. - If an interceptor throws or returns an invalid type, all modifications from the chain are discarded and the original payload is delivered. Message delivery is never suppressed by an interceptor. Because message delivery is synchronous, returning a promise is not supported.",
+      "declaration": "export type WebSocketIncomingInterceptor = (\n  message: WebSocketMessage,\n) => string | ArrayBuffer | ArrayBufferView | Blob | void;",
+      "members": []
+    },
+    "YapmodModalApi": {
+      "name": "YapmodModalApi",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type YapmodModalApi = {\n  create(options?: ModalOptions): YapmodModal;\n  show(options?: ModalOptions): YapmodModal;\n  closeAll(reason?: ModalCloseReason): void;\n  readonly active: YapmodModal[];\n};",
+      "members": [
+        {
+          "name": "create",
+          "type": "(options?: ModalOptions) => YapmodModal",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "show",
+          "type": "(options?: ModalOptions) => YapmodModal",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "closeAll",
+          "type": "(reason?: ModalCloseReason) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "active",
+          "type": "YapmodModal[]",
+          "optional": false,
+          "readonly": true,
+          "description": null
+        }
+      ]
+    },
+    "YapmodModal": {
+      "name": "YapmodModal",
+      "kind": "interface",
+      "description": null,
+      "declaration": "export interface YapmodModal {\n  readonly id: string;\n  readonly element: HTMLElement;\n  readonly dialog: HTMLElement;\n  readonly head: HTMLElement | null;\n  readonly body: HTMLElement;\n  readonly footer: HTMLElement | null;\n  readonly isOpen: boolean;\n  readonly closed: Promise<ModalCloseReason>;\n  open(): this;\n  close(reason?: ModalCloseReason): void;\n  destroy(): void;\n  setTitle(title: string | null): void;\n  setDescription(description: string | null): void;\n  setContent(content?: ModalContent): void;\n  addButton(button: ModalButton): HTMLButtonElement;\n}",
+      "members": []
+    },
+    "ModalOptions": {
+      "name": "ModalOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type ModalOptions = {\n  id?: string;\n  title?: string | null;\n  description?: string | null;\n  content?: ModalContent;\n  html?: string;\n  buttons?: ModalButton[];\n  size?: ModalSize;\n  className?: string;\n  ariaLabel?: string;\n  dismissible?: boolean;\n  closeOnBackdrop?: boolean;\n  closeOnEscape?: boolean;\n  lockScroll?: boolean; autoFocus?: boolean;\n  onOpen?: (modal: YapmodModal) => void;\n  onClose?: (modal: YapmodModal, reason: ModalCloseReason) => void;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "title",
+          "type": "string | null",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string | null",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "content",
+          "type": "ModalContent",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "html",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "buttons",
+          "type": "ModalButton[]",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "size",
+          "type": "ModalSize",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "className",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "ariaLabel",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "dismissible",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "closeOnBackdrop",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "closeOnEscape",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "lockScroll",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "autoFocus",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": "Moves the keyboard focus into the dialog when it opens. Off by default, so a modal never steals the focus from the page. A button marked with `autofocus` still opts in to being focused."
+        },
+        {
+          "name": "onOpen",
+          "type": "(modal: YapmodModal) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onClose",
+          "type": "(modal: YapmodModal, reason: ModalCloseReason) => void",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "ModalButton": {
+      "name": "ModalButton",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type ModalButton = {\n  label: string; variant?: \"primary\" | \"secondary\" | \"danger\" | \"native\";\n  className?: string;\n  disabled?: boolean;\n  autofocus?: boolean;\n  onClick?: (\n    modal: YapmodModal,\n  ) => void | boolean | Promise<void | boolean>;\n  closeOnClick?: boolean;\n};",
+      "members": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "variant",
+          "type": "\"primary\" | \"secondary\" | \"danger\" | \"native\"",
+          "optional": true,
+          "readonly": false,
+          "description": "\"native\" keeps the button exactly as the host app styles it."
+        },
+        {
+          "name": "className",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "disabled",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "autofocus",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "onClick",
+          "type": "(\n    modal: YapmodModal,\n  ) => void | boolean | Promise<void | boolean>",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "closeOnClick",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "ModalContent": {
+      "name": "ModalContent",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type ModalContent =\n  | string\n  | Node\n  | null\n  | ((modal: YapmodModal) => string | Node | null);",
+      "members": []
+    },
+    "ModalCloseReason": {
+      "name": "ModalCloseReason",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type ModalCloseReason =\n  | \"api\"\n  | \"backdrop\"\n  | \"escape\"\n  | \"button\"\n  | \"dismiss\"\n  | \"destroy\";",
+      "members": []
+    },
+    "ModalSize": {
+      "name": "ModalSize",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type ModalSize = \"sm\" | \"md\" | \"lg\" | \"xl\";",
+      "members": []
+    },
+    "YapmodBannerApi": {
+      "name": "YapmodBannerApi",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type YapmodBannerApi = {\n  show(options: BannerOptions): YapmodBanner;\n  dismiss(id: string): void;\n};",
+      "members": [
+        {
+          "name": "show",
+          "type": "(options: BannerOptions) => YapmodBanner",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "dismiss",
+          "type": "(id: string) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "YapmodBanner": {
+      "name": "YapmodBanner",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type YapmodBanner = {\n  setMessage(message: string, tone?: BannerTone): void;\n  dismiss(): void;\n};",
+      "members": [
+        {
+          "name": "setMessage",
+          "type": "(message: string, tone?: BannerTone) => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "dismiss",
+          "type": "() => void",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "BannerOptions": {
+      "name": "BannerOptions",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type BannerOptions = {\n  id: string;\n  message: string;\n  tone?: BannerTone;\n  action?: {\n    label: string;\n    onClick: (banner: YapmodBanner) => void | Promise<void>;\n  };\n  dismissible?: boolean;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "tone",
+          "type": "BannerTone",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "action",
+          "type": "{\n    label: string;\n    onClick: (banner: YapmodBanner) => void | Promise<void>;\n  }",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "dismissible",
+          "type": "boolean",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "BannerTone": {
+      "name": "BannerTone",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type BannerTone = \"primary\" | \"warning\";",
+      "members": []
+    }
+  }
+}

@@ -1,0 +1,119 @@
+---
+title: Files
+group: API reference
+order: 6
+area: plugins
+eyebrow: API
+description: Work with files selected through a file setting.
+---
+
+import Callout from "../../../../components/docs/Callout.astro";
+
+The plugin API does not expose a general file-system reader. File access is deliberate and narrow: a **file** setting opens the native picker, reads the selected file immediately, and stores the contents as a base64 data URI.
+
+## The file setting
+
+```json
+{
+  "id": "background-image",
+  "label": "Background image",
+  "type": "file",
+  "default": null,
+  "accept": "image/*"
+}
+```
+
+On first run the value is usually `null`. After the user chooses a file it becomes a string like:
+
+```text
+data:image/png;base64,iVBORw0KGgo...
+```
+
+The `accept` value is only a picker hint. Read the value with `api.settings.get("background-image")`.
+
+## `api.file.createBlobUrl(dataUri)`
+
+Converts a base64 data URI into a temporary blob URL suitable for CSS `url()` or an `<img>` element.
+
+```js
+const dataUri = api.settings.get("background-image");
+
+if (typeof dataUri === "string" && dataUri.startsWith("data:")) {
+  const url = await api.file.createBlobUrl(dataUri);
+  element.style.backgroundImage = `url("${url}")`;
+}
+```
+
+**Parameters**
+
+- `dataUri`: a string beginning with `data:`. A legacy file path or another value throws.
+
+**Returns:** `Promise<string>` resolving to a `blob:` URL.
+
+The URL is automatically revoked when the plugin is disabled if it was created through `createBlobUrl()`.
+
+## `api.file.revokeObjectURL(url)`
+
+Revokes a blob URL explicitly.
+
+```js
+api.file.revokeObjectURL(url);
+```
+
+**Parameters**
+
+- `url`: a `blob:` URL. Another scheme throws.
+
+The browser treats a second revoke as a no-op, so calling this after the automatic cleanup is safe. Use it when a plugin replaces an image and wants to release the previous blob immediately instead of waiting for deactivation.
+
+## Size limits
+
+| Value | Limit |
+| --- | --- |
+| Normal setting value | 64 KiB |
+| String beginning with `data:` | 8 MiB |
+
+The data URI is stored in the plugin's settings, so a large image increases the saved config and the startup payload. The 8 MiB budget is intentionally generous for an image, not for arbitrary files.
+
+<Callout type="warning" title="Do not build a file manager on top of this">
+The picker exists for a single user-selected asset. There is no runtime file-reading command, directory access or write API. If a plugin needs many files, ship them inside the package or fetch them from a service the user trusts.
+</Callout>
+
+## Complete flow
+
+```js
+export default {
+  async activate(api) {
+    let url = null;
+
+    async function applyBackground() {
+      if (url) {
+        api.file.revokeObjectURL(url);
+        url = null;
+      }
+
+      const dataUri = api.settings.get("background-image");
+      if (typeof dataUri !== "string" || !dataUri.startsWith("data:")) {
+        document.body.style.backgroundImage = "";
+        return;
+      }
+
+      try {
+        url = await api.file.createBlobUrl(dataUri);
+        document.body.style.backgroundImage = `url("${url}")`;
+      } catch (error) {
+        api.log.error("could not load the selected image", error);
+      }
+    }
+
+    await applyBackground();
+
+    api.onCleanup(api.settings.onChange("background-image", applyBackground));
+    api.onCleanup(() => {
+      if (url) api.file.revokeObjectURL(url);
+    });
+  },
+};
+```
+
+This example handles the two failure modes that matter: a legacy path that is no longer a data URI, and a malformed value that cannot be decoded.

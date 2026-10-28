@@ -1,0 +1,58 @@
+---
+title: Types and data
+group: API reference
+order: 7
+area: plugins
+eyebrow: API
+description: Generated definitions for the data a plugin sends and receives.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+
+The blocks on this page are generated from the exported TypeScript types in `client/shared/types.ts` and `client/features/banners/api.tsx`. They are the shapes the client implements; the prose pages explain when each one appears.
+
+## Plugin metadata
+
+<ApiType name="PluginDiagnostic" signature={false} />
+
+<ApiType name="YapmodPluginInfo" signature={false} />
+
+## HTTP data
+
+<ApiType name="HTTPMessage" signature={false} />
+
+<ApiType name="HTTPOutgoingMessage" signature={false} />
+
+<ApiType name="HTTPOutgoingRequestPatch" signature={false} />
+
+## WebSocket data
+
+<ApiType name="WebSocketMessage" signature={false} />
+
+<ApiType name="BlobSnapshot" signature={false} />
+
+## Modal data
+
+<ApiType name="ModalContent" />
+
+<ApiType name="ModalButton" signature={false} />
+
+<ApiType name="ModalOptions" signature={false} />
+
+<ApiType name="ModalCloseReason" />
+
+## Function shapes
+
+<ApiType name="HTTPOutgoingInterceptor" />
+
+<ApiType name="HTTPResponseInterceptor" />
+
+<ApiType name="WebSocketIncomingInterceptor" />
+
+<ApiType name="WebSocketOutgoingInterceptor" />
+
+<ApiType name="HTTPMessageHandler" />
+
+<ApiType name="HTTPOutgoingMessageHandler" />
+
+<ApiType name="WebSocketMessageHandler" />

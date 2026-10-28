@@ -1,0 +1,125 @@
+---
+title: Debugging plugins
+group: Guides
+order: 5
+area: plugins
+eyebrow: Guide
+description: Diagnose import, activation, CSS, settings and cleanup failures.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+Most plugin problems fall into five groups: the package was not valid, the module shape was wrong, activation threw, a setting was undeclared, or cleanup did not run.
+
+## Start with the card
+
+An installed plugin card shows:
+
+- **Enabled** or **Disabled**;
+- the last error string, when there is one;
+- a diagnostic with the operation (`load`, `activate`, `deactivate` or `cleanup`) and the error message.
+
+Open the page console and filter for `[plugin:<id>]` or `[yapmod plugin:<id>]`. yapmod logs activation and cleanup failures there as well.
+
+## The package is rejected at import
+
+| Message | Check |
+| --- | --- |
+| `manifest is invalid` / unknown field | Compare every key with the [manifest reference](/yapmod/docs/plugins/manifest). Unknown fields are rejected. |
+| `plugin id must contain...` | Use 1–24 letters, digits, `_` or `-`, starting with a letter or digit. |
+| `plugin requires API...` | Set `"api": 1`. |
+| `stylesheet must be named plugin.css` | The `stylesheet` field may be omitted, but when present it must be exactly `plugin.css`. |
+| `script must be named plugin.js` | The optional `script` field must be exactly `plugin.js`. |
+| `stylesheet is missing or larger than 512 KB` | Include `plugin.css` and keep it under the limit. |
+| `cannot import or load external resources` | Remove `url()`, `@import`, `image-set()`, `expression()` and backslash escapes from the plugin CSS. |
+| `setting is invalid or duplicated` | Check the setting id, label, type, default and uniqueness. |
+
+## The package imports but will not enable
+
+The consent dialog may have been cancelled, or the package may have failed validation again. Re-open the card and read the error. If the package changed after review, yapmod refuses to install the changed version; remove it and import the reviewed folder again.
+
+## Activation fails
+
+The most common causes are:
+
+**Wrong module shape**
+
+```js
+// Wrong: named export only.
+export function activate(api) {}
+
+// Right: default object with activate.
+export default {
+  activate(api) {},
+};
+```
+
+**A relative import**
+
+```js
+import { helper } from "./helper.js"; // cannot resolve from the blob module URL
+```
+
+Bundle the helper into `plugin.js`, or keep the plugin in one file.
+
+**Reading the page too early**
+
+Restored plugins run after the document body exists, but a specific element may still be created later by the app. Use a `MutationObserver` or a retry, and disconnect the observer during cleanup.
+
+**An undeclared setting**
+
+```js
+api.settings.get("show-badges"); // throws if the manifest declares "show-badge"
+```
+
+**A permission or browser feature that is unavailable**
+
+Notifications, clipboard and some storage APIs can be denied. Guard the call and log a warning instead of failing the whole plugin.
+
+## Styles do not apply
+
+1. Confirm `plugin.css` is in the folder and under 512 KiB.
+2. Check the console for a CSS validation error.
+3. Use **View files** to confirm the installed CSS is the version you edited.
+4. Remember that host styles may have higher specificity. Use a scoped selector rather than an unscoped `!important` reset.
+5. For runtime CSS, remember that `api.styles.add()` returns a remover; register it with `api.onCleanup()`.
+
+A theme may also be overriding your plugin. Test with **Yapper's theme** selected, then reintroduce the theme.
+
+## Settings do not update the plugin
+
+- Confirm the setting id in the manifest and in `api.settings.get()` are identical.
+- Register `api.settings.onChange()` for each value that needs a live update.
+- Check that the settings dialog was saved; closing it with Cancel does not persist drafts.
+- For file settings, confirm the stored value starts with `data:`. A legacy file path needs the user to pick the file again.
+
+## Cleanup does not clean up
+
+If the plugin card reports a cleanup error, one callback threw. yapmod continues running the rest, but the throwing callback's resource may remain. Wrap risky cleanup in its own `try/catch` while debugging:
+
+```js
+api.onCleanup(() => {
+  try {
+    observer.disconnect();
+  } catch (error) {
+    api.log.error("observer cleanup failed", error);
+  }
+});
+```
+
+Also check for resources created outside the activation path, such as a timer started inside an event handler after activation.
+
+<Callout type="tip" title="Reproduce from a clean install">
+Remove the plugin, re-import it, enable it, then disable it. This catches stale settings, stale installed files and cleanup paths that only work on the first session.
+</Callout>
+
+## Inspecting network behavior
+
+The inspectors keep no history. To debug, add a temporary subscription that logs, then remove it. Do not ship a plugin that logs message bodies, headers or tokens.
+
+If an interceptor seems to do nothing, check that:
+
+- the request uses `fetch()`;
+- the URL filter actually matches;
+- you return `undefined` for traffic you do not want to change;
+- another interceptor earlier in the chain did not fail, which discards the whole chain.

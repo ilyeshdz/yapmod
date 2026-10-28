@@ -1,0 +1,98 @@
+---
+title: Best practices
+group: Guides
+order: 6
+area: plugins
+eyebrow: Guide
+description: Patterns for plugins that are predictable, inspectable and safe to remove.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+## Keep the package small
+
+Only `manifest.json`, `plugin.css` and `plugin.js` are installed. A plugin that needs a helper must bundle it into `plugin.js`; relative imports cannot resolve. Keep the script self-contained and the CSS focused.
+
+## Register cleanup as you build
+
+Do not collect every teardown in one large closure. Register each resource when you create it:
+
+```js
+api.onCleanup(api.http.exchanges.subscribe(onHttp));
+api.onCleanup(() => document.getElementById(id)?.remove());
+api.onCleanup(() => clearInterval(timer));
+```
+
+Callbacks run in reverse order, and they survive an activation that throws after registration.
+
+## Namespace everything you create
+
+Use `api.id` in element ids, classes and custom data attributes. Namespacing avoids collisions with the host and with other plugins:
+
+```js
+const panelId = `plugin-${api.id}-panel`;
+```
+
+## Prefer observation to interception
+
+`api.http.exchanges.subscribe()` and the WebSocket subscriptions are safer than changing traffic. Add an interceptor only when the plugin's purpose requires it, match the narrowest URL or payload you can, and return `undefined` for everything else.
+
+## Do not retain user data
+
+The inspectors have no history by design. A plugin should follow the same principle:
+
+- Count, summarise or transform in memory.
+- Do not persist message bodies, headers, tokens or URLs unless the user explicitly asked for that feature.
+- Clear temporary buffers during cleanup.
+- Do not use plugin storage as a log.
+
+## Treat settings as a contract
+
+- Declare only settings the plugin actually uses.
+- Give every setting a useful label and description.
+- Use `toggle` for binary choices, `color` for colours, `text` for short strings, and `file` only for a genuine user-picked asset.
+- Read from `api.settings`, not from `api.manifest`.
+- Decide what happens when a value is `null` or an old file path.
+
+## Make failure visible, not fatal
+
+A notification or a single UI element failing should not take down the whole plugin. Guard optional platform features and log the issue:
+
+```js
+try {
+  api.notify.show({ title: "Activity", body: "New request" });
+} catch (error) {
+  api.log.warn("notifications unavailable", error);
+}
+```
+
+Reserve throwing for invalid configuration during development, such as an unknown setting id.
+
+## Test the lifecycle
+
+Always test:
+
+- a fresh import;
+- enable and disable;
+- re-enable;
+- restart with the plugin enabled;
+- a changed package that requires new consent;
+- removal;
+- a plugin with the same page elements as another plugin;
+- a theme active alongside the plugin.
+
+## Style defensively
+
+Scope CSS to your own nodes or to the tokens the app exposes. Avoid global resets on `*`, `body` or broad element selectors. Use `!important` only when you have verified it is necessary and documented why.
+
+## Document the plugin in the package
+
+The manifest description is the only package metadata users see. Explain what the plugin changes, what it reads, and what settings do. If the plugin is published in the Community catalog, the repository README and review notes are the right place for longer caveats.
+
+## Version intentionally
+
+Consent includes the manifest `version` and a hash of the CSS and script. Bump the version for meaningful changes, and expect users to approve a changed package again. Do not rely on a version bump to make a package "safe"; the content hash is what catches executable changes.
+
+<Callout type="warning" title="Never ship a plugin you would not install">
+A plugin has the same page access as the user. Test it with real data, then remove any temporary logging or debugging code before publishing.
+</Callout>

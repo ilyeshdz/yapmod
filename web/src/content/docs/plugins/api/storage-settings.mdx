@@ -1,0 +1,138 @@
+---
+title: Storage and settings
+group: API reference
+order: 3
+area: plugins
+eyebrow: API
+description: Namespaced key/value storage and manifest-declared user settings.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+## `api.storage`
+
+A small key/value store scoped to the plugin id. Keys are namespaced internally as `plugin:<id>:data_<key>`.
+
+<ApiType name="YapmodPluginStorageApi" signature={false} />
+
+### `storage.get(key, fallback?)`
+
+Reads a JSON value. Returns `fallback` when the key has no value. The fallback is not persisted.
+
+```js
+const launches = api.storage.get("launches", 0);
+const lastView = api.storage.get("last-view", null);
+```
+
+### `storage.set(key, value)`
+
+Stores a JSON-serializable value. Writes are debounced to the config store and persisted in the background.
+
+```js
+api.storage.set("launches", launches + 1);
+```
+
+Keys must be 1–24 characters, start with a letter or digit, and use only letters, digits, `-` and `_`. An invalid key throws.
+
+### `storage.keys()`
+
+Returns the keys with a value in this plugin's namespace, without the storage prefix.
+
+```js
+const keys = api.storage.keys();
+```
+
+### `storage.onChange(key, listener)`
+
+Subscribes to changes for one key. The listener receives the new value, or `undefined` when the key is removed. Returns an unsubscribe function.
+
+```js
+const stop = api.storage.onChange("launches", (value) => {
+  api.log.debug("launches changed", value);
+});
+
+api.onCleanup(stop);
+```
+
+### Storage limits
+
+Values are JSON, not a message store. Normal values are limited to 64 KiB; a string beginning with `data:` may use up to 8 MiB. Do not use storage as an unbounded request log or a copy of messages, headers or bodies.
+
+## `api.settings`
+
+Reads the settings declared in the manifest. Reading an undeclared setting throws.
+
+<ApiType name="YapmodPluginSettingsApi" signature={false} />
+
+### `settings.get(id)`
+
+Returns the current value: `boolean` for a toggle, or `string | null` for text, file and color settings.
+
+```js
+const showBadge = api.settings.get("show-badge");
+const greeting = api.settings.get("custom-greeting");
+```
+
+### `settings.all()`
+
+Returns a frozen snapshot object containing every declared setting. Useful for applying several values at once.
+
+```js
+const values = api.settings.all();
+```
+
+### `settings.onChange(id, listener)`
+
+Subscribes to a declared setting. Returns an unsubscribe function. An unknown id throws at subscription time.
+
+```js
+const stop = api.settings.onChange("show-badge", (value) => {
+  badge.hidden = !value;
+});
+
+api.onCleanup(stop);
+```
+
+The settings dialog saves values to the store. The listener fires when the stored value changes, so a plugin does not need to poll.
+
+## Root attributes
+
+yapmod mirrors declared settings onto `<html>`:
+
+```text
+data-yapmod-plugin-<plugin-id>-<setting-id>
+```
+
+| Setting type | Attribute behaviour |
+| --- | --- |
+| `toggle` | `"true"` when enabled, removed when disabled. |
+| `text`, `color`, `file` | The string value, removed when the value is `null`. |
+
+Attributes are applied when the plugin is enabled and updated after the settings dialog is saved. They are removed on disable.
+
+```css
+html[data-yapmod-plugin-activity-badge-show-badge="true"] .activity-badge {
+  display: inline-flex;
+}
+```
+
+Use JavaScript rather than CSS `attr()` when the value needs parsing or when you need to react in more than a simple selector.
+
+## Settings versus storage
+
+| Need | Use |
+| --- | --- |
+| A user-facing choice declared in the manifest | `api.settings` |
+| State the plugin updates on its own | `api.storage` |
+| A value that should survive a restart | Either, depending on whether the user configures it |
+| Request history or message bodies | Neither; keep only what you need, in memory, and release it on cleanup |
+
+<Callout type="note" title="Settings are declared, not created at runtime">
+A plugin cannot add a setting dynamically. Declare it in `manifest.json`; yapmod renders the form and validates the value. If you need a different kind of input, build it as plugin UI and store the result yourself.
+</Callout>
+
+## Related types
+
+<ApiType name="PluginSettingValue" />
+<ApiType name="PluginSetting" />

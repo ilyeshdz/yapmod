@@ -1,0 +1,86 @@
+---
+title: Themes
+group: Overview
+order: 1
+area: themes
+eyebrow: Developer documentation
+description: Create, test and share CSS themes for yapmod.
+---
+
+import Callout from "../../components/docs/Callout.astro";
+import ThemeTokens from "../../components/docs/ThemeTokens.astro";
+
+A yapmod theme is a folder with a `manifest.json` and a stylesheet. yapmod applies the stylesheet after the app's own styles and sets two attributes on the root element so the theme can react to its own mode.
+
+Themes are deliberately simple: **they are CSS, not JavaScript**. There is no theme runtime, no theme module and no script entry point. That makes a theme easy to audit, but it also means a theme cannot add behavior. If you need behavior, build a [plugin](/yapmod/docs/plugins).
+
+<Callout type="note" title="Arbitrary CSS is supported">
+The stylesheet is ordinary CSS. yapmod does not restrict a local theme to a fixed list of properties or selectors. The generated [token reference](/yapmod/docs/themes/styling) lists the stable colour and shape tokens you should prefer, but plain component CSS is valid too.
+</Callout>
+
+## What a theme can change
+
+- Colours, borders, radii, shadows and spacing through **tokens** such as `--ym-bg-main` and `--ym-accent`.
+- Component styling with ordinary selectors from the Yapper page.
+- Light and dark variants, with a mode that can follow the app setting or the system.
+- Fonts, backgrounds and other CSS features, including remote assets. See the [styling reference](/yapmod/docs/themes/styling) for the practical boundaries.
+
+System notifications keep the operating system's look. A theme is applied to the Yapper page and the yapmod interface inside it.
+
+## How a theme is applied
+
+The desktop shell reads the selected theme before the page paints and sends it with the client payload. The client then:
+
+1. Adds `data-yapmod-theme="<id>"` and `data-yapmod-mode="dark|light"` to the root element.
+2. Builds a token layer that maps your `--ym-*` tokens onto the app's own variables.
+3. Inserts the token layer and your stylesheet as the last stylesheet in the document, so your rules can override the app.
+4. Mirrors the resolved mode into the host's own `data-theme` and `yapper-theme` state.
+5. Keeps the theme applied when the system or app mode changes.
+
+The details, including what happens with `mode: "both"` and how the host theme is restored, are in [Loading and modes](/yapmod/docs/themes/loading).
+
+## The token preview
+
+These are the current defaults. A theme only needs to override the ones it cares about.
+
+<ThemeTokens filter="app" />
+
+The full list, including the yapmod-owned brand tokens, is on [Styling and tokens](/yapmod/docs/themes/styling).
+
+## Before you start
+
+You need:
+
+- A current build of yapmod, or a local build if you want to test unreleased changes.
+- A text editor. No compiler, package manager or build step is needed.
+- A basic understanding of CSS custom properties and selectors.
+
+A minimal theme is two files: `manifest.json` and `theme.css`. A preview image is optional locally and recommended for the Community gallery.
+
+## Start here
+
+<div class="doc-grid">
+  <a class="doc-tile" href="/yapmod/docs/themes/getting-started">
+    <b>Create your first theme</b>
+    <span>Two files, a manifest, a stylesheet and a local install in a few minutes.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/themes/manifest">
+    <b>Manifest reference</b>
+    <span>Every field, required values, file rules and validation behaviour.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/themes/styling">
+    <b>Styling and tokens</b>
+    <span>The generated token table, plain CSS rules and customization boundaries.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/themes/recipes">
+    <b>Recipes</b>
+    <span>Before-and-after examples for common theme changes.</span>
+  </a>
+</div>
+
+## Choose your path
+
+- **New to themes?** Follow [Create your first theme](/yapmod/docs/themes/getting-started), then read [Structure and manifest](/yapmod/docs/themes/manifest).
+- **Want to change a specific part of the UI?** See [Recipes](/yapmod/docs/themes/recipes) and [Debugging themes](/yapmod/docs/themes/debugging).
+- **Ready to share it?** Follow [Submit a theme](/yapmod/docs/submit-a-theme).
+- **Looking for the user guide?** See [Using themes](/yapmod/docs/using-themes).

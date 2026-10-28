@@ -1,0 +1,143 @@
+---
+title: Interface helpers
+group: API reference
+order: 4
+area: plugins
+eyebrow: API
+description: Banners, modals, system notifications and runtime styles.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+## `api.banner(message)`
+
+Shows a dismissible banner below the Yapper topbar. The banner is keyed by the plugin id, so calling it again updates the same banner instead of stacking a second one.
+
+```js
+api.banner("Network activity is being watched");
+```
+
+The helper accepts only a message. The banner is always dismissible. If you need a tone, action button or a permanent handle, use `api.modal` or the host's banner API. yapmod does not expose the richer banner options on the plugin API.
+
+## `api.modal`
+
+The host modal API. A modal is a real dialog in the Yapper window with a title, optional description, content, buttons and focus handling.
+
+<ApiType name="YapmodModalApi" signature={false} />
+
+```js
+const modal = api.modal.show({
+  title: "Activity badge",
+  description: "Live HTTP and WebSocket counters.",
+  content: "Open the console for the event log.",
+  buttons: [{ label: "Close", variant: "secondary" }],
+});
+```
+
+`show()` opens the modal immediately and returns a handle. `create()` builds one without opening it. The handle exposes `close()`, `destroy()`, `setTitle()`, `setDescription()`, `setContent()`, `addButton()` and the `closed` promise.
+
+```js
+const modal = api.modal.create({
+  title: "Choose a range",
+  buttons: [
+    { label: "Cancel", variant: "secondary" },
+    {
+      label: "Apply",
+      variant: "primary",
+      onClick: () => {
+        applyRange();
+      },
+    },
+  ],
+});
+
+modal.open();
+```
+
+### Content
+
+`content` can be a string, a DOM `Node`, `null`, or a function that receives the modal handle and returns a string or node. Use DOM nodes when you need a form; yapmod does not ship a component framework for plugins.
+
+```js
+const input = document.createElement("input");
+input.type = "text";
+input.placeholder = "Filter text";
+
+api.modal.show({
+  title: "Filter messages",
+  content: input,
+  buttons: [
+    { label: "Cancel", variant: "secondary" },
+    {
+      label: "Apply",
+      variant: "primary",
+      onClick: () => {
+        filter = input.value;
+      },
+    },
+  ],
+});
+```
+
+### Buttons
+
+<ApiType name="ModalButton" signature={false} />
+
+A click handler can be async. Returning `false` prevents the default close; returning `false` or a promise that resolves to `false` keeps the modal open. The modal's own close reasons are `api`, `backdrop`, `escape`, `button`, `dismiss` and `destroy`.
+
+### Options
+
+<ApiType name="ModalOptions" signature={false} />
+
+`autoFocus` is off by default. A button with `autofocus: true` still opts into being focused. If the modal API is unavailable, calling `show()` or `create()` throws; guard the call when the plugin can run in a restricted webview.
+
+## `api.notify`
+
+Shows a system notification through the browser Notification API. This is the operating system notification center, not the in-page banner.
+
+<ApiType name="YapmodPluginNotifyApi" signature={false} />
+
+```js
+const notification = api.notify.show({
+  title: "Activity badge",
+  body: "A new request was observed.",
+  tag: "activity",
+  onClick: () => api.banner("Notification clicked"),
+});
+
+// Close it early if the event is no longer relevant.
+notification.close();
+```
+
+If the webview has no Notification constructor, yapmod logs a warning and returns a close handle that does nothing. The notification may still require operating-system permission, which the plugin cannot grant.
+
+The tag defaults to `plugin-<id>-<tag>`, or the title when no tag is supplied. Reusing a tag lets the operating system replace an earlier notification.
+
+## `api.styles`
+
+The package stylesheet is applied automatically. `api.styles.add(css)` lets a plugin add CSS at runtime, for example after a setting changes without a page reload.
+
+```js
+const remove = api.styles.add(`
+  .activity-badge {
+    outline: 2px solid var(--ym-accent);
+  }
+`);
+
+remove();
+```
+
+The CSS goes through the same validation as `plugin.css`: 512 KiB maximum, no `@import`, `url()`, `image-set()`, `expression()`, `behavior:` or backslash escapes. Invalid CSS throws. The returned function removes the style element. Runtime styles are also removed automatically when the plugin is disabled.
+
+<Callout type="tip" title="Prefer the package stylesheet">
+Put permanent rules in `plugin.css` and use `api.styles.add()` only for genuinely dynamic CSS. Creating a new style element on every settings change without removing the old one leaks rules for the rest of the session.
+</Callout>
+
+## Related types
+
+<ApiType name="YapmodModal" signature={false} />
+<ApiType name="ModalContent" />
+<ApiType name="ModalCloseReason" />
+<ApiType name="ModalSize" />
+<ApiType name="PluginNotifyOptions" signature={false} />

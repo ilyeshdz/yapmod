@@ -1,0 +1,86 @@
+---
+title: Security and limitations
+group: Overview
+order: 5
+area: plugins
+eyebrow: Plugins
+description: What the plugin runtime does and does not protect against.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+<Callout type="warning" title="There is no security sandbox">
+JavaScript plugins are trusted page code. yapmod does not run them in an iframe, worker, isolated realm or permission-restricted environment. A plugin runs with the same JavaScript and DOM access as code in the Yapper page.
+</Callout>
+
+## What yapmod enforces
+
+yapmod contributes predictability and reviewability, not isolation:
+
+- The package format is fixed: `manifest.json`, `plugin.css`, optional `plugin.js`.
+- The manifest is validated, unknown fields are rejected, and the API version must match.
+- Package files have size limits.
+- Plugin CSS cannot load external resources with `url()`, `@import`, `image-set()` or CSS escapes.
+- A consent dialog explains whether the package contains JavaScript.
+- Consent is tied to the package version and a hash of the executable CSS and script.
+- Installed files are copied locally and can be inspected with **View files**.
+- A Community **Verified** badge means the Yapmod owners reviewed the catalog entry. It is not a runtime guarantee.
+
+None of these controls restrict what JavaScript does after activation.
+
+## What a JavaScript plugin can do
+
+A plugin can:
+
+- read and modify the entire page DOM, including visible messages and user-provided content;
+- read page globals and application state that the page exposes;
+- add, remove or replace event listeners and UI;
+- intercept and modify `fetch()` requests, responses and WebSocket messages;
+- make network requests with the page's normal network access;
+- store data in the plugin's namespaced storage and read its declared settings;
+- keep running until the user disables it or the app closes.
+
+It cannot escape the normal web platform through the plugin API alone, but the page itself already has broad access. Treat a plugin like a userscript, not like an operating-system extension with a security boundary.
+
+## CSS is not harmless
+
+A stylesheet can hide warnings, make one control look like another, cover the interface, or load remote assets if the theme or app stylesheet permits it. In plugins, external resource constructs are blocked, but CSS can still change or imitate the interface. Plugin CSS is also allowed to use `!important` and broad selectors.
+
+## Consent, verification and trust
+
+| Signal | What it means |
+| --- | --- |
+| Consent dialog | yapmod explained the package type and asked you to approve this version and content hash. |
+| Local install | The package files were copied into the plugins folder. |
+| Verified badge | The Yapmod owners reviewed the Community entry. It does not sandbox the code. |
+| Community catalog | The package came from the project's published catalog and was copied locally. |
+
+Reinstalling from a different source can change the trust signal. A local import of the same files does not gain the **Verified** badge.
+
+## Limitations of the inspector APIs
+
+The network surface is deliberately narrow:
+
+- Only `fetch()` is inspected. XMLHttpRequest and other transports are not.
+- The inspectors keep no history, replay buffer or active-request list.
+- WebSocket open and close lifecycle events are not exposed.
+- Incoming WebSocket interceptors are synchronous; returning a promise is not supported.
+- Some response bodies are not readable. Binary bodies become `ArrayBuffer`, Blob bodies become a metadata snapshot, and streaming responses such as `text/event-stream` are delivered immediately with `responseBody: undefined`.
+- Interceptors are global while registered and can affect unrelated app traffic.
+- A failed interceptor chain is discarded and the original request, response or payload is used.
+
+## Responsibilities for authors
+
+If you publish a plugin:
+
+- Explain what data it reads, stores or sends.
+- Request the smallest set of settings you need.
+- Do not collect message content, tokens or headers unless the plugin's purpose requires it and the user understands that.
+- Clean up aggressively; a disabled plugin should not keep observing traffic.
+- Do not use a plugin to bypass a user's expectations about privacy or moderation.
+- Test updates. Consent is recalculated, but users may not read a changelog before approving an update.
+- Keep the source inspectable and the package small.
+
+## Responsibilities for users
+
+Install plugins you trust. A **Verified** badge and a successful import are not a code audit of every line. Remove plugins you no longer use, and review the installed files when a package asks for new access.

@@ -1,0 +1,163 @@
+---
+title: Getting started
+group: Overview
+order: 2
+area: plugins
+eyebrow: Plugins
+description: Build and import a working plugin package from an empty folder.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+This guide creates a complete plugin with two files, imports it into yapmod, and then adds an optional script. The API in this guide is the current `api: 1` surface.
+
+## 1. Create the package folder
+
+Pick a name for the plugin id. It must be 1–24 characters, start with a letter or digit, and use only letters, digits, `-` and `_`. Lowercase is the convention.
+
+```text
+quiet-scrollbars/
+├── manifest.json
+└── plugin.css
+```
+
+The folder name does not have to match the id for a local import, but keeping them the same avoids confusion and is required for the Community catalog.
+
+## 2. Write the manifest
+
+Create `manifest.json`:
+
+```json
+{
+  "id": "quiet-scrollbars",
+  "name": "Quiet Scrollbars",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Thin, low-contrast scrollbars.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["interface", "scrollbars"],
+  "stylesheet": "plugin.css"
+}
+```
+
+`id`, `name` and `api` are the fields every package needs. `api` must be exactly `1`; a package that asks for another version is refused rather than applied partly. The full field list and limits are in the [manifest reference](/yapmod/docs/plugins/manifest).
+
+## 3. Write the stylesheet
+
+Create `plugin.css`:
+
+```css
+/* plugin.css */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ym-text) 22%, transparent);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+```
+
+Plugin stylesheets are regular CSS, but yapmod rejects CSS that tries to load external resources. That means `@import`, `url()`, `image-set()`, `expression()`, `behavior:`, and backslash escapes are not allowed. Keep the package self-contained, or use a script and a data URI if you need an image.
+
+A package with no script is valid. Stop here, import it, and you have a working CSS plugin.
+
+## 4. Import and test it
+
+1. Open **Settings → Yapmod → Plugins**.
+2. Choose **Import plugin** and select the folder containing `manifest.json`.
+3. Read the consent dialog. For a CSS-only package it explains that the plugin can change or imitate the interface.
+4. Confirm the import and enable the plugin.
+5. Check the effect in the Yapper page.
+
+If the plugin is imported but not enabled, use **Enable** on its card. Use **View files** to confirm yapmod copied the manifest and stylesheet you expect. Use **Disable** to check that the effect disappears.
+
+<Callout type="tip" title="Fast iteration">
+After changing the package, remove the installed plugin, import the folder again, and enable it. Import is always a copy, not a live link to your working folder. Editing the installed copy directly is possible but makes the source of truth ambiguous.
+</Callout>
+
+## 5. Add behavior
+
+Add `"script": "plugin.js"` to the manifest and create `plugin.js`:
+
+```json
+{
+  "id": "quiet-scrollbars",
+  "name": "Quiet Scrollbars",
+  "version": "1.0.1",
+  "api": 1,
+  "stylesheet": "plugin.css",
+  "script": "plugin.js"
+}
+```
+
+```js
+export default {
+  activate(api) {
+    document.documentElement.dataset.quietScrollbars = "on";
+    api.log.info("activated");
+
+    return () => {
+      delete document.documentElement.dataset.quietScrollbars;
+    };
+  },
+};
+```
+
+yapmod imports `plugin.js` as an ES module and uses its **default export**. The export must be an object with a callable `activate(api)` method. `activate` may be `async`, and it may either return a cleanup function or register cleanup callbacks with `api.onCleanup()`.
+
+Relative imports do not work. The module is loaded from a temporary blob URL, so `import "./helper.js"` cannot resolve. Keep the package in one file, or bundle it before importing.
+
+## 6. Verify the lifecycle
+
+A correct plugin cleans up after itself. Test this before shipping:
+
+1. Enable the plugin and confirm its UI or behavior appears.
+2. Disable it and confirm the effect is gone.
+3. Re-enable it and confirm it still works.
+4. Restart yapmod and confirm an enabled, consented plugin is restored automatically.
+5. Change the CSS or script, re-import it, and confirm yapmod asks for consent again.
+
+Use `api.onCleanup()` for each resource as you create it:
+
+```js
+export default {
+  activate(api) {
+    const timer = setInterval(refresh, 5000);
+    api.onCleanup(() => clearInterval(timer));
+
+    const stop = api.settings.onChange("show-badge", refresh);
+    api.onCleanup(stop);
+
+    function refresh() {
+      // ...
+    }
+  },
+};
+```
+
+Callbacks registered with `api.onCleanup()` run in reverse order when the plugin is disabled. They also run if `activate` throws after registering them, so a failed activation does not leave listeners behind. Returning a cleanup function from `activate` is supported too, but `api.onCleanup()` is easier for plugins with several resources.
+
+## Common setup mistakes
+
+| Symptom | Likely cause |
+| --- | --- |
+| The package cannot be imported | The folder has no `manifest.json`, or the manifest is not valid JSON. |
+| `api` is rejected | The manifest uses a value other than `1`. |
+| The stylesheet is rejected | The CSS loads a `url()`, uses `@import`, contains a backslash escape, or is over 512 KiB. |
+| The script is not running | The manifest has no `"script": "plugin.js"`, or the default export has no `activate` function. |
+| Settings do nothing | The setting id is missing from the manifest, or the plugin reads it before checking `api.settings.all()`. |
+| The plugin works until restart | Activation was never consented, or the cleanup from an earlier failed activation stopped it. Check the card error and the console. |
+
+## Next steps
+
+- Read [Architecture and lifecycle](/yapmod/docs/plugins/architecture) to understand activation and failure handling.
+- Read the [manifest reference](/yapmod/docs/plugins/manifest) before adding settings.
+- Open the [API reference](/yapmod/docs/plugins/api) for every method, event and type.
+- Follow a focused guide for [settings](/yapmod/docs/plugins/guides/settings), [interface helpers](/yapmod/docs/plugins/guides/ui) or [network traffic](/yapmod/docs/plugins/guides/network).

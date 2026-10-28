@@ -1,0 +1,66 @@
+---
+title: Submit a plugin
+group: Publish
+order: 1
+area: plugins
+eyebrow: Publish
+description: Publish a plugin in the yapmod Community catalog.
+---
+
+Community plugins are published through reviewed pull requests. The website build validates every package and generates the catalog, so you do not edit a catalog file by hand.
+
+## Before you submit
+
+1. Build and test the plugin with the real [package format](/yapmod/docs/plugins/manifest).
+2. Make sure the folder name matches the manifest `id`.
+3. Keep `plugin.css` and `plugin.js` within the [limits](/yapmod/docs/plugins/manifest#limits).
+4. Write a clear description of what the plugin changes and what data it reads.
+5. Test disabling and removing the plugin, not only enabling it.
+6. Review [Security and limitations](/yapmod/docs/plugins/security) and remove any unnecessary data collection.
+
+A plugin that needs users to trust its JavaScript should say so plainly in its description and documentation.
+
+## Open a pull request
+
+1. Fork the [Yapmod repository](https://github.com/ilyeshdz/yapmod).
+2. Add the package at `community-plugins/<id>/`:
+   ```text
+   community-plugins/activity-badge/
+   ├── manifest.json
+   ├── plugin.css
+   └── plugin.js
+   ```
+3. The folder name must equal the manifest `id`.
+4. From the repository root, run:
+   ```bash
+   pnpm check:web
+   ```
+   This checks the website and validates the community plugin catalog.
+5. Open a pull request describing the plugin, its purpose, its settings and anything reviewers should know about the network or DOM access it uses.
+
+## What the build validates
+
+The website build reads `community-plugins/rules.json` and:
+
+- rejects unknown or malformed manifest fields;
+- requires `id` to match the folder and `api` to be no newer than the supported version;
+- validates setting ids, types, defaults, labels and duplicates;
+- enforces the manifest, stylesheet and script size limits;
+- rejects `plugin.css` or `plugin.js` with an unsupported name;
+- rejects blocked external-resource constructs in plugin CSS;
+- limits the total number of plugins and the size of the generated catalog;
+- copies only the manifest, stylesheet and optional script into the published package.
+
+The catalog itself is generated. Do not edit `community-plugins/index.json` or a published package by hand.
+
+## Verified plugins
+
+The **Verified** badge is maintained by the Yapmod owners in `community-plugins/verified.json` after review. A manifest cannot mark itself as verified, and adding a `verified` field is rejected as an unknown field.
+
+Verification is a review signal, not a security guarantee. A verified plugin still runs as trusted page code with the same access as any other plugin.
+
+## After merge
+
+The website publishes the catalog and package files. Users install from **Settings → Yapmod → Plugins → Community**. Community installation creates a local copy; there is no automatic update mechanism. To ship a change, open another pull request and ask users to remove and reinstall the package.
+
+If the plugin is a CSS-only package, the review is simpler, but the stylesheet can still change or imitate the interface. Test it with both light and dark modes and with a theme active.

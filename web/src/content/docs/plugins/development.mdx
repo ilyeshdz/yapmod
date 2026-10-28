@@ -1,0 +1,105 @@
+---
+title: Development setup
+group: Overview
+order: 3
+area: plugins
+eyebrow: Plugins
+description: The local edit, import, inspect and reload loop for plugin work.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+There is no plugin compiler, CLI or package manager command. A plugin is the files in its folder. Development is the loop of editing those files, importing the folder into yapmod, and inspecting the result in the page.
+
+## What you need
+
+- A current yapmod build. The plugin API is part of the injected client, so an older build may not have the API described here.
+- A text editor.
+- A folder for the package source somewhere you control, such as `~/Developer/my-plugin`.
+- The Yapper page developer console. Plugin logs are prefixed with `[plugin:<id>]`.
+
+You do not need Node.js, Rust or a Yapmod source checkout to author or test a plugin.
+
+## Where installed plugins go
+
+When you import a folder, yapmod copies `manifest.json`, `plugin.css` and the optional `plugin.js` into its plugins folder. The rest of the folder is not copied. The location follows the app config directory:
+
+| Platform | Plugins folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/io.ilyeshdz.yapmod/plugins` |
+| Windows | `%APPDATA%\io.ilyeshdz.yapmod\plugins` |
+| Linux | `~/.config/io.ilyeshdz.yapmod/plugins` |
+
+You normally do not need to open this folder. Use **View files** on an installed plugin card to inspect exactly what yapmod loaded, and **Open folder** in the Plugins settings to locate the installed copies.
+
+<Callout type="warning" title="Import copies, it does not link">
+Editing the source folder after import does not update the installed plugin. To iterate, remove the installed package and import the source folder again. The exception is deliberate debugging of the installed copy: you can edit it in place, but that copy is not your source of truth and will be replaced by the next import.
+</Callout>
+
+## The edit and test loop
+
+1. Edit `manifest.json`, `plugin.css` or `plugin.js` in your source folder.
+2. Open **Settings → Yapmod → Plugins**.
+3. Remove the previous installed copy if it exists.
+4. Choose **Import plugin**, pick the folder, and confirm the consent dialog.
+5. Enable the plugin and inspect the page.
+6. Disable it and confirm that its UI, timers, listeners and network interceptors are gone.
+
+Consent is recalculated from the manifest version plus a SHA-256 hash of the CSS and script. A changed stylesheet or script requires a new consent, even if you keep the same version. During development that is extra confirmation steps, but it also catches a package that changed between review and installation.
+
+## Inspecting behavior
+
+The plugin's public logging surface is namespaced:
+
+```js
+api.log.debug("state", state);
+api.log.info("ready");
+api.log.warn("fallback used");
+api.log.error("request failed", error);
+```
+
+Messages appear as `[plugin:<your-id>] ...` in the page console. Use `api.log` rather than `console.log` so your output is identifiable.
+
+When activation fails, the plugin card shows an error and stores a diagnostic with the operation that failed (`load`, `activate`, `deactivate` or `cleanup`). The same error is printed to the console. See [Debugging plugins](/yapmod/docs/plugins/debugging).
+
+## Testing against the website catalogs
+
+If you are working on the Community catalog itself, the repository's debug build can read the local Astro development server instead of the published website. From the repository root:
+
+```bash
+pnpm --dir web dev
+```
+
+Then start the app in another terminal. In a debug build, the theme and plugin catalogs load from `http://127.0.0.1:4321/yapmod/...`. The website's dev command builds the catalog data from `community-plugins/` and `community-themes/` first. Release builds use the published site.
+
+You do not need this for ordinary plugin development. Local import is enough.
+
+## Testing checklist
+
+Before publishing, verify:
+
+- The manifest passes with no unknown fields.
+- The plugin works from a clean import, not only from an installed copy.
+- Disabling removes all visible changes and stops all activity.
+- Re-enabling works without restarting yapmod.
+- Settings read the declared defaults on first run.
+- Invalid or missing settings fail clearly rather than silently.
+- The plugin never requires a file outside the package.
+- The package stays within the [size and field limits](/yapmod/docs/plugins/manifest#limits).
+- The plugin behaves when another plugin or a theme is also active.
+
+## Suggested package layout
+
+Small packages can stay in three files. If a plugin grows, keep the public package boundary explicit:
+
+```text
+my-plugin/
+├── manifest.json
+├── plugin.css
+├── plugin.js
+└── src/            # your own notes or source, not copied on import
+    ├── modules.js
+    └── README.md
+```
+
+Only `manifest.json`, `plugin.css` and `plugin.js` are installed. If you split `plugin.js` into modules, bundle them back into one self-contained module before importing; relative imports cannot resolve from the blob URL yapmod uses to load the script.

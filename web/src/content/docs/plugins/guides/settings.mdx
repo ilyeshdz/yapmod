@@ -1,0 +1,180 @@
+---
+title: Settings and persistence
+group: Guides
+order: 1
+area: plugins
+eyebrow: Guide
+description: Build a plugin whose behaviour users can configure and whose state survives a restart.
+---
+
+import Callout from "../../../../components/docs/Callout.astro";
+
+This guide builds a badge with a toggle, a colour, and a remembered count. It uses only the current plugin API.
+
+## 1. Declare the settings
+
+```json
+{
+  "id": "activity-badge",
+  "name": "Activity Badge",
+  "version": "1.0.0",
+  "api": 1,
+  "stylesheet": "plugin.css",
+  "script": "plugin.js",
+  "settings": [
+    {
+      "id": "show-badge",
+      "label": "Show activity badge",
+      "description": "Display a small badge with live counters.",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "badge-color",
+      "label": "Badge colour",
+      "description": "The colour of the count text.",
+      "type": "color",
+      "default": "#ff6b4a"
+    }
+  ]
+}
+```
+
+Settings are fixed at package level. A plugin cannot create a new setting at runtime.
+
+## 2. Read the values
+
+```js
+const showBadge = api.settings.get("show-badge"); // boolean
+const badgeColor = api.settings.get("badge-color"); // string | null
+```
+
+A misspelled id throws. Do not wrap the first read in a broad `try/catch` that hides the mistake; let it fail during development.
+
+## 3. Apply the values
+
+```js
+let badge = null;
+
+function render() {
+  if (!api.settings.get("show-badge")) {
+    badge?.remove();
+    badge = null;
+    return;
+  }
+
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.className = "activity-badge";
+    badge.setAttribute("role", "status");
+    document.body.append(badge);
+  }
+
+  badge.style.color = api.settings.get("badge-color") ?? "";
+  badge.textContent = `${httpCount} HTTP · ${wsCount} WS`;
+}
+```
+
+The colour setting can also be used from CSS through the generated root attribute, but JavaScript is clearer when the value needs to be interpolated.
+
+## 4. React to changes
+
+```js
+api.onCleanup(api.settings.onChange("show-badge", render));
+api.onCleanup(api.settings.onChange("badge-color", render));
+```
+
+The settings dialog saves all values together. `onChange` fires for the keys whose stored values changed.
+
+## 5. Remember plugin state
+
+Settings are for user choices. Use storage for values the plugin maintains:
+
+```js
+const launches = api.storage.get("launches", 0);
+api.storage.set("launches", launches + 1);
+
+const stop = api.storage.onChange("launches", (value) => {
+  api.log.debug("launches changed", value);
+});
+
+api.onCleanup(stop);
+```
+
+Keep storage small. A count, a timestamp or a short preference fits. A log of every request does not.
+
+## 6. Use the DOM attributes for simple CSS
+
+yapmod sets:
+
+```text
+data-yapmod-plugin-activity-badge-show-badge
+data-yapmod-plugin-activity-badge-badge-color
+```
+
+```css
+.activity-badge {
+  display: none;
+}
+
+html[data-yapmod-plugin-activity-badge-show-badge="true"] .activity-badge {
+  display: inline-flex;
+}
+```
+
+For a colour value, `attr()` is not consistently supported for this purpose. Read the setting in JavaScript if it must produce a computed style.
+
+## Full example
+
+```js
+export default {
+  activate(api) {
+    let httpCount = 0;
+    let wsCount = 0;
+    let badge = null;
+
+    function render() {
+      if (!api.settings.get("show-badge")) {
+        badge?.remove();
+        badge = null;
+        return;
+      }
+
+      if (!badge) {
+        badge = document.createElement("div");
+        badge.className = "activity-badge";
+        badge.setAttribute("role", "status");
+        document.body.append(badge);
+      }
+
+      badge.style.color = api.settings.get("badge-color") ?? "";
+      badge.textContent = `${httpCount} HTTP · ${wsCount} WS`;
+    }
+
+    api.onCleanup(api.http.exchanges.subscribe(() => {
+      httpCount += 1;
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.incoming.subscribe(() => {
+      wsCount += 1;
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.outgoing.subscribe(() => {
+      wsCount += 1;
+      render();
+    }));
+
+    api.onCleanup(api.settings.onChange("show-badge", render));
+    api.onCleanup(api.settings.onChange("badge-color", render));
+    api.onCleanup(() => badge?.remove());
+
+    render();
+  },
+};
+```
+
+<Callout type="tip" title="Test a fresh install">
+Delete the plugin's stored settings by removing the plugin, then install it again. Confirm that the declared defaults are what a new user sees, not values left over from your development session.
+</Callout>

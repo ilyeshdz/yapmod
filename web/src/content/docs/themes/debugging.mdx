@@ -1,0 +1,133 @@
+---
+title: Debugging themes
+group: Guides
+order: 6
+area: themes
+eyebrow: Guide
+description: Find out why a theme is not applied, why it looks wrong, and how to inspect it.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+Themes fail in two different ways: the theme is not loaded at all, or it loads and its CSS does the wrong thing. Check which one you have before editing colours.
+
+## Is the theme loaded?
+
+Open the page's developer tools when your build allows them, or use a local build with developer tools enabled. Then check:
+
+1. **The gallery.** The theme must appear under **Settings → Themes → Installed**. If it does not, the folder could not be read as a theme.
+2. **The root element.** `<html>` should carry `data-yapmod-theme="<your-id>"` and `data-yapmod-mode="dark"` or `"light"`.
+3. **The style element.** There should be exactly one `<style id="yapmod-theme-styles">` in `<head>`, and it should be the last stylesheet.
+4. **Its contents.** The element contains the generated defaults, the token mapping and your CSS, in that order.
+5. **The computed token.** In the Styles or Computed panel, check `--ym-bg-main` on `<html>`. It should be your value, not the default.
+
+If the attributes exist but the tokens do not, your token block probably has a syntax error or is scoped to a selector that does not match. If the attributes are missing, the theme was not selected or the bundle was not loaded.
+
+## The theme is missing from the gallery
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| Folder is not listed at all | No readable `manifest.json` | Add a valid manifest at the folder root. |
+| Manifest exists but nothing appears | Invalid JSON | Check for a trailing comma or a comment; JSON does not allow either. |
+| Import says the id is unusable | `id` is empty or starts with `.` | Use a short id made of letters, digits, `-`, `_` or `.`. |
+| Import says the theme API is too new | `api` is higher than the app supports | Remove `api` or set it to `1`. |
+| Import says the folder has no stylesheet | `css` names a missing file | Create `theme.css`, or fix the `css` field. |
+| Import says the id is already installed | Another folder uses the same `id` | Remove the old theme first; imported ids are folder names. |
+| Import says the folder contains a symbolic link | A link points outside the theme | Replace it with real files. |
+
+A folder with a manifest that cannot be deserialized is skipped by the gallery rather than producing an error, so a typo in an optional field type can make the theme silently disappear. Compare the file with [Structure and manifest](/yapmod/docs/themes/manifest).
+
+## Edits are not showing up
+
+Importing **copies** the folder. Editing the original folder afterwards does not change the installed copy.
+
+- Edit the copy inside the themes folder, press **Refresh** in the theme settings, then pick the theme again, or
+- Remove the theme and import the edited folder again.
+
+**Open folder** in the settings opens the themes directory. On macOS and Linux the app config directory is under your user's Application Support or `.config`; on Windows it is under `%APPDATA%`.
+
+Refresh re-reads the installed folders. It does not re-read an unselected community download; install from Community again to get a newer published version.
+
+## The theme applies but looks wrong
+
+### Only one mode changes
+
+If the theme declares `"mode": "both"`, both mode blocks must exist and be selected by `data-yapmod-mode`. A block scoped only to `:root` will apply to both modes and can leave light text on a light background.
+
+```css
+/* Applies in both modes: probably not what you want. */
+:root {
+  --ym-bg-main: #101014;
+  --ym-text: #ececf1;
+}
+```
+
+```css
+/* Explicit per-mode blocks. */
+:root[data-yapmod-mode="dark"] { --ym-bg-main: #101014; --ym-text: #ececf1; }
+:root[data-yapmod-mode="light"] { --ym-bg-main: #ffffff; --ym-text: #1d1f23; }
+```
+
+### A token has no effect
+
+- Check the spelling against the [token table](/yapmod/docs/themes/styling). An unknown `--ym-*` name is not mapped.
+- Check that the declaration ends with `;` and sits inside a rule whose selector matches the root.
+- If you also set the app variable directly (for example `--bg-main`), the token mapping deliberately leaves that variable alone.
+- A typo in the value can make the browser drop the declaration. The Computed panel shows the value that was actually accepted.
+
+### The app's own styles keep winning
+
+The theme stylesheet is last, but a rule with higher specificity still wins. Scope your rules and raise specificity by adding the theme attribute rather than reaching for `!important`:
+
+```css
+:root[data-yapmod-theme="my-theme"] .some-part {
+  /* one extra attribute of specificity */
+}
+```
+
+### Dialogs and popovers are unreadable
+
+Surfaces that float above the page often use `--ym-bg-float`, `--ym-bg-elev` or `--ym-shadow`. Test:
+
+- a dialog with a long body,
+- a popover or context menu,
+- hover and active rows in a list,
+- an input with placeholder text,
+- a disabled control,
+- a destructive action using `--ym-danger`.
+
+### The interface becomes unusable
+
+The recovery path does not require reading the theme:
+
+1. Open **Settings → Themes**.
+2. Pick **Yapper's theme**. This removes the theme's attributes and restores the host theme state.
+3. Remove the broken theme with the × on its card.
+
+If the settings are unreachable, close yapmod and remove the theme's folder from the themes directory. The next launch will not find a selected theme and will use the host theme.
+
+## Community-only failures
+
+The published catalog applies stricter checks than a local import. A theme that works locally can fail during the website build because:
+
+- the manifest has an unknown field;
+- the folder name does not match `id`;
+- `mode` is missing or not one of the allowed values;
+- the stylesheet uses `@import`, `behavior:` or a backslash escape;
+- a preview has a disallowed extension or exceeds the size limit;
+- the catalog has grown beyond its configured maximum.
+
+Run `pnpm check:web` from the repository root to reproduce the build-side validation.
+
+## What to report
+
+When a theme fails in a way you cannot explain, include:
+
+- the manifest with any private fields removed;
+- the smallest stylesheet that shows the problem;
+- the resolved `data-yapmod-mode` value;
+- your yapmod version and platform.
+
+<Callout type="note" title="The CSS is always the suspect">
+There is no theme script, no theme API and no background runtime. A behaviour that looks like code is either the app, a plugin, or a CSS rule such as an animation, a transition or a remote asset request.
+</Callout>

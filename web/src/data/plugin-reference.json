@@ -1,0 +1,134 @@
+{
+  "generatedFrom": [
+    "community-plugins/rules.json",
+    "client/shared/types.ts"
+  ],
+  "sourceHash": "e88640b48958e389",
+  "rules": {
+    "pluginApi": 1,
+    "maxCatalogBytes": 1048576,
+    "maxManifestBytes": 65536,
+    "maxCssBytes": 524288,
+    "maxScriptBytes": 524288,
+    "maxPlugins": 200,
+    "maxSettings": 12,
+    "maxTags": 12,
+    "maxNameLength": 100
+  },
+  "types": {
+    "PluginManifest": {
+      "name": "PluginManifest",
+      "kind": "type",
+      "description": "Metadata supplied by an installed plugin package.",
+      "declaration": "export type PluginManifest = {\n  id: string;\n  name: string;\n  version?: string;\n  author?: string;\n  description?: string;\n  license?: string;\n  tags?: string[]; api: 1;\n  settings: PluginSetting[];\n  stylesheet: string;\n  script?: string;\n};",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "author",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "license",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "tags",
+          "type": "string[]",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "api",
+          "type": "1",
+          "optional": false,
+          "readonly": false,
+          "description": "The plugin format this package targets. Version 1 supports CSS and optional DOM scripts."
+        },
+        {
+          "name": "settings",
+          "type": "PluginSetting[]",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "stylesheet",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "script",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    },
+    "PluginSetting": {
+      "name": "PluginSetting",
+      "kind": "type",
+      "description": null,
+      "declaration": "export type PluginSetting = {\n  id: string;\n  label: string;\n  description?: string;\n} & (\n  | { type: \"toggle\"; default: boolean }\n  | { type: \"text\"; default: string | null; accept?: string }\n  | { type: \"file\"; default: string | null; accept?: string }\n  | { type: \"color\"; default: string | null }\n);",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": null
+        }
+      ]
+    }
+  }
+}

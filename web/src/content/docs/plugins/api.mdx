@@ -1,0 +1,72 @@
+---
+title: API reference
+group: API reference
+order: 1
+area: plugins
+eyebrow: Reference
+description: The plugin context object, its lifecycle contract and every supported namespace.
+---
+
+import ApiType from "../../../components/docs/ApiType.astro";
+import Callout from "../../../components/docs/Callout.astro";
+
+Every JavaScript plugin receives one frozen `api` object when `activate(api)` runs. The object is scoped to that plugin: its id, manifest, storage and settings are already resolved, and it cannot be reassigned or extended by the plugin.
+
+```js
+export default {
+  activate(api) {
+    // api is the only context object a plugin needs.
+  },
+};
+```
+
+## The root object
+
+<ApiType name="YapmodPluginApi" signature={false} />
+
+The signatures in this reference are generated from `client/shared/types.ts`, which is the contract the client implements. The surrounding pages explain behaviour that a type alone cannot show.
+
+## Reference pages
+
+| Page | Covers |
+| --- | --- |
+| [Core context](/yapmod/docs/plugins/api/core) | `apiVersion`, `id`, `manifest`, `log`, `onCleanup` and the module contract. |
+| [Storage and settings](/yapmod/docs/plugins/api/storage-settings) | Namespaced storage, declared settings, change subscriptions and the root attributes. |
+| [Interface helpers](/yapmod/docs/plugins/api/interface) | `banner`, `modal`, `notify` and runtime styles. |
+| [Network inspectors](/yapmod/docs/plugins/api/network) | HTTP request/response interception and WebSocket observation/rewriting. |
+| [Files](/yapmod/docs/plugins/api/files) | Data URIs from file settings and blob URL cleanup. |
+| [Types and data](/yapmod/docs/plugins/api/types) | Generated definitions for messages, patches, modal options and diagnostics. |
+
+## Module contract
+
+`plugin.js` must use a default export:
+
+```js
+export default {
+  async activate(api) {
+    // Optional cleanup, returned or registered with api.onCleanup().
+    return () => {
+      // Runs when the plugin is disabled.
+    };
+  },
+};
+```
+
+The module is imported as an ES module. Named exports are allowed but ignored by yapmod. There is no `deactivate` export to implement; cleanup is either the return value of `activate` or a callback registered through `api.onCleanup()`.
+
+<Callout type="warning" title="No users or account API">
+The plugin API does not expose a separate users, account or permission namespace. If the page itself makes user data available, a plugin can see it as trusted page code. Do not infer a permission boundary from the shape of this API.
+</Callout>
+
+## Errors and availability
+
+- A method that receives an unknown setting id throws.
+- An invalid storage key throws.
+- Invalid CSS passed to `api.styles.add()` throws with a validation message.
+- File helpers throw on a value that is not a data URI or a blob URL.
+- If yapmod cannot provide an optional subsystem, some namespaces fall back to no-op implementations. For example, a missing inspector returns unsubscribe functions that do nothing, and a missing Notification API logs a warning and returns a close handle. Guard optional interface features when the app can run in a restricted webview.
+- Cleanup errors are logged and recorded as a plugin diagnostic; they do not stop the remaining cleanup callbacks.
+
+## Versioning
+
+`api.apiVersion` is the numeric format version and is currently `1`. The manifest's `api` field must match the app's supported version. New API surfaces are introduced as new fields on the context object rather than by mutating existing signatures, so feature-detect with `api.apiVersion` or by checking for an optional namespace.

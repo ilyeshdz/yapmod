@@ -1,0 +1,145 @@
+---
+title: Building plugin UI
+group: Guides
+order: 2
+area: plugins
+eyebrow: Guide
+description: Add in-page controls, banners, notifications and dialogs that clean up correctly.
+---
+
+import Callout from "../../../../components/docs/Callout.astro";
+
+Plugins have no component library. Build UI with the DOM, keep it namespaced with the plugin id, and remove it during cleanup. Use the host helpers for feedback that should match yapmod.
+
+## Choose the surface
+
+| Surface | Use it for |
+| --- | --- |
+| Package CSS | Permanent styling of existing page elements. |
+| `api.banner()` | One short, dismissible message below the topbar. |
+| `api.modal` | A real dialog that needs focus management and buttons. |
+| `api.notify` | An operating-system notification for something happening in the background. |
+| DOM nodes | A control that belongs inside the page, such as a badge or a panel. |
+
+## A namespaced control
+
+```js
+const ID = `plugin-${api.id}-panel`;
+
+function mount() {
+  document.getElementById(ID)?.remove();
+
+  const panel = document.createElement("div");
+  panel.id = ID;
+  panel.className = "activity-panel";
+  panel.innerHTML = `
+    <strong>Activity</strong>
+    <span data-count>0</span>
+  `;
+  document.body.append(panel);
+  return panel;
+}
+```
+
+Use `api.id` in ids and classes so two plugins cannot accidentally claim the same element. Do not replace existing page nodes unless that is the point of the plugin.
+
+## Banners
+
+```js
+api.banner("Watching network activity");
+```
+
+The banner is dismissible and keyed by the plugin. Calling `api.banner()` again updates the message instead of adding another banner. There is no close handle, tone or action parameter on the plugin helper.
+
+## Modals
+
+```js
+const modal = api.modal.show({
+  title: "Activity filter",
+  description: "Choose which requests the badge should count.",
+  content: form,
+  buttons: [
+    { label: "Cancel", variant: "secondary" },
+    {
+      label: "Apply",
+      variant: "primary",
+      onClick: () => {
+        apply(form);
+      },
+    },
+  ],
+});
+```
+
+Use `content` with a DOM node for interactive forms. Keep the modal short; it is a host dialog, not a second application window.
+
+```js
+const stop = api.settings.onChange("show-badge", () => {
+  // Do not reopen a closed modal on a setting change.
+});
+
+api.onCleanup(stop);
+```
+
+## Notifications
+
+```js
+const notification = api.notify.show({
+  title: "Activity badge",
+  body: "A new request was observed while the window was in the background.",
+  tag: "activity",
+  onClick: () => api.banner("Notification clicked"),
+});
+
+api.onCleanup(() => notification.close());
+```
+
+Notifications are a system feature. The constructor may be unavailable, and the operating system may require permission. Treat the notification as an enhancement, not the only way to see plugin output.
+
+## Runtime styles
+
+```js
+const remove = api.styles.add(`
+  #plugin-activity-badge-panel {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    padding: 8px 12px;
+    border-radius: var(--ym-radius);
+    background: var(--ym-bg-elev);
+    color: var(--ym-text);
+  }
+`);
+
+api.onCleanup(remove);
+```
+
+Runtime CSS follows the plugin stylesheet rules: no external `url()` or `@import`, no backslash escapes, and a 512 KiB limit. If a rule never changes, put it in `plugin.css`.
+
+## Cleanup checklist
+
+- Remove every node your plugin created.
+- Remove every event listener, including listeners on `window` and `document`.
+- Close modals and notifications that outlive the trigger.
+- Remove runtime styles or make sure the returned remover is registered.
+- Revoke blob URLs you created yourself.
+- Stop timers and animation frames.
+
+```js
+export default {
+  activate(api) {
+    const panel = mount();
+    const controller = new AbortController();
+
+    document.addEventListener("keydown", onKey, { signal: controller.signal });
+
+    api.onCleanup(() => controller.abort());
+    api.onCleanup(() => panel.remove());
+  },
+};
+```
+
+<Callout type="warning" title="Avoid global CSS resets">
+A broad rule such as `* { font-family: ... }` or a reset on `body` can break the host interface and other plugins. Scope rules to the elements you own, or use tokens that the theme system understands.
+</Callout>

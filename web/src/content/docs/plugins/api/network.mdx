@@ -1,0 +1,181 @@
+---
+title: Network inspectors
+group: API reference
+order: 5
+area: plugins
+eyebrow: API
+description: Observe and modify fetch requests, responses and WebSocket messages.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+yapmod installs its inspectors before the app starts. The plugin API exposes the shared inspector channels, not a private copy. Every subscription and interceptor is global to the page while registered.
+
+<Callout type="warning" title="No history, no replay">
+The inspectors keep no event history. A subscriber receives each event once, while it is subscribed. If a plugin needs a log, it must keep one itself and release it during cleanup.
+</Callout>
+
+## HTTP
+
+<ApiType name="HTTPInspector" signature={false} />
+
+Only the global `fetch()` is wrapped. XMLHttpRequest, WebSocket transport internals and other network APIs are not part of this inspector.
+
+### Observe outgoing requests
+
+`api.http.outgoing.subscribe(handler)` fires after outgoing interceptors have run, with the request that is actually sent.
+
+```js
+const stop = api.http.outgoing.subscribe((request) => {
+  api.log.debug("sending", request.method, request.url);
+});
+
+api.onCleanup(stop);
+```
+
+<ApiType name="HTTPOutgoingMessage" signature={false} />
+
+### Observe completed exchanges
+
+`api.http.exchanges.subscribe(handler)` fires after the response arrives, before response interceptors run.
+
+```js
+const stop = api.http.exchanges.subscribe((exchange) => {
+  api.log.debug(
+    "completed",
+    exchange.method,
+    exchange.url,
+    `${exchange.status} ${exchange.statusText}`,
+    `${exchange.duration}ms`,
+  );
+});
+
+api.onCleanup(stop);
+```
+
+<ApiType name="HTTPMessage" signature={false} />
+
+A network error produces an exchange with `status: 0`, `statusText: "Network Error"`, empty headers and no response body, then the original `fetch()` rejection is rethrown to the caller.
+
+### Modify outgoing requests
+
+`api.http.outgoing.use(interceptor)` registers an async interceptor. It receives the current request and can return a patch.
+
+<ApiType name="HTTPOutgoingInterceptor" signature={false} />
+
+<ApiType name="HTTPOutgoingRequestPatch" signature={false} />
+
+```js
+const stop = api.http.outgoing.use(async (request) => {
+  if (!request.url.includes("/rest/v1/messages")) return;
+
+  return {
+    headers: [...request.requestHeaders, ["x-plugin-network", "on"]],
+  };
+});
+
+api.onCleanup(stop);
+```
+
+Rules that matter:
+
+- Interceptors run in registration order and may be asynchronous.
+- `headers` **replaces the complete header set**. Start from `request.requestHeaders` when you only want to add or change one header.
+- `body` replaces the request body. Use `body: null` to send no body.
+- `url` may be a string or `URL`.
+- GET and HEAD requests cannot carry a body; a body patch is dropped for those methods.
+- If an interceptor throws or returns an invalid patch, the entire chain is discarded and the original request is sent.
+- The inspector preserves the request's credentials, cache, redirect, referrer and signal when it rebuilds a modified request.
+
+### Modify responses
+
+`api.http.responses.use(interceptor)` runs after the response arrives but before the caller receives it. Return a new `Response` to replace the original, or `undefined` to leave it alone.
+
+<ApiType name="HTTPResponseInterceptor" signature={false} />
+
+```js
+const stop = api.http.responses.use((exchange) => {
+  if (!exchange.url.includes("/rest/v1/messages") || exchange.status !== 200) return;
+
+  const messages = JSON.parse(exchange.responseBody);
+  messages.push({ id: "example", content: "added by a plugin" });
+
+  return new Response(JSON.stringify(messages), {
+    status: exchange.status,
+    headers: Object.fromEntries(exchange.responseHeaders),
+  });
+});
+
+api.onCleanup(stop);
+```
+
+Interceptors run in registration order and may be asynchronous. A returned `Response` replaces the current response. If any response interceptor throws, every modification in that chain is discarded and the original response is delivered.
+
+### Response bodies
+
+The response body is read only when an exchange subscriber or a response interceptor is registered. It is decoded as text for text, JSON, XML, JavaScript and form-encoded content types. Other content becomes an `ArrayBuffer`. Blob-style bodies are represented as `{ __blob: true, type, size }` because a Blob cannot be read synchronously.
+
+Streaming responses such as `text/event-stream` are delivered immediately and report `responseBody` as `undefined`; buffering them would stop the stream.
+
+## WebSocket
+
+<ApiType name="WebSocketInspector" signature={false} />
+
+WebSocket messages are available in both directions:
+
+```js
+const stopIncoming = api.webSocket.incoming.subscribe((message) => {
+  api.log.debug("received", message.url, message.data);
+});
+
+const stopOutgoing = api.webSocket.outgoing.subscribe((message) => {
+  api.log.debug("sent", message.url, message.data);
+});
+
+api.onCleanup(stopIncoming);
+api.onCleanup(stopOutgoing);
+```
+
+<ApiType name="WebSocketMessage" signature={false} />
+
+Binary payloads are copied into an `ArrayBuffer`; Blob payloads appear as a `BlobSnapshot`. The snapshot is read-only by convention and is not the live message object.
+
+### Modify messages
+
+WebSocket interceptors are synchronous because messages are delivered synchronously. Return a string, `ArrayBuffer`, `ArrayBufferView` or `Blob` to replace the current payload; return `undefined` to keep it.
+
+```js
+const stop = api.webSocket.incoming.use((message) => {
+  if (typeof message.data === "string" && message.data.includes("secret")) {
+    return "[redacted]";
+  }
+});
+
+api.onCleanup(stop);
+```
+
+```js
+const stop = api.webSocket.outgoing.use((message) => {
+  if (typeof message.data === "string" && message.data.includes("spam")) {
+    return "";
+  }
+});
+
+api.onCleanup(stop);
+```
+
+Each interceptor receives the latest payload produced by the previous interceptor. An interceptor may return a promise, but message delivery is synchronous and a returned promise is not a valid payload, so the chain is discarded. If an interceptor throws or returns an invalid type, the whole chain is discarded and the original payload is delivered or sent.
+
+<Callout type="note" title="Boundaries">
+Connection lifecycle events such as open, close and reconnect are not exposed. Incoming and outgoing subscriptions observe messages, not connection state. The inspectors do not suppress delivery; they only observe or replace payloads.
+</Callout>
+
+## Related types
+
+<ApiType name="HTTPOutgoingMessageHandler" />
+<ApiType name="HTTPMessageHandler" />
+<ApiType name="WebSocketMessageHandler" />
+<ApiType name="WebSocketOutgoingInterceptor" />
+<ApiType name="WebSocketIncomingInterceptor" />
+<ApiType name="BlobSnapshot" signature={false} />

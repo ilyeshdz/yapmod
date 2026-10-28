@@ -1,0 +1,100 @@
+---
+title: Best practices
+group: Guides
+order: 7
+area: themes
+eyebrow: Guide
+description: Patterns for themes that stay readable, portable and safe to remove.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+A theme is a stylesheet, so the quality bar is mostly about restraint: few selectors, predictable tokens, and both modes treated as first-class.
+
+## Start with tokens
+
+Tokens are the contract between the theme and the app. A theme built from tokens survives component changes and usually survives app updates.
+
+- Set only the tokens the design changes.
+- Keep a comment or a grouping that explains the palette.
+- Use the same accent family in both modes, adjusted for contrast.
+- Treat `--ym-radius` and `--ym-shadow` as shape tokens, not as a place to patch individual components.
+
+Reach for a component selector only when no token expresses the change.
+
+## Design both modes
+
+If the theme declares `"mode": "both"`, it is two themes sharing one name. Check both:
+
+- body text on every surface, including hover and selected rows;
+- muted and faint text, which are the first to disappear;
+- borders on elevated cards;
+- `--ym-on-accent` on the accent colour and its hover shade;
+- danger, success and warning text on their backgrounds;
+- focus rings and disabled controls.
+
+If one mode cannot meet the bar, declare the single mode instead of shipping a weak second palette. A dark-only theme is honest; a theme that claims both and fails in light mode is not.
+
+## Keep the palette coherent
+
+- Derive hover and active shades from the surface colours, not from unrelated hex values.
+- Keep the elevation order: rail, side, main, elevated, floating. A floating surface that is darker than the page looks inverted.
+- Keep `--ym-accent-soft` translucent so it works over several surfaces.
+- Pick `--ym-on-accent` deliberately. White is not always the accessible choice for a bright accent.
+
+## Scope component CSS
+
+Every plain rule should be scoped to the theme id:
+
+```css
+:root[data-yapmod-theme="my-theme"] .some-part {
+  /* */
+}
+```
+
+Unscoped rules keep applying after the user switches themes only if they remain in the document; they do not, because the whole style element is replaced. But unscoped rules are still risky inside the theme itself: they can hit elements you did not intend, and they make the theme harder to reason about.
+
+Prefer one extra attribute of specificity over `!important`. Avoid styling the topbar drag region and dialog scroll locks; they are functional, not decorative.
+
+## Be careful with assets
+
+- Relative `url()` paths point at the Yapper page, not at the theme folder.
+- Use a full `https:` address or a `data:` URI.
+- Keep remote assets optional. A font or background that fails to load should not make the theme unusable.
+- Do not use `@import`; the Community build rejects it, and a separate request delays first paint.
+- Keep the stylesheet within the [size limit](/yapmod/docs/themes/manifest#limits).
+
+## Match the manifest to reality
+
+- The `id` is permanent enough to be a folder name. Choose it once.
+- Keep `name`, `description` and `tags` accurate; they are what users search in the Community gallery.
+- Update `version` when the visual result changes.
+- Set `mode` to what you actually tested, not to what sounds more capable.
+- Add a preview image that shows the theme in its primary mode.
+- Include a license you have the right to use.
+
+## Test the recovery path
+
+A theme should be easy to leave:
+
+1. Apply it.
+2. Pick **Yapper's theme**. The normal look should return immediately.
+3. Switch back. The theme should apply again without a restart.
+4. Remove it. No attributes or style element should remain.
+
+If a theme can only be escaped by deleting files, it is too invasive.
+
+## Review before publishing
+
+Before opening a pull request:
+
+- test on a large and a narrow window;
+- test with a long channel name and a long message;
+- open settings, a dialog and a popover;
+- check both modes (or the one declared mode);
+- run the Community build with `pnpm check:web`;
+- read [Submit a theme](/yapmod/docs/submit-a-theme) for the repository rules.
+
+<Callout type="tip" title="Small beats clever">
+A theme with twenty well-chosen token overrides is easier to review, easier to maintain and more likely to keep working than one with two hundred component selectors. If a rule fights the app, check whether a token already covers the case.
+</Callout>

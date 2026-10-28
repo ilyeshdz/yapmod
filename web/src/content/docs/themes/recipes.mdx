@@ -1,0 +1,184 @@
+---
+title: Recipes
+group: Guides
+order: 5
+area: themes
+eyebrow: Guide
+description: Complete, copyable patterns for common theme changes.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+Each recipe is a full stylesheet section you can paste into `theme.css`. They build on the token table in [Styling and tokens](/yapmod/docs/themes/styling); change the values to suit your theme.
+
+## Warm neutral palette
+
+Both modes, low contrast, warm greys and an amber accent.
+
+```css
+:root[data-yapmod-mode="dark"] {
+  --ym-bg-rail: #17130f;
+  --ym-bg-side: #1e1914;
+  --ym-bg-main: #241f19;
+  --ym-bg-elev: #2c261f;
+  --ym-bg-hover: #332c24;
+  --ym-bg-active: #3d352b;
+  --ym-bg-input: #2a241d;
+  --ym-bg-float: #1e1914;
+  --ym-text: #f2e9de;
+  --ym-text-muted: #b9a995;
+  --ym-text-faint: #8c7f6f;
+  --ym-border: #ffffff14;
+  --ym-accent: #e0a458;
+  --ym-accent-hover: #f0b96f;
+  --ym-accent-soft: #e0a45829;
+  --ym-on-accent: #1b140c;
+}
+
+:root[data-yapmod-mode="light"] {
+  --ym-bg-rail: #ebe3d8;
+  --ym-bg-side: #f5efe6;
+  --ym-bg-main: #fffaf2;
+  --ym-bg-elev: #f2eadf;
+  --ym-bg-hover: #ece2d4;
+  --ym-bg-active: #e0d3c1;
+  --ym-bg-input: #f3ece2;
+  --ym-bg-float: #fffdf9;
+  --ym-text: #2a2119;
+  --ym-text-muted: #6d5d4c;
+  --ym-text-faint: #9a8a77;
+  --ym-border: #0000001a;
+  --ym-accent: #b9772c;
+  --ym-accent-hover: #9d6421;
+  --ym-accent-soft: #b9772c24;
+  --ym-on-accent: #ffffff;
+}
+```
+
+Pair the two blocks so the accent keeps enough contrast against `--ym-on-accent` in each mode.
+
+## High contrast
+
+Turn up separation without touching layout. Borders and text become stronger, while the accent stays saturated.
+
+```css
+:root[data-yapmod-mode="dark"] {
+  --ym-bg-main: #000000;
+  --ym-bg-side: #0a0a0a;
+  --ym-bg-elev: #141414;
+  --ym-bg-hover: #1f1f1f;
+  --ym-bg-active: #2b2b2b;
+  --ym-text: #ffffff;
+  --ym-text-muted: #d0d0d0;
+  --ym-text-faint: #a6a6a6;
+  --ym-border: #ffffff33;
+  --ym-accent: #4da3ff;
+  --ym-on-accent: #001018;
+}
+
+:root[data-yapmod-mode="light"] {
+  --ym-bg-main: #ffffff;
+  --ym-bg-side: #f7f7f7;
+  --ym-bg-elev: #eeeeee;
+  --ym-bg-hover: #e4e4e4;
+  --ym-bg-active: #d6d6d6;
+  --ym-text: #000000;
+  --ym-text-muted: #3a3a3a;
+  --ym-text-faint: #5c5c5c;
+  --ym-border: #00000040;
+  --ym-accent: #0059b3;
+  --ym-on-accent: #ffffff;
+}
+```
+
+## Softer corners and shadows
+
+Shape tokens are copied as written. Use a radius that matches the scale of the app's surfaces rather than a different radius per component.
+
+```css
+:root {
+  --ym-radius: 14px;
+  --ym-shadow: 0 20px 60px #00000066;
+}
+```
+
+For a flat theme, reduce the shadow rather than removing it entirely; floating surfaces still need to separate from the page.
+
+```css
+:root[data-yapmod-mode="light"] {
+  --ym-radius: 6px;
+  --ym-shadow: 0 2px 10px #0000001f;
+}
+```
+
+## Custom font stack
+
+A font is not a token, so use a plain rule. Scope it to the theme id so it disappears when another theme is picked.
+
+```css
+:root[data-yapmod-theme="my-theme"] body {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+```
+
+If the font is remote, load it without `@import`; the Community build rejects `@import`, and a local theme should not rely on it either. Use a hosted stylesheet link only if you control the page, or ship a `data:` URI. In practice, a system font stack is the portable choice.
+
+## Text selection and scrollbars
+
+These are page-level details that no token covers. Keep the selectors generic and theme-scoped.
+
+```css
+:root[data-yapmod-theme="my-theme"] ::selection {
+  background: color-mix(in srgb, var(--ym-accent) 40%, transparent);
+  color: var(--ym-text);
+}
+
+:root[data-yapmod-theme="my-theme"] {
+  scrollbar-color: var(--ym-border) transparent;
+}
+```
+
+`color-mix()` lets a recipe derive a shade from the theme's own accent, so it keeps working when the user changes the theme.
+
+<Callout type="tip" title="Build from variables, not repeated hex values">
+Inside plain CSS, refer to `var(--ym-accent)` and `var(--ym-text)` instead of repeating the literal colours. Then a single token change updates every derived rule, and the theme stays consistent in both modes.
+</Callout>
+
+## A single-mode theme
+
+If the design only works in dark mode, say so in the manifest and skip the light block entirely.
+
+```json
+{ "mode": "dark" }
+```
+
+```css
+:root[data-yapmod-mode="dark"] {
+  --ym-bg-main: #0b0d12;
+  --ym-text: #e8eaf0;
+  --ym-accent: #7aa2ff;
+}
+```
+
+The app will keep showing this theme in dark mode even when the user's setting is light or system.
+
+## Layering a subtle background image
+
+Use a full address or a data URI. A relative path resolves against the Yapper page, not the theme folder.
+
+```css
+:root[data-yapmod-theme="my-theme"] body {
+  background-image: linear-gradient(#00000055, #00000055),
+    url("https://example.com/my-background.webp");
+  background-size: cover;
+  background-attachment: fixed;
+}
+```
+
+Keep contrast in mind: a busy background can make text unreadable even when the text token itself is correct.
+
+## Next steps
+
+- Verify both modes and every overlay in [Debugging themes](/yapmod/docs/themes/debugging).
+- Review the packaging rules in [Structure and manifest](/yapmod/docs/themes/manifest).
+- Follow [Submit a theme](/yapmod/docs/submit-a-theme) when the theme is ready to share.

@@ -1,0 +1,122 @@
+---
+title: Architecture and lifecycle
+group: Overview
+order: 4
+area: plugins
+eyebrow: Plugins
+description: How yapmod validates, consents, activates, restores and unloads a plugin.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+A plugin has a package boundary, a consent boundary and a runtime lifecycle. Understanding those three pieces makes failures much easier to diagnose.
+
+## Package boundary
+
+A plugin folder contains:
+
+```text
+my-plugin/
+├── manifest.json   # required: identity, API version, settings
+├── plugin.css      # required: the package stylesheet
+└── plugin.js       # optional: an ES module with a default export
+```
+
+The stylesheet and script names are fixed. `stylesheet` must name `plugin.css`, and `script`, when present, must name `plugin.js`. Extra files are ignored when yapmod installs a local package. Symbolic links are not accepted for the manifest, stylesheet or script.
+
+Before a package is accepted, both the Rust side and the client validate:
+
+- the manifest shape, API version, ids and setting types;
+- the stylesheet size and blocked external-resource constructs;
+- the script size, when a script exists.
+
+The app's install step copies the manifest, CSS and optional script into the plugins folder. The installed copy is what runs, so it can be inspected independently with **View files**.
+
+## Consent boundary
+
+Consent is not the same as verification. yapmod shows a warning before a JavaScript package is imported or enabled, and stores a record tied to:
+
+- the manifest `version` (or an empty string when there is no version), and
+- a SHA-256 hash of the CSS length, CSS source and script source.
+
+If a package's executable content changes, the saved consent no longer matches and yapmod asks again. Removing or reinstalling a package can also require a new confirmation. The consent record is local to the installation.
+
+A **Verified** badge means the Yapmod owners reviewed a Community catalog entry. It is not a permission system and does not restrict what the code can do. See [Security and limitations](/yapmod/docs/plugins/security).
+
+## Activation
+
+When a plugin is enabled, yapmod runs these steps in order:
+
+1. Validate the whole bundle again.
+2. Apply `plugin.css` as a managed `<style>` element.
+3. Apply the stored values of declared settings as `data-yapmod-plugin-<plugin>-<setting>` attributes on `<html>`.
+4. Register the package-level cleanup callbacks for the stylesheet and setting attributes.
+5. If a script exists, create the `api` object, register its cleanup bridge, and import the script as an ES module from a blob URL.
+6. Read the module's `default` export. It must be an object with a callable `activate` function.
+7. Call `activate(api)` and, if it returns a function, register that function as a cleanup too.
+8. Mark the plugin enabled and persist the enabled state.
+
+`activate` may be asynchronous. yapmod waits for its promise before marking the plugin enabled, so errors reject the enable operation and appear on the card.
+
+<Callout type="note" title="Styles and settings come first">
+The package stylesheet and setting attributes are applied before `activate` runs. A plugin can therefore rely on its CSS and on the root attributes during activation.
+</Callout>
+
+## Failure and cleanup
+
+If `activate` throws, yapmod runs the cleanup callbacks that were already registered. This is why `api.onCleanup()` is safe for resources created early in activation: a later exception does not strand them.
+
+Cleanup callbacks run in reverse registration order. If one throws, the error is logged and diagnosed, but the remaining callbacks still run. The plugin card records a diagnostic with the operation and timestamp so a failed cleanup is not silent.
+
+The cleanup order is, broadly:
+
+1. the cleanup function returned by `activate`;
+2. callbacks registered with `api.onCleanup()`, in reverse order;
+3. runtime styles added through `api.styles.add()`;
+4. declared setting attributes;
+5. the package stylesheet.
+
+Blob URLs created through `api.file.createBlobUrl()` are revoked as part of the same cleanup.
+
+A disabled plugin must not keep timers running, listen for network events, hold blob URLs, or leave elements in the page. yapmod removes what it manages, but your callbacks remain responsible for everything your code created.
+
+## Restoring plugins at startup
+
+The plugin manager runs before the page has a body, so it waits for the body to exist before restoring plugins. It then refreshes installed packages and, for each package whose saved enabled state is `true` and whose consent still matches, activates it again.
+
+If restoration fails, yapmod records a diagnostic and leaves the plugin visible in the Installed list so you can inspect the error. A plugin that works when toggled manually but fails after restart is usually reading the DOM too early, relying on a resource that was not recreated, or throwing during a restored activation.
+
+## Runtime environment
+
+The script is loaded as a real ES module, not evaluated as a script body. That gives it module syntax and its own module scope. It does **not** isolate the plugin from the page:
+
+- The plugin runs in the Yapper page's JavaScript realm.
+- It can read and mutate the DOM, use page globals, and observe data visible to the page.
+- It can replace page behavior through the inspector APIs.
+- It can make network requests with the page's normal capabilities.
+- Relative imports cannot resolve because the module URL is a temporary blob URL.
+
+There is no separate worker, iframe, shadow realm or permission manifest. See [Security and limitations](/yapmod/docs/plugins/security) for the consequences.
+
+## Events and interception
+
+The API has two kinds of live channels:
+
+- **Subscriptions** observe events. Each returns an unsubscribe function. The inspector keeps no history; you receive events that happen while you are subscribed.
+- **Interceptors** modify traffic. Each returns a remove function. Outgoing HTTP interceptors may be asynchronous. WebSocket interceptors are synchronous. Response interceptors run before the caller sees the response.
+
+Both are global to the page while registered. Always register the returned function with `api.onCleanup()` so the channel is released when the plugin is disabled.
+
+## What the host owns, and what your plugin owns
+
+| Concern | Owner |
+| --- | --- |
+| Validating the manifest and package limits | yapmod |
+| Showing import and enable consent | yapmod |
+| Applying the package stylesheet and setting attributes | yapmod |
+| Importing the module and running `activate` | yapmod |
+| Running your cleanup callbacks on disable | yapmod |
+| Releasing timers, DOM nodes, observers, stores and third-party resources | your plugin |
+| Removing subscriptions and interceptors you registered | your plugin |
+| Checking that a network patch is safe and appropriate for the app | your plugin |
+| Trusting the author of a plugin | the user |

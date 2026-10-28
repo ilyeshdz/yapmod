@@ -1,0 +1,356 @@
+{
+  "generatedFrom": [
+    "client/generated/types.ts",
+    "client/features/themes/tokens.ts",
+    "community-themes/rules.json"
+  ],
+  "sourceHash": "ccfdcd4c369badc4",
+  "types": {
+    "ThemeManifest": {
+      "name": "ThemeManifest",
+      "kind": "type",
+      "description": "The `manifest.json` of a theme. Only `id` and `name` are required, everything else is optional and only used to describe the theme.",
+      "declaration": "export type ThemeManifest = { id: string, name: string, version: string | null, author: string | null, description: string | null, license: string | null, mode: string | null, tags: Array<string>, api: number | null, preview: string | null, css: string | null, };",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "version",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "author",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "license",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "mode",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": "\"dark\", \"light\" or \"both\"."
+        },
+        {
+          "name": "tags",
+          "type": "Array<string>",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "api",
+          "type": "number | null",
+          "optional": false,
+          "readonly": false,
+          "description": "The theme format the theme was written against."
+        },
+        {
+          "name": "preview",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "css",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": "The stylesheet of the theme, relative to the theme folder."
+        }
+      ]
+    },
+    "ThemeBundle": {
+      "name": "ThemeBundle",
+      "kind": "type",
+      "description": "A theme, ready to be applied.",
+      "declaration": "export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, preview: string | null, };",
+      "members": [
+        {
+          "name": "id",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "description",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "author",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "version",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "license",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "mode",
+          "type": "ThemeMode",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "tags",
+          "type": "Array<string>",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "css",
+          "type": "string",
+          "optional": false,
+          "readonly": false,
+          "description": null
+        },
+        {
+          "name": "preview",
+          "type": "string | null",
+          "optional": false,
+          "readonly": false,
+          "description": "A picture of the theme, as a data address."
+        }
+      ]
+    },
+    "ThemeMode": {
+      "name": "ThemeMode",
+      "kind": "type",
+      "description": "The mode a theme asks for.",
+      "declaration": "export type ThemeMode = \"dark\" | \"light\" | \"both\";",
+      "members": []
+    }
+  },
+  "tokens": [
+    {
+      "name": "bg-rail",
+      "variable": "--bg-rail",
+      "dark": "#141519",
+      "light": "#e3e5e8"
+    },
+    {
+      "name": "bg-side",
+      "variable": "--bg-side",
+      "dark": "#1b1c21",
+      "light": "#f2f3f5"
+    },
+    {
+      "name": "bg-main",
+      "variable": "--bg-main",
+      "dark": "#222329",
+      "light": "#ffffff"
+    },
+    {
+      "name": "bg-elev",
+      "variable": "--bg-elev",
+      "dark": "#2b2c33",
+      "light": "#ebedef"
+    },
+    {
+      "name": "bg-hover",
+      "variable": "--bg-hover",
+      "dark": "#2f3038",
+      "light": "#e6e7ea"
+    },
+    {
+      "name": "bg-active",
+      "variable": "--bg-active",
+      "dark": "#383944",
+      "light": "#d7d9de"
+    },
+    {
+      "name": "bg-input",
+      "variable": "--bg-input",
+      "dark": "#2d2e36",
+      "light": "#ebedef"
+    },
+    {
+      "name": "bg-float",
+      "variable": "--bg-float",
+      "dark": "#1b1c21",
+      "light": "#ffffff"
+    },
+    {
+      "name": "text",
+      "variable": "--text",
+      "dark": "#ececf1",
+      "light": "#1d1f23"
+    },
+    {
+      "name": "text-muted",
+      "variable": "--text-muted",
+      "dark": "#9c9daa",
+      "light": "#5b5d66"
+    },
+    {
+      "name": "text-faint",
+      "variable": "--text-faint",
+      "dark": "#6e6f7b",
+      "light": "#8b8d96"
+    },
+    {
+      "name": "border",
+      "variable": "--border",
+      "dark": "#ffffff12",
+      "light": "#00000017"
+    },
+    {
+      "name": "accent",
+      "variable": "--accent",
+      "dark": "#ff6b4a",
+      "light": "#ff6b4a"
+    },
+    {
+      "name": "accent-hover",
+      "variable": "--accent-hover",
+      "dark": "#ff5a35",
+      "light": "#ff5a35"
+    },
+    {
+      "name": "accent-soft",
+      "variable": "--accent-soft",
+      "dark": "#ff6b4a29",
+      "light": "#ff6b4a24"
+    },
+    {
+      "name": "on-accent",
+      "variable": "--on-accent",
+      "dark": "#ffffff",
+      "light": "#ffffff"
+    },
+    {
+      "name": "danger",
+      "variable": "--danger",
+      "dark": "#f2555a",
+      "light": "#f2555a"
+    },
+    {
+      "name": "success",
+      "variable": "--success",
+      "dark": "#3fcf82",
+      "light": "#3fcf82"
+    },
+    {
+      "name": "warning",
+      "variable": "--warning",
+      "dark": "#f5b544",
+      "light": "#f5b544"
+    },
+    {
+      "name": "radius",
+      "variable": "--radius",
+      "dark": "10px",
+      "light": "10px"
+    },
+    {
+      "name": "shadow",
+      "variable": "--shadow",
+      "dark": "0 10px 40px #00000073",
+      "light": "0 10px 34px #00000029"
+    },
+    {
+      "name": "brand",
+      "variable": null,
+      "dark": "#f67567",
+      "light": "#f67567"
+    },
+    {
+      "name": "brand-2",
+      "variable": null,
+      "dark": "#ff8a70",
+      "light": "#ff8a70"
+    },
+    {
+      "name": "brand-3",
+      "variable": null,
+      "dark": "#ffb25f",
+      "light": "#ffb25f"
+    },
+    {
+      "name": "brand-soft",
+      "variable": null,
+      "dark": "rgba(246, 117, 103, 0.15)",
+      "light": "rgba(246, 117, 103, 0.15)"
+    },
+    {
+      "name": "brand-hover",
+      "variable": null,
+      "dark": "rgba(77, 22, 15, 0.14)",
+      "light": "rgba(77, 22, 15, 0.14)"
+    }
+  ],
+  "rules": {
+    "themeApi": 1,
+    "maxCatalogBytes": 2097152,
+    "maxManifestBytes": 65536,
+    "maxCssBytes": 1048576,
+    "maxPreviewBytes": 4194304,
+    "maxNameLength": 120,
+    "maxThemes": 500,
+    "maxTags": 20,
+    "previewExtensions": [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "gif",
+      "svg"
+    ]
+  }
+}

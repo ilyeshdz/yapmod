@@ -1,0 +1,79 @@
+---
+import pluginApi from "../../data/plugin-api.json";
+import themeReference from "../../data/theme-reference.json";
+
+interface Props {
+  /** The exported TypeScript symbol to render. */
+  name: string;
+  /** Which generated reference the type comes from. */
+  source?: "plugin" | "theme";
+  /** Hide the signature when the surrounding page already shows it. */
+  signature?: boolean;
+  /** Hide the generated member table when the page explains fields manually. */
+  members?: boolean;
+}
+
+const { name, source = "plugin", signature = true, members = true } = Astro.props;
+const reference = source === "theme" ? themeReference : pluginApi;
+const entry = (reference.types as Record<string, any>)[name];
+
+if (!entry) {
+  throw new Error(`Unknown ${source} documentation type: ${name}`);
+}
+
+const escape = (value: string) =>
+  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+const inline = (value: string | null) =>
+  escape(value ?? "").replace(/`([^`]+)`/g, "<code>$1</code>");
+---
+
+<div class="api-type">
+  <p class="api-source">
+    Source-derived from <code>{reference.generatedFrom.join(", ")}</code>
+    <span class="api-kind">{entry.kind}</span>
+  </p>
+
+  {entry.description && <p set:html={inline(entry.description)} />}
+
+  {
+    signature && (
+      <pre class="api-signature">
+        <code>{entry.declaration}</code>
+      </pre>
+    )
+  }
+
+  {
+    members && entry.members.length > 0 && (
+      <div class="api-members">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Member</th>
+              <th scope="col">Type</th>
+              <th scope="col">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entry.members.map((member: any) => (
+              <tr>
+                <td>
+                  <code>
+                    {member.name}
+                    {member.optional ? "?" : ""}
+                  </code>
+                  {member.readonly && <span class="api-flag">readonly</span>}
+                </td>
+                <td>
+                  <code>{member.type}</code>
+                </td>
+                <td set:html={inline(member.description)} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+</div>

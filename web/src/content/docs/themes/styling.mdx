@@ -1,0 +1,144 @@
+---
+title: Styling and tokens
+group: Guides
+order: 3
+area: themes
+eyebrow: Reference
+description: The generated token table, plain CSS, assets, and what a theme can override.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+import ThemeTokens from "../../../components/docs/ThemeTokens.astro";
+
+A theme is ordinary CSS that yapmod inserts after the app's own styles. The stable way to change the look is to set `--ym-*` tokens; plain component CSS is also allowed when a token does not cover what you need.
+
+## The two root attributes
+
+While a theme is active, yapmod sets two attributes on `<html>`:
+
+| Attribute | Value |
+| --- | --- |
+| `data-yapmod-theme` | The theme `id`. Use it to scope rules that should not leak into another theme. |
+| `data-yapmod-mode` | `dark` or `light`, after the [mode is resolved](/yapmod/docs/themes/loading). |
+
+```css
+:root[data-yapmod-theme="midnight-blurple"] .some-component {
+  /* only while this theme is applied */
+}
+
+:root[data-yapmod-mode="light"] {
+  /* only in the resolved light mode */
+}
+```
+
+Target `:root` for token blocks. The attribute is on the same element, so `:root[data-yapmod-mode="dark"]` and `html[data-yapmod-mode="dark"]` are equivalent.
+
+## Token table
+
+These are the tokens yapmod understands, with the app variable each one feeds and the default in each mode.
+
+<ThemeTokens />
+
+A token with an app variable is mapped onto that variable. The yapmod-only tokens style the parts yapmod adds itself, such as the brand and release banner.
+
+## How tokens are mapped
+
+When the theme is applied, yapmod builds a small token layer from the stylesheet:
+
+1. It reads `--ym-*` declarations whose names are in the table above.
+2. It maps each one onto the corresponding app variable, unless the theme already sets that app variable directly.
+3. It writes the defaults into a `@layer yapmod-defaults` block, so a plain rule in your theme wins without needing `!important`.
+4. It places the mapping and your stylesheet last in the document.
+
+Two extra mappings follow from existing tokens:
+
+| App variable | Fed by |
+| --- | --- |
+| `--bg-side-solid` | `--ym-bg-side` |
+| `--bg-floating` | `--ym-bg-float` |
+
+Only tokens you actually set are mapped. The rest keep the app's value, so a theme can change the accent without taking ownership of every surface.
+
+<Callout type="note" title="Two names, one result">
+`--ym-bg-main: #101014` is the portable form. `--bg-main: #101014` sets the app variable directly and is respected, but it is less portable across app versions. Prefer the `--ym-*` name unless you deliberately need to bypass the mapping.
+</Callout>
+
+## A token-only theme
+
+A complete stylesheet can be just two blocks:
+
+```css
+:root[data-yapmod-mode="dark"] {
+  --ym-bg-main: #1b1c23;
+  --ym-bg-elev: #22232c;
+  --ym-text: #ececf1;
+  --ym-accent: #5865f2;
+  --ym-on-accent: #ffffff;
+}
+
+:root[data-yapmod-mode="light"] {
+  --ym-bg-main: #ffffff;
+  --ym-bg-elev: #ebedef;
+  --ym-text: #1d1f23;
+  --ym-accent: #5865f2;
+  --ym-on-accent: #ffffff;
+}
+```
+
+Declare only what you want to change. Missing tokens inherit the generated defaults.
+
+## Plain CSS
+
+Tokens cover colour and shape, not every part of the interface. Ordinary selectors work because the theme is applied to the real page:
+
+```css
+/* Scoped to the theme so it disappears when another theme is picked. */
+:root[data-yapmod-theme="midnight-blurple"] .topbar {
+  backdrop-filter: blur(14px);
+}
+
+:root[data-yapmod-theme="midnight-blurple"] body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+```
+
+Keep selectors narrow and scope them with `data-yapmod-theme`. Broad rules on the body or on shared containers are the most common cause of a theme that breaks dialogs or hover states.
+
+## Modes and specificity
+
+- A `mode: "dark"` or `mode: "light"` theme only ever sees one value of `data-yapmod-mode`, so one block is enough.
+- A `mode: "both"` theme should provide both blocks. The last block in the file does not win by itself; the attribute in the selector does.
+- `!important` works, but it makes the theme hard to maintain and hard for a user to override. Prefer lower specificity and theme-scoped selectors.
+- The app's own theme is a separate layer of state. See [Loading and modes](/yapmod/docs/themes/loading) before relying on host selectors.
+
+## Fonts, images and other assets
+
+A local theme is plain CSS, so relative URLs resolve against the Yapper page, not the theme folder. That means `url("./bg.png")` will not find a file next to `theme.css`.
+
+- Use a full `https:` URL, or a `data:` URI, for images and fonts.
+- A remote asset is a network request made by the page. A theme can load its own fonts and backgrounds, but it should not depend on a server that may disappear.
+- The Community build rejects `@import`, `behavior:` and backslash escapes. It allows `url()`.
+
+<Callout type="warning" title="A theme is trusted CSS">
+Local themes are not sandboxed and are not restricted to a fixed property list. A theme can hide, move or imitate interface elements. Only install a theme whose source you trust, and review a Community theme before installing it.
+</Callout>
+
+## Quantities and units
+
+Token values are copied as written, so any valid CSS value works for the property the app uses:
+
+```css
+:root[data-yapmod-mode="dark"] {
+  --ym-radius: 6px;         /* corners */
+  --ym-shadow: 0 18px 60px #00000099;  /* floating surfaces */
+  --ym-border: #ffffff1f;   /* hairlines */
+}
+```
+
+Keep `--ym-radius` a length, `--ym-shadow` a shadow, and the colour tokens colours. yapmod does not reinterpret the values.
+
+## Next steps
+
+- See how the resolved mode and stylesheet order are decided in [Loading and modes](/yapmod/docs/themes/loading).
+- Copy a full pattern from [Recipes](/yapmod/docs/themes/recipes).
+- Check contrast and mode coverage with [Debugging themes](/yapmod/docs/themes/debugging).

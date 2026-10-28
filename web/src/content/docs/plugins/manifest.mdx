@@ -1,0 +1,183 @@
+---
+title: Manifest reference
+group: Overview
+order: 6
+area: plugins
+eyebrow: Reference
+description: The package manifest, settings schema and validation limits.
+---
+
+import ApiType from "../../../components/docs/ApiType.astro";
+import Callout from "../../../components/docs/Callout.astro";
+import Limits from "../../../components/docs/Limits.astro";
+
+Every plugin has a `manifest.json` at the root of its folder. The manifest is parsed with unknown fields rejected, so a typo such as `styleSheet` fails the import instead of being silently ignored.
+
+## Complete example
+
+```json
+{
+  "id": "activity-badge",
+  "name": "Activity Badge",
+  "version": "1.2.0",
+  "author": "Your name",
+  "description": "Shows a small badge with live HTTP and WebSocket counters.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["network", "badge"],
+  "stylesheet": "plugin.css",
+  "script": "plugin.js",
+  "settings": [
+    {
+      "id": "show-badge",
+      "label": "Show activity badge",
+      "description": "Display a small badge with live counters.",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "accent-color",
+      "label": "Badge colour",
+      "type": "color",
+      "default": "#ff6b4a"
+    }
+  ]
+}
+```
+
+## Top-level fields
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `id` | Yes | string | 1–24 letters, digits, `-` or `_`; must start with a letter or digit. Used for storage, settings attributes and the installed folder. |
+| `name` | Yes | string | Display name, 1–100 characters. |
+| `api` | Yes | number | Must be exactly `1`. Other versions are refused. |
+| `version` | No | string | Up to 100 characters. Included in the consent record. |
+| `author` | No | string | Up to 100 characters. |
+| `description` | No | string | Up to 500 characters. |
+| `license` | No | string | Up to 100 characters. |
+| `tags` | No | string[] | Up to 12 search words, each up to 32 characters. |
+| `settings` | No | object[] | Up to 12 settings. Omitted and empty are equivalent. |
+| `stylesheet` | No | string | Must be `"plugin.css"` when present. If omitted, `plugin.css` is used. The file must exist. |
+| `script` | No | string | Must be `"plugin.js"` when present. Omit it for a CSS-only plugin. |
+
+<Callout type="note" title="The stylesheet is still required">
+`stylesheet` may be omitted because it defaults to `plugin.css`, but the file itself is required. A package with no stylesheet cannot be read as a plugin bundle.
+</Callout>
+
+## Settings
+
+Settings are declared in the manifest. yapmod renders a settings dialog on the plugin card and saves the values when the user chooses **Save**. A plugin reads them through `api.settings`.
+
+Each setting has:
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `id` | Yes | string | Same key format as the plugin id; unique within the plugin. Used in the DOM attribute and storage key. |
+| `label` | Yes | string | 1–80 characters. |
+| `description` | No | string | Up to 200 characters. |
+| `type` | Yes | string | `toggle`, `text`, `file` or `color`. |
+| `default` | Type-dependent | boolean, string or null | `toggle` requires a boolean. `text`, `file` and `color` require a string or `null`. |
+| `accept` | No | string | An optional file-type hint, used by the native picker for `file` settings, for example `"image/*"`. |
+
+### Toggle
+
+```json
+{
+  "id": "show-badge",
+  "label": "Show activity badge",
+  "description": "Display a small status badge.",
+  "type": "toggle",
+  "default": true
+}
+```
+
+`api.settings.get("show-badge")` returns a boolean. On `<html>`, the attribute is `"true"` when on and absent when off.
+
+### Text
+
+```json
+{
+  "id": "custom-greeting",
+  "label": "Greeting text",
+  "type": "text",
+  "default": "Hello!"
+}
+```
+
+Returns a string or `null`.
+
+### Color
+
+```json
+{
+  "id": "accent-color",
+  "label": "Accent colour",
+  "type": "color",
+  "default": "#ff6b4a"
+}
+```
+
+The settings UI provides a colour picker and a hex text field. Returns a string or `null`.
+
+### File
+
+```json
+{
+  "id": "background-image",
+  "label": "Background image",
+  "type": "file",
+  "default": null,
+  "accept": "image/*"
+}
+```
+
+The native picker reads the selected file at pick time and stores a base64 **data URI** as the setting value. There is no runtime file-reading command. Convert the data URI with `api.file.createBlobUrl()` when you need a URL for CSS or an `<img>`.
+
+Normal setting values are limited to 64 KiB. A string beginning with `data:` may use up to 8 MiB, which is why file settings have a larger budget. Keep file settings to reasonably sized images; the value is part of the plugin's saved settings.
+
+## Settings in CSS
+
+yapmod mirrors every declared setting onto the root element as:
+
+```text
+data-yapmod-plugin-<plugin-id>-<setting-id>
+```
+
+Toggles set the attribute to `"true"` when enabled and remove it when disabled. Other types set the string value, or remove the attribute when the value is `null`.
+
+```css
+html[data-yapmod-plugin-activity-badge-show-badge="true"] .activity-badge {
+  display: block;
+}
+
+html[data-yapmod-plugin-activity-badge-accent-color] .activity-badge {
+  color: attr(data-yapmod-plugin-activity-badge-accent-color);
+}
+```
+
+CSS `attr()` support varies. When the value matters for more than a simple check, read it through `api.settings` and apply it in JavaScript.
+
+## TypeScript shape
+
+The public manifest type is generated from the client source. The runtime validation is stricter than the type in a few places, especially the fixed stylesheet and script names.
+
+<ApiType name="PluginManifest" signature={true} members={false} />
+
+## Limits
+
+<Limits kind="plugin" />
+
+## Validation behaviour
+
+- Manifest ids and setting ids use `^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$`.
+- Unknown manifest fields are rejected.
+- Duplicate setting ids are rejected.
+- A `toggle` default that is not a boolean is rejected.
+- A `text`, `file` or `color` default that is not a string or `null` is rejected.
+- The plugin API must equal the app's supported version (`1`).
+- The stylesheet must be `plugin.css` and the optional script must be `plugin.js`.
+- CSS is checked for size and blocked constructs before it is applied.
+- A community catalog entry must also match its folder name and stay within the catalog limits.
+
+If a setting is misspelled, reading it through `api.settings.get()` throws instead of returning a default. That is intentional: a typo should fail loudly during development.

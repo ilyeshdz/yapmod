@@ -1,0 +1,67 @@
+---
+import pluginReference from "../../data/plugin-reference.json";
+import themeReference from "../../data/theme-reference.json";
+
+interface Props {
+  kind: "plugin" | "theme";
+}
+
+const { kind } = Astro.props;
+
+const formatBytes = (bytes: number) => {
+  if (bytes >= 1024 * 1024) return `${bytes / (1024 * 1024)} MiB`;
+  return `${Math.round(bytes / 1024)} KiB`;
+};
+
+const pluginRules = pluginReference.rules;
+const themeRules = themeReference.rules;
+
+const rows =
+  kind === "plugin"
+    ? [
+        ["Plugin API version", String(pluginRules.pluginApi)],
+        ["Manifest file", formatBytes(pluginRules.maxManifestBytes)],
+        ["Stylesheet", formatBytes(pluginRules.maxCssBytes)],
+        ["Script", formatBytes(pluginRules.maxScriptBytes)],
+        ["Settings per plugin", String(pluginRules.maxSettings)],
+        ["Tags per plugin", String(pluginRules.maxTags)],
+        ["Display name", `${pluginRules.maxNameLength} characters`],
+        ["Plugins in the Community catalog", String(pluginRules.maxPlugins)],
+      ]
+    : [
+        ["Theme API version", String(themeRules.themeApi)],
+        ["Manifest file", formatBytes(themeRules.maxManifestBytes)],
+        ["Stylesheet", formatBytes(themeRules.maxCssBytes)],
+        ["Preview image", formatBytes(themeRules.maxPreviewBytes)],
+        ["Tags per theme", String(themeRules.maxTags)],
+        ["Display name", `${themeRules.maxNameLength} characters`],
+        ["Themes in the Community catalog", String(themeRules.maxThemes)],
+        ["Preview formats", themeRules.previewExtensions.join(", ")],
+      ];
+---
+
+<div class="limits-table">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Limit</th>
+        <th scope="col">Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map(([label, value]) => (
+        <tr>
+          <td>{label}</td>
+          <td><code>{value}</code></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+<p class="token-note">
+  Generated from <code>community-{kind}s/rules.json</code>. {
+    kind === "plugin"
+      ? "The same values are enforced by the app and by the website catalog build."
+      : "The website catalog build enforces these limits; a local theme is read from disk and only the theme API version is checked at install."
+  }
+</p>

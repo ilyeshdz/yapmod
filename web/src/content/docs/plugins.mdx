@@ -1,0 +1,85 @@
+---
+title: Plugins
+group: Overview
+order: 1
+area: plugins
+eyebrow: Developer documentation
+description: Build packages that add CSS, behavior and settings to the Yapper page.
+---
+
+import Callout from "../../components/docs/Callout.astro";
+
+A yapmod plugin is a small folder that yapmod copies into its plugins folder and applies to the Yapper page. Every package starts with a manifest and a stylesheet; adding an optional `plugin.js` lets it run JavaScript in the page.
+
+Plugins are how you add behavior yapmod does not ship with: a custom unread counter, a message filter, a keyboard shortcut, a network inspector, a background image, or a small tool that reacts to events in the app.
+
+<Callout type="warning" title="Plugins are trusted page code">
+A JavaScript plugin is not a sandboxed extension. It runs in the Yapper page with the same DOM and JavaScript access as the page itself, including any data visible to the page. Read [Security and limitations](/yapmod/docs/plugins/security) before you distribute a plugin.
+</Callout>
+
+## What a plugin can do
+
+The current plugin API (`api: 1`) exposes:
+
+| Capability | What it is for |
+| --- | --- |
+| Stylesheet | Change the interface with CSS, or add runtime styles through `api.styles.add()`. |
+| Settings | Declare toggles, text, colour and file inputs that yapmod renders for the user. |
+| Storage | Keep small JSON values scoped to your plugin id. |
+| Network inspectors | Observe and modify `fetch()` requests, responses and WebSocket messages. |
+| Interface helpers | Show banners, system notifications and host modals. |
+| File settings | Turn a user-picked file into a temporary blob URL. |
+| Logging | Write namespaced messages to the developer console. |
+
+The API is documented in the [API reference](/yapmod/docs/plugins/api). Every plugin receives the same `api` object when it activates.
+
+## How a plugin runs
+
+At a high level:
+
+1. yapmod reads `manifest.json`, checks the package limits and validates the stylesheet.
+2. On import or enable, the user reviews a consent dialog. Consent is tied to the manifest version and a hash of the CSS and script, so changed executable content needs approval again.
+3. When enabled, yapmod applies `plugin.css` and, if present, imports `plugin.js` as an ES module.
+4. The module's default export runs `activate(api)`. The function may return a cleanup callback, and can also register callbacks with `api.onCleanup()`.
+5. On disable or removal, yapmod runs the cleanup callbacks in reverse order, removes injected styles and setting attributes, and stops automatically restoring the plugin on the next launch.
+
+The full lifecycle, including activation failures and restored plugins, is covered in [Architecture and lifecycle](/yapmod/docs/plugins/architecture).
+
+## Before you start
+
+You need:
+
+- yapmod installed from a current build, so the plugin API is available.
+- A text editor and a folder on disk for the package.
+- Familiarity with HTML, CSS and modern JavaScript if you want to write a script. The module format is plain ES modules; no build step is required.
+- The Yapper page's developer console for debugging. See [Development setup](/yapmod/docs/plugins/development).
+
+You do **not** need to build yapmod from source to test a plugin. The local import flow is the normal development loop.
+
+## Start here
+
+<div class="doc-grid">
+  <a class="doc-tile" href="/yapmod/docs/plugins/getting-started">
+    <b>Getting started</b>
+    <span>Create a folder, write a manifest and stylesheet, import it, and add your first script.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/plugins/manifest">
+    <b>Manifest reference</b>
+    <span>The package format, every field, setting types and validation limits.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/plugins/api">
+    <b>API reference</b>
+    <span>Lifecycle, storage, settings, network hooks, UI helpers and TypeScript types.</span>
+  </a>
+  <a class="doc-tile" href="/yapmod/docs/plugins/examples">
+    <b>Complete example</b>
+    <span>A working manifest, stylesheet and script that counts live activity.</span>
+  </a>
+</div>
+
+## Choose your path
+
+- **New to plugins?** Follow [Getting started](/yapmod/docs/plugins/getting-started), then read [Architecture and lifecycle](/yapmod/docs/plugins/architecture).
+- **Already writing code?** Jump to the [API reference](/yapmod/docs/plugins/api) and the [guides](/yapmod/docs/plugins/guides/settings).
+- **Publishing a package?** Read [Submit a plugin](/yapmod/docs/submit-a-plugin).
+- **Looking for the user guide?** See [Installing plugins](/yapmod/docs/installing-plugins).

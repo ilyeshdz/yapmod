@@ -1,0 +1,115 @@
+---
+title: Structure and manifest
+group: Guides
+order: 2
+area: themes
+eyebrow: Reference
+description: Every theme manifest field, the file rules, modes, and validation behaviour.
+---
+
+import ApiType from "../../../components/docs/ApiType.astro";
+import Callout from "../../../components/docs/Callout.astro";
+import Limits from "../../../components/docs/Limits.astro";
+
+A theme is a folder. yapmod looks for `manifest.json` in that folder, reads the stylesheet it names, and stores the result as a bundle. Only `id` and `name` are required.
+
+## Complete example
+
+```json
+{
+  "id": "midnight-blurple",
+  "name": "Midnight Blurple",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Cool blues on a deep navy base.",
+  "license": "MIT",
+  "mode": "both",
+  "tags": ["dark", "blue"],
+  "api": 1,
+  "preview": "preview.png",
+  "css": "theme.css"
+}
+```
+
+```text
+midnight-blurple/
+├── manifest.json
+├── theme.css
+└── preview.png
+```
+
+## Top-level fields
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `id` | Yes | string | The identity of the theme. It becomes the installed folder name and the value of `data-yapmod-theme`. |
+| `name` | Yes | string | Shown in the gallery. Up to 120 characters, and it cannot be blank. |
+| `version` | No | string | The version of the theme itself. |
+| `author` | No | string | Who made it. |
+| `description` | No | string | A short line shown with the theme. |
+| `license` | No | string | The license of the theme. |
+| `mode` | No | `"dark"` \| `"light"` \| `"both"` | Defaults to `dark`. Unknown values are also treated as `dark`. |
+| `tags` | No | string[] | Search words used by the Community gallery. |
+| `api` | No | number | The theme format the theme was written against. The current value is `1`. |
+| `preview` | No | string | File name of a preview image inside the theme folder. |
+| `css` | No | string | File name of the stylesheet. Defaults to `theme.css`. |
+
+The generated type mirrors what the app deserializes:
+
+<ApiType name="ThemeManifest" source="theme" members={false} />
+
+## Files and names
+
+- The manifest must be valid JSON.
+- `id` must be non-empty, must not start with `.`, and may use letters, digits, `-`, `_` and `.`. Because it becomes a folder name, keep it short and stable.
+- `css` and `preview` must name a file directly inside the theme folder. The name cannot start with `.`, cannot contain `/` or `\`, and cannot contain `..`.
+- The stylesheet must exist. If `css` is omitted, yapmod looks for `theme.css`.
+- `preview` is optional. It is read only from the extension allowlist below; an unsupported format is ignored rather than breaking the install.
+- Importing copies the whole folder, including extra files. Symbolic links are rejected, so a theme cannot point outside itself.
+- A theme with an `api` newer than the app understands is refused instead of being applied halfway.
+
+## Limits
+
+<Limits kind="theme" />
+
+## Mode
+
+`mode` answers one question: does the theme have its own opinion about dark and light?
+
+| Value | Behaviour |
+| --- | --- |
+| `dark` | The theme is always shown in dark mode. |
+| `light` | The theme is always shown in light mode. |
+| `both` | The theme follows the app's **Mode** setting, which can follow the system. |
+
+`dark` is the default, including for an unknown value, because a theme written before modes existed was almost certainly a dark theme. A one-mode theme still receives `data-yapmod-mode` so the same stylesheet can be reused unchanged.
+
+## Local and Community differences
+
+The app is deliberately forgiving with a local theme and strict with the published catalog:
+
+| Check | Local import | Community build |
+| --- | --- | --- |
+| Unknown manifest fields | Ignored | Rejected |
+| `id` characters | Letters, digits, `-`, `_`, `.`; any length | Letters, digits, `-`, `_`; must start with a letter or digit; at most 24 characters |
+| Folder name | Does not have to match `id` | Must match `id` |
+| `mode` | Unknown values fall back to `dark` | Must be `dark`, `light` or `both` |
+| `tags` | Not limited by the app | At most 20, each at most 32 characters |
+| CSS | Applied as written | `@import`, `behavior:` and backslash escapes rejected |
+| Size | Read from disk | Enforced at the [limits](#limits) above |
+
+The Community build also defaults a missing `mode` to `both` and a missing `api` to `1`, and it rejects an `api` newer than the catalog supports. Match the published rules even for a local theme if you intend to submit it later.
+
+## What the app stores
+
+After installation the app builds a bundle from the manifest. Only these values reach the client:
+
+<ApiType name="ThemeBundle" source="theme" members={false} />
+
+The stylesheet text and preview data URI are included. Fields the manifest does not use are not passed on, and the bundle has no script, module or executable entry point.
+
+## Next steps
+
+- Put the fields to work in [Styling and tokens](/yapmod/docs/themes/styling).
+- Understand mode resolution, stylesheet order and host state in [Loading and modes](/yapmod/docs/themes/loading).
+- Follow the stricter published checks in [Submit a theme](/yapmod/docs/submit-a-theme).
