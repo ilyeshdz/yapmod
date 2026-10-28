@@ -16,6 +16,10 @@ export default defineConfig({
   },
   build: {
     format: "directory",
+    // Inline the CSS so a client-side navigation never depends on a separate
+    // hashed stylesheet request. A missing or stale stylesheet file otherwise
+    // leaves the whole page unstyled after a ClientRouter swap.
+    inlineStylesheets: "always",
   },
   devToolbar: {
     enabled: false,
