@@ -42,6 +42,11 @@ fn main() {
             "install_community_plugin",
             "open_plugins_folder",
             "remove_plugin",
+            "yaplay_connect",
+            "yaplay_disconnect",
+            "yaplay_state",
+            "yaplay_send",
+            "yaplay_set_share_notifications",
         ]),
     ))
     .expect("failed to run tauri-build");

@@ -15,8 +15,9 @@ const CLICK_EVENT: &str = "yapmod:notification-click";
 /// The page hands over the title, the body and the tag of the message the
 /// notification is about.
 #[tauri::command]
-pub fn notify(
+pub async fn notify(
     app: AppHandle,
+    yaplay_state: tauri::State<'_, crate::yaplay::YaplayState>,
     title: String,
     body: Option<String>,
     tag: Option<String>,
@@ -29,21 +30,35 @@ pub fn notify(
         return Err("notification content exceeds the permitted size".to_string());
     }
 
-    let mut builder = app.notification().builder().title(title);
+    if crate::yaplay::is_connected(&yaplay_state).await
+        && crate::yaplay::should_share_notifications(&yaplay_state).await
+    {
+        let message = serde_json::json!({
+            "type": "notification",
+            "title": title,
+            "body": body.unwrap_or_default()
+        });
+        crate::yaplay::send_to_all(&yaplay_state, message.to_string()).await;
+        Ok(())
+    } else {
+        let mut builder = app.notification().builder().title(&title);
 
-    if let Some(body) = body {
-        builder = builder.body(body);
+        if let Some(ref body) = body {
+            builder = builder.body(body);
+        }
+
+        if silent.unwrap_or(false) {
+            builder = builder.silent();
+        }
+
+        if let Some(tag) = tag {
+            builder = builder.extra(TAG_KEY, tag);
+        }
+
+        builder.show().map_err(|error| error.to_string())?;
+
+        Ok(())
     }
-
-    if silent.unwrap_or(false) {
-        builder = builder.silent();
-    }
-
-    if let Some(tag) = tag {
-        builder = builder.extra(TAG_KEY, tag);
-    }
-
-    builder.show().map_err(|error| error.to_string())
 }
 
 /// Asks the system for the permission to show notifications.

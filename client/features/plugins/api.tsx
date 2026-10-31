@@ -718,6 +718,9 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
             URL.revokeObjectURL(url);
           },
         }),
+        async invoke(command: string, args?: Record<string, unknown>): Promise<unknown> {
+          return invokeCommand(command, args);
+        },
       });
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.

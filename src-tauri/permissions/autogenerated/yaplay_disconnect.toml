@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-yaplay-disconnect"
+description = "Enables the yaplay_disconnect command without any pre-configured scope."
+commands.allow = ["yaplay_disconnect"]
+
+[[permission]]
+identifier = "deny-yaplay-disconnect"
+description = "Denies the yaplay_disconnect command without any pre-configured scope."
+commands.deny = ["yaplay_disconnect"]
