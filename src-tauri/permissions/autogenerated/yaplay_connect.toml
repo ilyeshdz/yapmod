@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-yaplay-connect"
+description = "Enables the yaplay_connect command without any pre-configured scope."
+commands.allow = ["yaplay_connect"]
+
+[[permission]]
+identifier = "deny-yaplay-connect"
+description = "Denies the yaplay_connect command without any pre-configured scope."
+commands.deny = ["yaplay_connect"]

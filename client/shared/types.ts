@@ -399,6 +399,11 @@ export type YapmodPluginApi = {
      */
     revokeObjectURL(url: string): void;
   };
+  /**
+   * Calls a native Tauri command. Only commands explicitly exposed to plugins
+   * are available. Use this to interact with native backend functionality.
+   */
+  invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;
 };
 
 /** The default export of a `plugin.js` ES module. */

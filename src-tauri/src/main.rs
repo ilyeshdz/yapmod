@@ -21,6 +21,7 @@ mod tray;
 mod update;
 mod version;
 mod window;
+mod yaplay;
 
 fn main() {
     let app = tauri::Builder::default()
@@ -58,6 +59,11 @@ fn main() {
             plugin::install_community_plugin,
             plugin::open_plugins_folder,
             plugin::remove_plugin,
+            yaplay::yaplay_connect,
+            yaplay::yaplay_disconnect,
+            yaplay::yaplay_state,
+            yaplay::yaplay_send,
+            yaplay::yaplay_set_share_notifications,
         ])
         .setup(|app| {
             let version = app.package_info().version.to_string();
@@ -66,6 +72,8 @@ fn main() {
 
             notify::listen(app.handle())
                 .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+
+            app.manage(yaplay::YaplayState::new());
 
             let url = WebviewUrl::External("https://www.yapin.gg/?auth=in".parse()?);
             let title = format!("Yapmod - v{}", app.package_info().version);
