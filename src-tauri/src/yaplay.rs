@@ -7,6 +7,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use ts_rs::TS;
 
+/// The current state of a Yaplay WebSocket connection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 #[ts(export, export_to = "types.ts")]
@@ -109,8 +110,7 @@ pub async fn yaplay_connect(
     let plugin_id_clone = plugin_id.clone();
     let task = tokio::spawn(async move {
         futures_util::pin_mut!(read);
-        while read.next().await.is_some() {
-        }
+        while read.next().await.is_some() {}
         emit_state(
             &app_clone,
             &plugin_id_clone,
