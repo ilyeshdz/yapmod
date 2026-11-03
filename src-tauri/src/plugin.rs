@@ -242,98 +242,10 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     Ok(())
 }
 
-/// Conservatively rejects external CSS loads. Backslash escapes are disallowed
-/// so a dangerous identifier cannot be hidden from this check.
+/// Rejects stylesheets that exceed the configured size limit.
 fn validate_css(css: &str) -> Result<(), String> {
     if css.len() > PLUGIN_RULES.max_css_bytes {
         return Err("the plugin stylesheet is larger than the allowed size".into());
-    }
-    if css.contains('\\') {
-        return Err("CSS escapes are not supported in plugin stylesheets".into());
-    }
-
-    let mut normalized = String::with_capacity(css.len());
-    let mut chars = css.chars().peekable();
-    let mut quote = None;
-    while let Some(character) = chars.next() {
-        if let Some(delimiter) = quote {
-            if character == delimiter {
-                quote = None;
-            }
-            normalized.push(' ');
-            continue;
-        }
-        if character == '"' || character == '\'' {
-            quote = Some(character);
-            continue;
-        }
-        if character == '/' && chars.peek() == Some(&'*') {
-            chars.next();
-            let mut closed = false;
-            while let Some(comment_char) = chars.next() {
-                if comment_char == '*' && chars.peek() == Some(&'/') {
-                    chars.next();
-                    closed = true;
-                    break;
-                }
-            }
-            if !closed {
-                return Err("the plugin stylesheet has an unfinished comment".into());
-            }
-            normalized.push(' ');
-            continue;
-        }
-        normalized.push(character.to_ascii_lowercase());
-    }
-    if quote.is_some() {
-        return Err("the plugin stylesheet has an unfinished string".into());
-    }
-
-    let bytes = normalized.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'@' {
-            let start = index + 1;
-            let mut end = start;
-            while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'-') {
-                end += 1;
-            }
-            if &bytes[start..end] == b"import" {
-                return Err("plugin stylesheets cannot use @import".into());
-            }
-            index = end.max(index + 1);
-            continue;
-        }
-        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'-' || bytes[index] == b'_' {
-            let start = index;
-            index += 1;
-            while index < bytes.len()
-                && (bytes[index].is_ascii_alphanumeric()
-                    || bytes[index] == b'-'
-                    || bytes[index] == b'_')
-            {
-                index += 1;
-            }
-            let ident = &bytes[start..index];
-            if ident == b"url"
-                || ident == b"expression"
-                || ident == b"behavior"
-                || ident == b"image-set"
-                || ident == b"-webkit-image-set"
-            {
-                let mut next = index;
-                while next < bytes.len() && bytes[next].is_ascii_whitespace() {
-                    next += 1;
-                }
-                if ident != b"behavior" || bytes.get(next) == Some(&b':') {
-                    return Err(
-                        "plugin stylesheets cannot import or load external resources".into(),
-                    );
-                }
-            }
-            continue;
-        }
-        index += 1;
     }
     Ok(())
 }
@@ -893,14 +805,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_external_css_and_code_like_constructs() {
+    fn allows_external_css_constructs() {
         for css in [
             "@import url(https://example.test/a.css);",
             ".x { background: url(https://example.test/a.png); }",
             "@/**/import url(https://example.test/a.css);",
             ".x { color: e\\78pression(alert(1)); }",
+            ".x { background: image-set(\"a.png\" 1x); }",
+            ".x { behavior: url(#default#time2); }",
         ] {
-            assert!(validate_css(css).is_err(), "accepted {css}");
+            assert!(validate_css(css).is_ok(), "rejected {css}");
         }
     }
 

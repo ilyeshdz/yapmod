@@ -177,7 +177,7 @@ The public manifest type is generated from the client source. The runtime valida
 - A `text`, `file` or `color` default that is not a string or `null` is rejected.
 - The plugin API must equal the app's supported version (`1`).
 - The stylesheet must be `plugin.css` and the optional script must be `plugin.js`.
-- CSS is checked for size and blocked constructs before it is applied.
+- CSS is checked for size before it is applied.
 - A community catalog entry must also match its folder name and stay within the catalog limits.
 
 If a setting is misspelled, reading it through `api.settings.get()` throws instead of returning a default. That is intentional: a typo should fail loudly during development.

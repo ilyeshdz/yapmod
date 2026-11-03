@@ -47,8 +47,6 @@ The website build reads `community-plugins/rules.json` and:
 - validates setting ids, types, defaults, labels and duplicates;
 - enforces the manifest, stylesheet and script size limits;
 - rejects `plugin.css` or `plugin.js` with an unsupported name;
-- rejects blocked external-resource constructs in plugin CSS;
-- limits the total number of plugins and the size of the generated catalog;
 - copies only the manifest, stylesheet and optional script into the published package.
 
 The catalog itself is generated. Do not edit `community-plugins/index.json` or a published package by hand.

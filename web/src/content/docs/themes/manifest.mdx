@@ -95,7 +95,7 @@ The app is deliberately forgiving with a local theme and strict with the publish
 | Folder name | Does not have to match `id` | Must match `id` |
 | `mode` | Unknown values fall back to `dark` | Must be `dark`, `light` or `both` |
 | `tags` | Not limited by the app | Must be strings |
-| CSS | Applied as written | `@import`, `behavior:` and backslash escapes rejected |
+| CSS | Applied as written | Applied as written |
 | Size | Read from disk | Enforced at the [limits](#limits) above |
 
 The Community build also defaults a missing `mode` to `both` and a missing `api` to `1`, and it rejects an `api` newer than the catalog supports. Match the published rules even for a local theme if you intend to submit it later.

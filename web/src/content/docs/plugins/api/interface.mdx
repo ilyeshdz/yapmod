@@ -128,7 +128,7 @@ const remove = api.styles.add(`
 remove();
 ```
 
-The CSS goes through the same validation as `plugin.css`: 512 KiB maximum, no `@import`, `url()`, `image-set()`, `expression()`, `behavior:` or backslash escapes. Invalid CSS throws. The returned function removes the style element. Runtime styles are also removed automatically when the plugin is disabled.
+The CSS is applied as written. External resources, `@import`, and other standard CSS constructs are allowed. The returned function removes the style element. Runtime styles are also removed automatically when the plugin is disabled.
 
 <Callout type="tip" title="Prefer the package stylesheet">
 Put permanent rules in `plugin.css` and use `api.styles.add()` only for genuinely dynamic CSS. Creating a new style element on every settings change without removing the old one leaks rules for the rest of the session.

@@ -64,7 +64,7 @@ Create `plugin.css`:
 }
 ```
 
-Plugin stylesheets are regular CSS, but yapmod rejects CSS that tries to load external resources. That means `@import`, `url()`, `image-set()`, `expression()`, `behavior:`, and backslash escapes are not allowed. Keep the package self-contained, or use a script and a data URI if you need an image.
+Plugin stylesheets are regular CSS. They may use `url()`, `@import`, and other standard constructs, including external resources, so review the stylesheet of a Community plugin before installing it.
 
 A package with no script is valid. Stop here, import it, and you have a working CSS plugin.
 
@@ -150,7 +150,7 @@ Callbacks registered with `api.onCleanup()` run in reverse order when the plugin
 | --- | --- |
 | The package cannot be imported | The folder has no `manifest.json`, or the manifest is not valid JSON. |
 | `api` is rejected | The manifest uses a value other than `1`. |
-| The stylesheet is rejected | The CSS loads a `url()`, uses `@import`, contains a backslash escape, or is over 512 KiB. |
+| The stylesheet is rejected | `plugin.css` is missing or larger than 512 KiB. |
 | The script is not running | The manifest has no `"script": "plugin.js"`, or the default export has no `activate` function. |
 | Settings do nothing | The setting id is missing from the manifest, or the plugin reads it before checking `api.settings.all()`. |
 | The plugin works until restart | Activation was never consented, or the cleanup from an earlier failed activation stopped it. Check the card error and the console. |

@@ -117,7 +117,7 @@ A local theme is plain CSS, so relative URLs resolve against the Yapper page, no
 
 - Use a full `https:` URL, or a `data:` URI, for images and fonts.
 - A remote asset is a network request made by the page. A theme can load its own fonts and backgrounds, but it should not depend on a server that may disappear.
-- The Community build rejects `@import`, `behavior:` and backslash escapes. It allows `url()`.
+- The Community build allows `url()`, `@import`, and other standard CSS constructs. External assets are still network requests, so prefer a `data:` URI or a system font stack.
 
 <Callout type="warning" title="A theme is trusted CSS">
 Local themes are not sandboxed and are not restricted to a fixed property list. A theme can hide, move or imitate interface elements. Only install a theme whose source you trust, and review a Community theme before installing it.

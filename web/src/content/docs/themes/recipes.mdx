@@ -121,7 +121,7 @@ A font is not a token, so use a plain rule. Scope it to the theme id so it disap
 }
 ```
 
-If the font is remote, load it without `@import`; the Community build rejects `@import`, and a local theme should not rely on it either. Use a hosted stylesheet link only if you control the page, or ship a `data:` URI. In practice, a system font stack is the portable choice.
+If the font is remote, load it with `url()` or `@import`, or ship a `data:` URI. A separate request delays first paint, so a system font stack is often the more portable choice.
 
 ## Text selection and scrollbars
 

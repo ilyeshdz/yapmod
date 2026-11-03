@@ -31,7 +31,6 @@ Open the page console and filter for `[plugin:<id>]` or `[yapmod plugin:<id>]`. 
 | `stylesheet must be named plugin.css` | The `stylesheet` field may be omitted, but when present it must be exactly `plugin.css`. |
 | `script must be named plugin.js` | The optional `script` field must be exactly `plugin.js`. |
 | `stylesheet is missing or larger than 512 KB` | Include `plugin.css` and keep it under the limit. |
-| `cannot import or load external resources` | Remove `url()`, `@import`, `image-set()`, `expression()` and backslash escapes from the plugin CSS. |
 | `setting is invalid or duplicated` | Check the setting id, label, type, default and uniqueness. |
 
 ## The package imports but will not enable

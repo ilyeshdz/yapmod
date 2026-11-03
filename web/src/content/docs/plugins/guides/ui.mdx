@@ -144,7 +144,7 @@ const remove = api.styles.add(`
 api.onCleanup(remove);
 ```
 
-Runtime CSS follows the plugin stylesheet rules: no external `url()` or `@import`, no backslash escapes, and a 512 KiB limit. If a rule never changes, put it in `plugin.css`.
+Runtime CSS is applied as written and shares the 512 KiB limit. If a rule never changes, put it in `plugin.css`.
 
 ## Cleanup checklist
 

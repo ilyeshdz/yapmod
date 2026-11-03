@@ -20,7 +20,7 @@ yapmod contributes predictability and reviewability, not isolation:
 - The package format is fixed: `manifest.json`, `plugin.css`, optional `plugin.js`.
 - The manifest is validated, unknown fields are rejected, and the API version must match.
 - Package files have size limits.
-- Plugin CSS cannot load external resources with `url()`, `@import`, `image-set()` or CSS escapes.
+- Plugin CSS is regular CSS and may load external resources; review third-party stylesheets before installing.
 - A consent dialog explains whether the package contains JavaScript.
 - Consent is tied to the package version and a hash of the executable CSS and script.
 - Installed files are copied locally and can be inspected with **View files**.
@@ -44,7 +44,7 @@ It cannot escape the normal web platform through the plugin API alone, but the p
 
 ## CSS is not harmless
 
-A stylesheet can hide warnings, make one control look like another, cover the interface, or load remote assets if the theme or app stylesheet permits it. In plugins, external resource constructs are blocked, but CSS can still change or imitate the interface. Plugin CSS is also allowed to use `!important` and broad selectors.
+A stylesheet can hide warnings, make one control look like another, cover the interface, or load remote assets. Plugin CSS can still change or imitate the interface, and it is allowed to use `!important`, broad selectors, and external resources. Only install CSS you trust.
 
 ## Consent, verification and trust
 

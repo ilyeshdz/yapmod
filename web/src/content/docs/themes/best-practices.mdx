@@ -61,7 +61,7 @@ Prefer one extra attribute of specificity over `!important`. Avoid styling the t
 - Relative `url()` paths point at the Yapper page, not at the theme folder.
 - Use a full `https:` address or a `data:` URI.
 - Keep remote assets optional. A font or background that fails to load should not make the theme unusable.
-- Do not use `@import`; the Community build rejects it, and a separate request delays first paint.
+- `@import` works, but a separate request delays first paint.
 - Keep the stylesheet within the [size limit](/yapmod/docs/themes/manifest#limits).
 
 ## Match the manifest to reality

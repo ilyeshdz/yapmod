@@ -27,82 +27,6 @@ function failBuilder(kind) {
   };
 }
 
-function normalizeCss(css, folder, fail) {
-  if (css.includes("\\")) fail(`${folder}: CSS escapes are not supported`);
-
-  let normalized = "";
-  let quote;
-  for (let index = 0; index < css.length; index += 1) {
-    const character = css[index];
-    if (quote) {
-      if (character === quote) quote = undefined;
-      normalized += " ";
-      continue;
-    }
-    if (character === "\"" || character === "'") {
-      quote = character;
-      normalized += " ";
-      continue;
-    }
-    if (character === "/" && css[index + 1] === "*") {
-      const end = css.indexOf("*/", index + 2);
-      if (end < 0) fail(`${folder}: stylesheet has an unfinished comment`);
-      index = end + 1;
-      continue;
-    }
-    normalized += character.toLowerCase();
-  }
-  if (quote) fail(`${folder}: stylesheet has an unfinished string`);
-
-  return normalized;
-}
-
-/**
- * Rejects constructs that can load or execute external resources.
- *
- * Plugins block URL-bearing functions in addition to the theme checks.
- */
-export function validateCss(css, folder, fail, { blockExternalResources = false } = {}) {
-  const normalized = normalizeCss(css, folder, fail);
-  const isIdentCharacter = (character) =>
-    character !== undefined && /[a-z0-9_-]/.test(character);
-
-  let index = 0;
-  while (index < normalized.length) {
-    if (normalized[index] === "@") {
-      const start = index + 1;
-      let end = start;
-      while (isIdentCharacter(normalized[end])) end += 1;
-      if (normalized.slice(start, end) === "import") {
-        fail(`${folder}: @import is not allowed`);
-      }
-      index = Math.max(end, index + 1);
-      continue;
-    }
-    if (/[a-z_-]/.test(normalized[index])) {
-      const start = index;
-      index += 1;
-      while (isIdentCharacter(normalized[index])) index += 1;
-      const ident = normalized.slice(start, index);
-      if (
-        blockExternalResources &&
-        ["url", "expression", "image-set", "-webkit-image-set"].includes(ident)
-      ) {
-        fail(`${folder}: stylesheet contains a blocked external-resource construct`);
-      }
-      if (ident === "behavior") {
-        let next = index;
-        while (/\s/.test(normalized[next] ?? "")) next += 1;
-        if (normalized[next] === ":") {
-          fail(`${folder}: the behavior property is not allowed`);
-        }
-      }
-      continue;
-    }
-    index += 1;
-  }
-}
-
 function readJson(path, fail, label) {
   try {
     return JSON.parse(readFileSync(path, "utf8"));
@@ -294,9 +218,6 @@ export function buildPlugins({ dev = false, webRoot = process.cwd() } = {}) {
       fail(`${folder}: stylesheet must be named plugin.css`);
     }
     const cssPath = requireFile(folder, cssName, rules.maxCssBytes, "stylesheet");
-    validateCss(readFileSync(cssPath, "utf8"), folder, fail, {
-      blockExternalResources: true,
-    });
 
     const scriptName = manifest.script;
     if (scriptName !== undefined && scriptName !== "plugin.js") {
@@ -380,7 +301,6 @@ export function buildThemes({ dev = false, webRoot = process.cwd() } = {}) {
 
     const cssName = manifest.css ?? "theme.css";
     const cssPath = requireFile(folder, cssName, rules.maxCssBytes, "stylesheet");
-    validateCss(readFileSync(cssPath, "utf8"), folder, fail);
 
     themes.push({
       id: manifest.id,

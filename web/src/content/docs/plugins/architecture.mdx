@@ -24,10 +24,10 @@ my-plugin/
 
 The stylesheet and script names are fixed. `stylesheet` must name `plugin.css`, and `script`, when present, must name `plugin.js`. Extra files are ignored when yapmod installs a local package. Symbolic links are not accepted for the manifest, stylesheet or script.
 
-Before a package is accepted, both the Rust side and the client validate:
+Before a package is accepted, Rust validates:
 
 - the manifest shape, API version, ids and setting types;
-- the stylesheet size and blocked external-resource constructs;
+- the stylesheet size;
 - the script size, when a script exists.
 
 The app's install step copies the manifest, CSS and optional script into the plugins folder. The installed copy is what runs, so it can be inspected independently with **View files**.
