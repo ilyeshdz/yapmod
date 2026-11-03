@@ -9,7 +9,7 @@ import type {
 } from "../../shared/types";
 import { invokeCommand } from "../../core/tauri";
 
-export type PluginSettingsDraft = Map<string, PluginSettingValue>;
+type PluginSettingsDraft = Map<string, PluginSettingValue>;
 
 /** The warning shown before a plugin is imported or enabled. */
 export function PluginConsent(
@@ -130,7 +130,7 @@ function PluginSettingInput(
             placeholder="No file selected"
           />
           <button
-            class="btn small yapmod-plugin-file-browse"
+            class="btn small"
             type="button"
             onClick={async () => {
               const dataUri = await invokeCommand<string | null>("pick_plugin_file", {
@@ -190,7 +190,7 @@ export function PluginSettingsForm(
   props: { manifest: PluginManifest; draft: PluginSettingsDraft },
 ): JSX.Element {
   return (
-    <div class="yapmod-plugin-settings-modal">
+    <div>
       <For each={props.manifest.settings}>
         {(setting) => <PluginSettingInput setting={setting} draft={props.draft} />}
       </For>
@@ -216,7 +216,7 @@ export function PluginSourceViewer(
   props: { bundle: PluginBundle },
 ): JSX.Element {
   return (
-    <div class="yapmod-plugin-source-viewer">
+    <div>
       <p class="yapmod-plugin-source-note">
         These are the package contents loaded by Yapmod. Community plugins are
         copied to this local installation and can be reviewed here.

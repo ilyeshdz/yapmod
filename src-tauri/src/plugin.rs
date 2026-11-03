@@ -148,12 +148,6 @@ impl CommunityPlugin {
     }
 }
 
-impl From<PluginManifest> for CommunityPlugin {
-    fn from(manifest: PluginManifest) -> Self {
-        Self::new(manifest, false)
-    }
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PluginCatalog {
@@ -195,10 +189,6 @@ fn valid_id(id: &str) -> bool {
         && id
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || "-_".contains(character))
-}
-
-fn valid_setting_id(id: &str) -> bool {
-    valid_id(id)
 }
 
 fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
@@ -246,7 +236,7 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     }
     let mut setting_ids = HashSet::new();
     for setting in &manifest.settings {
-        if !valid_setting_id(&setting.id)
+        if !valid_id(&setting.id)
             || !setting_ids.insert(&setting.id)
             || setting.label.trim().is_empty()
             || setting.label.chars().count() > 80
@@ -476,7 +466,7 @@ async fn community_catalog() -> Result<PluginCatalog, String> {
     Ok(catalog)
 }
 
-async fn fetch_community_manifest(id: &str) -> Result<(PluginManifest, bool), String> {
+async fn fetch_community_manifest(id: &str) -> Result<(PluginManifest, Vec<u8>, bool), String> {
     if !valid_id(id) {
         return Err("that is not a valid plugin id".into());
     }
@@ -500,7 +490,7 @@ async fn fetch_community_manifest(id: &str) -> Result<(PluginManifest, bool), St
         return Err("the community plugin id does not match the catalog".into());
     }
     validate_manifest(&manifest)?;
-    Ok((manifest, entry.verified))
+    Ok((manifest, bytes, entry.verified))
 }
 
 fn install_bundle(
@@ -538,19 +528,51 @@ fn install_bundle(
     result
 }
 
+/// Maps a manifest `accept` hint to file-dialog extensions. Hints are
+/// MIME-style (`image/*`, `image/png`) while the dialog filter takes bare
+/// extensions; unknown hints leave the picker unfiltered rather than
+/// blocking every file.
+fn extensions_for_accept(accept: Option<&str>) -> Option<Vec<&'static str>> {
+    const IMAGE_EXTENSIONS: [&str; 9] = [
+        "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif",
+    ];
+    let accept = accept?.trim().to_ascii_lowercase();
+    if accept.is_empty() || accept == "*/*" {
+        return None;
+    }
+    if let Some(subtype) = accept.strip_prefix("image/") {
+        return match subtype {
+            "*" => Some(IMAGE_EXTENSIONS.to_vec()),
+            "jpeg" => Some(vec!["jpg", "jpeg"]),
+            "svg+xml" => Some(vec!["svg"]),
+            _ => IMAGE_EXTENSIONS
+                .iter()
+                .find(|extension| **extension == subtype)
+                .map(|extension| vec![*extension]),
+        };
+    }
+    // Other MIME families (audio/, video/, …) have no mapping here, so the
+    // picker stays unfiltered.
+    None
+}
+
 /// Opens a native file picker, reads the selected file immediately, and returns
 /// a base64 data URI. The plugin receives the file content directly in its settings
 /// value, so no runtime file-reading command is needed.
 #[tauri::command]
 pub async fn pick_plugin_file(
     app: AppHandle,
-    _accept: Option<String>,
+    accept: Option<String>,
 ) -> Result<Option<String>, String> {
+    let extensions = extensions_for_accept(accept.as_deref());
     let selected = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
-            .file()
-            .set_title("Select a file")
-            .blocking_pick_file()
+        let dialog = app.dialog().file().set_title("Select a file");
+        match extensions {
+            Some(extensions) => dialog
+                .add_filter("Images", &extensions)
+                .blocking_pick_file(),
+            None => dialog.blocking_pick_file(),
+        }
     })
     .await
     .map_err(|error| error.to_string())?;
@@ -724,7 +746,7 @@ pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, String> {
 pub async fn preview_community_plugin(id: String) -> Result<PluginManifest, String> {
     fetch_community_manifest(&id)
         .await
-        .map(|(manifest, _)| manifest)
+        .map(|(manifest, _, _)| manifest)
 }
 
 #[tauri::command]
@@ -733,19 +755,9 @@ pub async fn install_community_plugin(
     id: String,
     expected_manifest: PluginManifest,
 ) -> Result<PluginBundle, String> {
-    let (manifest, verified) = fetch_community_manifest(&id).await?;
+    let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
     if manifest != expected_manifest {
         return Err("the community plugin changed after you reviewed its import warning".into());
-    }
-    let manifest_bytes = fetch_asset(
-        &format!("plugins/{id}/{MANIFEST_FILE}"),
-        PLUGIN_RULES.max_manifest_bytes,
-    )
-    .await?;
-    let package_manifest: PluginManifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|error| format!("the community plugin manifest is invalid: {error}"))?;
-    if package_manifest != manifest {
-        return Err("the community plugin changed while it was being downloaded".into());
     }
     let css = fetch_asset(
         &format!("plugins/{id}/{}", manifest.stylesheet),
@@ -806,8 +818,8 @@ pub fn remove_plugin(app: AppHandle, id: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        PluginCatalogEntry, PluginManifest, PluginSetting, valid_id, validate_css,
-        validate_manifest,
+        PluginCatalogEntry, PluginManifest, PluginSetting, extensions_for_accept, valid_id,
+        validate_css, validate_manifest,
     };
 
     fn manifest() -> PluginManifest {
@@ -910,6 +922,37 @@ mod tests {
         assert!(!valid_id("../outside"));
         assert!(!valid_id(".hidden"));
         assert!(!valid_id("plugin.with.dots"));
+    }
+
+    #[test]
+    fn accept_hints_map_to_dialog_extensions() {
+        assert_eq!(
+            extensions_for_accept(Some("image/*")),
+            Some(vec![
+                "png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"
+            ])
+        );
+        assert_eq!(extensions_for_accept(Some("image/png")), Some(vec!["png"]));
+        assert_eq!(
+            extensions_for_accept(Some("image/jpeg")),
+            Some(vec!["jpg", "jpeg"])
+        );
+        assert_eq!(
+            extensions_for_accept(Some("image/svg+xml")),
+            Some(vec!["svg"])
+        );
+        assert_eq!(
+            extensions_for_accept(Some(" image/* ")),
+            extensions_for_accept(Some("image/*"))
+        );
+
+        // Unknown or absent hints leave the picker unfiltered instead of
+        // blocking files the plugin can still read.
+        assert_eq!(extensions_for_accept(None), None);
+        assert_eq!(extensions_for_accept(Some("")), None);
+        assert_eq!(extensions_for_accept(Some("*/*")), None);
+        assert_eq!(extensions_for_accept(Some("application/pdf")), None);
+        assert_eq!(extensions_for_accept(Some("image/tiff")), None);
     }
 
     #[test]

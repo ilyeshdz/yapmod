@@ -247,14 +247,6 @@ export type PluginSetting = {
 
 export type PluginSettingValue = boolean | string | null;
 
-export function isPluginSettingToggle(setting: PluginSetting): setting is Extract<PluginSetting, { type: "toggle" }> {
-  return setting.type === "toggle";
-}
-
-export function isPluginSettingString(setting: PluginSetting): setting is Extract<PluginSetting, { type: "text" | "file" | "color" }> {
-  return setting.type === "text" || setting.type === "file" || setting.type === "color";
-}
-
 export type PluginBundle = {
   manifest: PluginManifest;
   css: string;
