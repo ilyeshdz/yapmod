@@ -1,0 +1,15 @@
+/* Popup Remover */
+
+/*
+ * Hide the Yapin' Plus nudge as soon as it enters the page, before the script
+ * observer has a chance to remove it. The settings API mirrors toggles onto the
+ * <html> element, so this rule disappears when the plugin is disabled or the
+ * user turns the setting off. The script removes the element outright; the
+ * stylesheet only prevents a flash of the dialog while that happens.
+ */
+
+html[data-yapmod-plugin-popup-remover-hide-plus-nudge="true"] div.plus-nudge[role="dialog"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
