@@ -16,7 +16,7 @@ Stable client updates are published automatically when a new GitHub release is c
 
 ## Nightly
 
-The **Nightly** channel tracks ongoing development. Nightly builds may be unstable, can change frequently, and are replaced each day. Install the [nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly) to try changes before they reach stable.
+The **Nightly** channel tracks ongoing development. Nightly builds are produced automatically from the `main` branch, may be unstable, can change frequently, and are replaced each day. Install the [nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly) to try changes before they reach stable.
 
 Nightly builds update from the nightly feed only. They are intended for testing and early feedback, not daily use.
 

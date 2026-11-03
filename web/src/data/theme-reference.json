@@ -4,7 +4,7 @@
     "client/features/themes/tokens.ts",
     "community-themes/rules.json"
   ],
-  "sourceHash": "ccfdcd4c369badc4",
+  "sourceHash": "8443c94b6f904aa8",
   "types": {
     "ThemeManifest": {
       "name": "ThemeManifest",

@@ -200,32 +200,10 @@ fn is_valid_community_preview_name(name: &str) -> bool {
 /// Downloads one file from the fixed static theme host with a size limit.
 async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let url = format!("{COMMUNITY_THEMES_BASE}/{path}");
-    let response = http::client()
-        .get(&url)
-        .timeout(Duration::from_secs(20))
-        .send()
+    http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
         .map_err(|error| format!("could not download the community theme: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("could not download the community theme: {error}"))?;
-
-    if response
-        .content_length()
-        .is_some_and(|length| length > max_bytes as u64)
-    {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("could not read the community theme: {error}"))?;
-
-    if bytes.len() > max_bytes {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    Ok(bytes.to_vec())
+        .ok_or_else(|| "the community theme file was not found".to_string())
 }
 
 /// Loads the static catalog used by the community theme browser.

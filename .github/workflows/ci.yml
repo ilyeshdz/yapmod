@@ -1,23 +1,11 @@
-name: Check backend
+name: CI
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-    paths:
-      - '.github/workflows/backend.yml'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'scripts/**'
-      - 'src-tauri/**'
   pull_request:
-    paths:
-      - '.github/workflows/backend.yml'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'scripts/**'
-      - 'src-tauri/**'
 
 concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
@@ -30,9 +18,34 @@ permissions:
   contents: read
 
 jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install modules
+        run: pnpm install --frozen-lockfile
+
+      - name: Test release tooling
+        run: pnpm test:scripts
+
+      - name: Check and build the client
+        run: pnpm check:client
+
   rustfmt:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,14 +65,12 @@ jobs:
       - name: Rustfmt check
         run: pnpm check:rust:format
 
-  clippy:
+  rust:
     runs-on: ${{ matrix.platform }}
-
     strategy:
       fail-fast: false
       matrix:
         platform: [windows-latest, ubuntu-latest, macos-latest]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,7 +107,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/apt-archives
-          key: apt-${{ steps.apt-cache.outputs.release }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/backend.yml') }}
+          key: apt-${{ steps.apt-cache.outputs.release }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}
           restore-keys: |
             apt-${{ steps.apt-cache.outputs.release }}-${{ runner.arch }}-
 
@@ -139,3 +150,28 @@ jobs:
 
       - name: Check the generated types
         run: pnpm check:types
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir web install --frozen-lockfile --ignore-workspace
+
+      - name: Check and build the website
+        run: pnpm check:web

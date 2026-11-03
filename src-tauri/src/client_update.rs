@@ -424,40 +424,6 @@ fn verify_manifest(bytes: &[u8], signature_bytes: &[u8], public_key: &[u8]) -> b
         .is_ok()
 }
 
-async fn download_limited(
-    client: &reqwest::Client,
-    url: &str,
-    limit: usize,
-) -> Result<Option<Vec<u8>>, String> {
-    let mut response = client
-        .get(url)
-        .timeout(REQUEST_TIMEOUT)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-    if response.status() == reqwest::StatusCode::NOT_FOUND {
-        return Ok(None);
-    }
-    if !response.status().is_success() {
-        return Err(format!("download failed with status {}", response.status()));
-    }
-    if response
-        .content_length()
-        .is_some_and(|length| length > limit as u64)
-    {
-        return Err("download exceeds the permitted size".to_string());
-    }
-
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|error| error.to_string())? {
-        if bytes.len().saturating_add(chunk.len()) > limit {
-            return Err("download exceeds the permitted size".to_string());
-        }
-        bytes.extend_from_slice(&chunk);
-    }
-    Ok(Some(bytes))
-}
-
 /// Checks the channel's static feed and stores a compatible bundle for next
 /// launch. All downloaded bytes are authenticated before they are persisted.
 pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Result<(), String> {
@@ -479,14 +445,12 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         return Ok(());
     }
 
-    let client = http::client();
-
     // A missing channel feed simply means that channel has no published
     // client update yet. Other failures remain visible to the caller.
-    let Some(manifest_bytes) = download_limited(
-        client,
+    let Some(manifest_bytes) = http::fetch(
         &update_url(channel, "manifest.json"),
         MAX_MANIFEST_SIZE,
+        REQUEST_TIMEOUT,
     )
     .await?
     else {
@@ -494,10 +458,10 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
     };
     let signature_bytes = STANDARD
         .decode(
-            download_limited(
-                client,
+            http::fetch(
                 &update_url(channel, "manifest.sig"),
                 MAX_SIGNATURE_SIZE,
+                REQUEST_TIMEOUT,
             )
             .await?
             .ok_or_else(|| "the client update signature is missing".to_string())?,
@@ -521,10 +485,13 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         channel,
     )?;
 
-    let bundle_bytes =
-        download_limited(client, &update_url(channel, "bundle.json"), MAX_BUNDLE_SIZE)
-            .await?
-            .ok_or_else(|| "the client update bundle is missing".to_string())?;
+    let bundle_bytes = http::fetch(
+        &update_url(channel, "bundle.json"),
+        MAX_BUNDLE_SIZE,
+        REQUEST_TIMEOUT,
+    )
+    .await?
+    .ok_or_else(|| "the client update bundle is missing".to_string())?;
     if verified_bundle(
         &manifest_bytes,
         &signature_bytes,

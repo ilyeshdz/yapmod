@@ -1,4 +1,3 @@
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -65,12 +64,7 @@ impl UpdateChannel {
 
     /// Recognizes nightly builds created before the channel was explicit.
     fn legacy_from_version(app_version: &str) -> Self {
-        let is_nightly = Version::parse(app_version)
-            .ok()
-            .and_then(|version| version.build.as_str().split('.').next().map(str::to_owned))
-            .is_some_and(|prefix| prefix == "nightly");
-
-        if is_nightly {
+        if crate::version::is_nightly(app_version) {
             Self::Nightly
         } else {
             Self::Stable

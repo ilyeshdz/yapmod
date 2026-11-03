@@ -1,0 +1,599 @@
+name: Release
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        required: true
+        type: choice
+        default: stable
+        options:
+          - stable
+          - nightly
+      app:
+        description: Build and publish the desktop app
+        required: false
+        type: boolean
+        default: true
+      client:
+        description: Publish a client update
+        required: false
+        type: boolean
+        default: true
+      dry_run:
+        description: Build and validate without publishing
+        required: false
+        type: boolean
+        default: false
+      min_app_version:
+        description: Optional minimum compatible app version for a client-only release
+        required: false
+        type: string
+        default: ''
+  release:
+    types:
+      - published
+
+concurrency:
+  group: yapmod-release
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
+      wix_version: ${{ steps.version.outputs.wix_version }}
+      channel: ${{ steps.version.outputs.channel }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Choose app version
+        id: version
+        env:
+          CHANNEL: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          current_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
+
+          if [[ ! "$current_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "The app version must be stable SemVer before building: $current_version" >&2
+            exit 1
+          fi
+
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+
+          if (( 10#$major > 255 || 10#$minor > 255 || 10#$patch > 65535 )); then
+            echo "The app version exceeds the Windows MSI version limits: $current_version" >&2
+            exit 1
+          fi
+
+          if [ "$CHANNEL" = "nightly" ]; then
+            if [[ ! "$RUN_NUMBER" =~ ^[0-9]+$ ]] || (( 10#$RUN_NUMBER < 1 || 10#$RUN_NUMBER > 65534 )); then
+              echo "The GitHub Actions run number must be between 1 and 65534 for MSI nightlies: $RUN_NUMBER" >&2
+              exit 1
+            fi
+
+            next_patch=$((10#$patch + 1))
+            if (( next_patch > 65535 )); then
+              echo "The nightly version exceeds the Windows MSI patch limit: ${major}.${minor}.${next_patch}" >&2
+              exit 1
+            fi
+
+            app_version="${major}.${minor}.${next_patch}+nightly.$(date -u +%Y%m%d).${RUN_NUMBER}"
+            wix_version="${major}.${minor}.${next_patch}.${RUN_NUMBER}"
+          else
+            app_version="$current_version"
+            # Reserve the highest MSI build component so a stable release can
+            # upgrade over every nightly built from the same app version.
+            wix_version="${major}.${minor}.${patch}.65535"
+          fi
+
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+          echo "wix_version=$wix_version" >> "$GITHUB_OUTPUT"
+          echo "Building yapmod v$app_version ($CHANNEL)"
+
+  build:
+    needs: prepare
+    if: github.event_name != 'release' && inputs.app != false
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            bundles: app,dmg
+
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            bundles: app,dmg
+
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: msi,nsis
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          rustflags: ''
+          cache: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Set app version
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+          MSI_VERSION: ${{ needs.prepare.outputs.wix_version }}
+        run: node scripts/build.mjs app-version
+
+      - name: Prepare apt archive cache
+        if: matrix.platform == 'ubuntu-22.04'
+        id: apt-cache
+        run: |
+          . /etc/os-release
+          echo "release=${VERSION_ID}" >> "$GITHUB_OUTPUT"
+          mkdir -p "$HOME/apt-archives/partial"
+
+      - name: Cache apt archives
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-archives
+          key: apt-${{ steps.apt-cache.outputs.release }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: |
+            apt-${{ steps.apt-cache.outputs.release }}-${{ runner.arch }}-
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i '/azure\.archive\.ubuntu\.com/d' /etc/apt/apt-mirrors.txt
+          fi
+          for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
+            if [ -f "$source" ]; then
+              sudo sed -i 's|azure.archive.ubuntu.com|archive.ubuntu.com|g' "$source"
+            fi
+          done
+          sudo apt-get update
+          sudo apt-get install -y \
+            -o Dir::Cache::Archives="$HOME/apt-archives" \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            patchelf
+          sudo chown -R "$USER" "$HOME/apt-archives"
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - name: Install modules
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        env:
+          YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+          YAPMOD_UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+        run: pnpm tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+
+      - name: (Linux) Create portable archive
+        if: runner.os == 'Linux'
+        run: tar -czvf src-tauri/target/${{ matrix.target }}/release/yapmod-portable.tar.gz -C src-tauri/target/${{ matrix.target }}/release yapmod
+
+      - name: (Windows) Create portable archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "src-tauri/target/${{ matrix.target }}/release/yapmod.exe" -DestinationPath "src-tauri/target/${{ matrix.target }}/release/yapmod-portable.zip" -Force
+
+      - name: (Linux) Upload portable
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-portable
+          path: src-tauri/target/${{ matrix.target }}/release/yapmod-portable.tar.gz
+          if-no-files-found: error
+
+      - name: (Linux) Upload .deb
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-deb
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+      - name: (Linux) Upload .rpm
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-rpm
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+          if-no-files-found: error
+
+      - name: (Linux) Upload .AppImage
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-appimage
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: (macOS) Upload .dmg
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-dmg
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: (Windows) Upload portable
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-portable
+          path: src-tauri/target/${{ matrix.target }}/release/yapmod-portable.zip
+          if-no-files-found: error
+
+      - name: (Windows) Upload .msi
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-msi
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+      - name: (Windows) Upload .exe (NSIS)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-${{ matrix.target }}-nsis
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+  draft-release:
+    needs: [prepare, build]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.channel == 'stable' &&
+      inputs.app != false &&
+      inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename artifacts
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p renamed-artifacts
+
+          while IFS='|' read -r artifact_name new_name; do
+            artifact_file=$(find "artifacts/$artifact_name" -type f -print -quit)
+            if [ -z "$artifact_file" ]; then
+              echo "Missing artifact: $artifact_name" >&2
+              exit 1
+            fi
+            cp "$artifact_file" "renamed-artifacts/$new_name"
+          done <<ARTIFACTS
+          yapmod-aarch64-apple-darwin-dmg|yapmod_${APP_VERSION}_aarch64.dmg
+          yapmod-x86_64-apple-darwin-dmg|yapmod_${APP_VERSION}_x64.dmg
+          yapmod-x86_64-pc-windows-msvc-nsis|yapmod_${APP_VERSION}_x64-setup.exe
+          yapmod-x86_64-pc-windows-msvc-msi|yapmod_${APP_VERSION}_x64_en-US.msi
+          yapmod-x86_64-pc-windows-msvc-portable|yapmod_${APP_VERSION}_win64_portable.zip
+          yapmod-x86_64-unknown-linux-gnu-appimage|yapmod_${APP_VERSION}_amd64.AppImage
+          yapmod-x86_64-unknown-linux-gnu-deb|yapmod_${APP_VERSION}_amd64.deb
+          yapmod-x86_64-unknown-linux-gnu-rpm|yapmod_${APP_VERSION}-1.x86_64.rpm
+          yapmod-x86_64-unknown-linux-gnu-portable|yapmod_${APP_VERSION}_amd64_portable.tar.gz
+          ARTIFACTS
+
+      - name: Load release notes
+        id: notes
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+        run: |
+          notes_file=".github/release-notes/v$APP_VERSION.md"
+
+          if [ -f "$notes_file" ]; then
+            {
+              echo "body<<YAPMOD_RELEASE_NOTES_EOF"
+              cat "$notes_file"
+              echo "YAPMOD_RELEASE_NOTES_EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "body=If you can see this, I forgot to change the release description." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare.outputs.app_version }}
+          name: v${{ needs.prepare.outputs.app_version }}
+          body: ${{ steps.notes.outputs.body }}
+          files: renamed-artifacts/*
+          draft: true
+
+  nightly-release:
+    needs: [prepare, build]
+    if: >-
+      github.event_name != 'release' &&
+      needs.prepare.outputs.channel == 'nightly' &&
+      inputs.app != false &&
+      inputs.dry_run != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename nightly artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p nightly-artifacts
+
+          while IFS='|' read -r artifact_name new_name; do
+            artifact_file=$(find "artifacts/$artifact_name" -type f -print -quit)
+            if [ -z "$artifact_file" ]; then
+              echo "Missing artifact: $artifact_name" >&2
+              exit 1
+            fi
+            cp "$artifact_file" "nightly-artifacts/$new_name"
+          done <<'ARTIFACTS'
+          yapmod-aarch64-apple-darwin-dmg|yapmod_nightly_aarch64.dmg
+          yapmod-x86_64-apple-darwin-dmg|yapmod_nightly_x64.dmg
+          yapmod-x86_64-pc-windows-msvc-nsis|yapmod_nightly_x64-setup.exe
+          yapmod-x86_64-pc-windows-msvc-msi|yapmod_nightly_x64_en-US.msi
+          yapmod-x86_64-pc-windows-msvc-portable|yapmod_nightly_win64_portable.zip
+          yapmod-x86_64-unknown-linux-gnu-appimage|yapmod_nightly_amd64.AppImage
+          yapmod-x86_64-unknown-linux-gnu-deb|yapmod_nightly_amd64.deb
+          yapmod-x86_64-unknown-linux-gnu-rpm|yapmod_nightly-1.x86_64.rpm
+          yapmod-x86_64-unknown-linux-gnu-portable|yapmod_nightly_amd64_portable.tar.gz
+          ARTIFACTS
+
+      - name: Read nightly revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Write nightly channel metadata
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          set -euo pipefail
+          jq -n \
+            --arg channel nightly \
+            --arg appVersion "$APP_VERSION" \
+            --arg commit "$NIGHTLY_SHA" \
+            '{channel:$channel,appVersion:$appVersion,commit:$commit}' \
+            > nightly-artifacts/yapmod-version.json
+
+      - name: Move rolling nightly tag to this commit
+        env:
+          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git tag --force nightly "$NIGHTLY_SHA"
+          git push --force origin refs/tags/nightly
+
+      - name: Publish rolling nightly prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: Nightly v${{ needs.prepare.outputs.app_version }}
+          body: |
+            Automated nightly prerelease built from `main` at commit ${{ steps.revision.outputs.sha }}.
+
+            App version: `${{ needs.prepare.outputs.app_version }}`
+
+            Nightly builds may be unstable. They use the nightly update channel and never publish stable artifacts or stable client update metadata.
+          files: nightly-artifacts/*
+          overwrite_files: true
+          prerelease: true
+          make_latest: false
+
+  client:
+    needs: [prepare, build]
+    if: >-
+      always() &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (
+        (github.event_name == 'release' &&
+         github.event.release.prerelease == false &&
+         github.event.release.tag_name != 'nightly') ||
+        github.event_name == 'schedule' ||
+        (github.event_name == 'workflow_dispatch' &&
+         inputs.dry_run != true &&
+         inputs.client != false &&
+         (inputs.channel == 'nightly' || inputs.app == false))
+      )
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout the client source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+          fetch-depth: 0
+
+      - name: Verify the channel matches main
+        env:
+          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+        run: |
+          set -euo pipefail
+
+          case "$CHANNEL" in
+            stable|nightly) ;;
+            *)
+              echo "Unknown update channel: $CHANNEL" >&2
+              exit 1
+              ;;
+          esac
+
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor HEAD origin/main \
+            || { echo "Client updates must be published from main or a tag on main" >&2; exit 1; }
+
+          echo "Publishing the $CHANNEL client from $(git rev-parse HEAD)"
+
+      - name: Checkout the stable website
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install and build the website and client
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm client:build
+          pnpm --dir site/web install --frozen-lockfile --ignore-workspace
+          pnpm --dir site/web build
+
+      - name: Preserve the other channel
+        env:
+          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
+        run: node site/scripts/client-updates.mjs preserve
+
+      - name: Package and sign the client release
+        id: manifest
+        env:
+          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+          MIN_APP_VERSION: ${{ inputs.min_app_version || (github.event_name != 'release' && needs.prepare.outputs.channel == 'nightly' && inputs.app != false && needs.prepare.outputs.app_version || '') }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
+          CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
+          CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+
+          CLIENT_VERSION=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/version.json", "utf8")).version)')
+          export CLIENT_VERSION
+
+          test -n "$CLIENT_UPDATE_SIGNING_KEY" || { echo "CLIENT_UPDATE_SIGNING_KEY secret is required"; exit 1; }
+          test -n "$CLIENT_UPDATE_PUBLIC_KEY" || { echo "CLIENT_UPDATE_PUBLIC_KEY repository variable is required"; exit 1; }
+
+          prepare_output=$(node site/scripts/client-updates.mjs prepare)
+          echo "$prepare_output"
+          eval "$prepare_output"
+
+          manifest_dir="site/web/dist/client-updates/$CHANNEL"
+          test -f "$manifest_dir/manifest.json" || { echo "The manifest was not generated"; exit 1; }
+
+          umask 077
+          printf '%s' "$CLIENT_UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/client-update-key.pem"
+          trap 'rm -f "$RUNNER_TEMP/client-update-key.pem" "$RUNNER_TEMP/manifest.sig.raw" "$RUNNER_TEMP/client-update-public.pem" "$RUNNER_TEMP/derived-public-key.txt"' EXIT
+
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout -outform DER \
+            | tail -c 32 | base64 -w0 > "$RUNNER_TEMP/derived-public-key.txt"
+          test "$(cat "$RUNNER_TEMP/derived-public-key.txt")" = "$CLIENT_UPDATE_PUBLIC_KEY" \
+            || { echo "signing key does not match CLIENT_UPDATE_PUBLIC_KEY"; exit 1; }
+
+          openssl pkeyutl -sign -rawin -inkey "$RUNNER_TEMP/client-update-key.pem" \
+            -in "$manifest_dir/manifest.json" \
+            -out "$RUNNER_TEMP/manifest.sig.raw"
+          base64 -w0 "$RUNNER_TEMP/manifest.sig.raw" > "$manifest_dir/manifest.sig"
+
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout \
+            -out "$RUNNER_TEMP/client-update-public.pem"
+          openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/client-update-public.pem" -rawin \
+            -in "$manifest_dir/manifest.json" \
+            -sigfile "$RUNNER_TEMP/manifest.sig.raw" > /dev/null
+
+          echo "release_sequence=$release_sequence" >> "$GITHUB_OUTPUT"
+          echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
+          echo "client_version=$client_version" >> "$GITHUB_OUTPUT"
+
+      - name: Update the legacy stable aliases
+        if: (github.event_name == 'release' && github.event.release.prerelease == false) || inputs.channel == 'stable'
+        run: |
+          set -euo pipefail
+          mkdir -p site/web/dist/client-updates
+          cp site/web/dist/client-updates/stable/manifest.json site/web/dist/client-updates/manifest.json
+          cp site/web/dist/client-updates/stable/manifest.sig site/web/dist/client-updates/manifest.sig
+          cp site/web/dist/client-updates/stable/bundle.json site/web/dist/client-updates/bundle.json
+
+      - name: Upload Pages artifact
+        if: inputs.dry_run != true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/web/dist
+
+      - name: Deploy client release and website
+        if: inputs.dry_run != true
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=app%20version" alt="App version" /></a>
-  <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/build.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
+  <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License: GPL v3" /></a>
 </p>
 

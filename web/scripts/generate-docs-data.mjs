@@ -9,10 +9,11 @@
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 
-const webRoot = process.cwd();
+const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(webRoot, "..");
 const dataDir = join(webRoot, "src/data");
 
@@ -301,35 +302,43 @@ const outputs = {
   "theme-reference.json": `${JSON.stringify(themeReference, null, 2)}\n`,
 };
 
-const check = process.argv.includes("--check");
-let stale = false;
+export function generate({ check = false } = {}) {
+  let stale = false;
 
-for (const [name, contents] of Object.entries(outputs)) {
-  const path = join(dataDir, name);
+  for (const [name, contents] of Object.entries(outputs)) {
+    const path = join(dataDir, name);
 
-  if (check) {
-    let current = "";
-    try {
-      current = readFileSync(path, "utf8");
-    } catch {
-      // A missing file is stale as well.
+    if (check) {
+      let current = "";
+      try {
+        current = readFileSync(path, "utf8");
+      } catch {
+        // A missing file is stale as well.
+      }
+
+      if (current !== contents) {
+        console.error(`[docs] ${name} is out of date; run \`pnpm docs:generate\``);
+        stale = true;
+      }
+    } else {
+      mkdirSync(dataDir, { recursive: true });
+      writeFileSync(path, contents);
     }
-
-    if (current !== contents) {
-      console.error(`[docs] ${name} is out of date; run \`pnpm docs:generate\``);
-      stale = true;
-    }
-  } else {
-    mkdirSync(dataDir, { recursive: true });
-    writeFileSync(path, contents);
   }
+
+  console.log(
+    check
+      ? "[docs] generated documentation data is up to date"
+      : `[docs] generated ${pluginTypeNames.length} plugin types, ` +
+          `${themeReference.tokens.length} theme tokens, and the manifest limits`,
+  );
+
+  return !stale;
 }
 
-if (stale) process.exit(1);
-
-console.log(
-  check
-    ? "[docs] generated documentation data is up to date"
-    : `[docs] generated ${pluginTypeNames.length} plugin types, ` +
-        `${themeReference.tokens.length} theme tokens, and the manifest limits`,
-);
+const entryPoint = process.argv[1];
+if (entryPoint && import.meta.url === pathToFileURL(resolve(entryPoint)).href) {
+  if (!generate({ check: process.argv.includes("--check") })) {
+    process.exit(1);
+  }
+}

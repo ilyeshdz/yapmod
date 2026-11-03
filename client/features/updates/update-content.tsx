@@ -1,7 +1,7 @@
 import { JSX } from "solid-js";
-import { render } from "solid-js/web";
 
 import type { UpdateInfo } from "../../shared/types";
+import { mountView } from "../../shared/solid";
 
 function VersionRow(
   props: { label: string; version: string; class: string },
@@ -38,8 +38,5 @@ export function UpdateContent(props: { info: UpdateInfo }): JSX.Element {
 export function mountUpdateContent(
   info: UpdateInfo,
 ): { element: HTMLElement; dispose: () => void } {
-  const host = document.createElement("div");
-  const dispose = render(() => <UpdateContent info={info} />, host);
-
-  return { element: host, dispose };
+  return mountView(() => <UpdateContent info={info} />);
 }

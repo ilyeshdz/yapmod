@@ -1,4 +1,4 @@
-import { Show, JSX } from "solid-js";
+import { Show } from "solid-js";
 import { render } from "solid-js/web";
 
 import type { SettingsSection } from "../../shared/types";

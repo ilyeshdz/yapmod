@@ -4,7 +4,7 @@
  * The types come from the Rust side, which reads the same files from disk.
  */
 
-import type { ThemeBundle, ThemeMode } from "../../generated/types";
+import type { ThemeMode } from "../../generated/types";
 
 export type { ThemeBundle, ThemeManifest, ThemeMode } from "../../generated/types";
 

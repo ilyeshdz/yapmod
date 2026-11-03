@@ -423,28 +423,10 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
 
 async fn fetch_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let url = format!("{COMMUNITY_PLUGINS_BASE}/{path}");
-    let response = http::client()
-        .get(&url)
-        .timeout(Duration::from_secs(20))
-        .send()
+    http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
         .map_err(|error| format!("could not download the community plugin: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("could not download the community plugin: {error}"))?;
-    if response
-        .content_length()
-        .is_some_and(|length| length > max_bytes as u64)
-    {
-        return Err("a community plugin file is larger than the allowed size".into());
-    }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("could not read the community plugin: {error}"))?;
-    if bytes.len() > max_bytes {
-        return Err("a community plugin file is larger than the allowed size".into());
-    }
-    Ok(bytes.to_vec())
+        .ok_or_else(|| "the community plugin file was not found".to_string())
 }
 
 async fn community_catalog() -> Result<PluginCatalog, String> {

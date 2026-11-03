@@ -3,13 +3,13 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "bc57644e65c7e62d",
+  "sourceHash": "a281e23914a03d25",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
       "kind": "type",
       "description": null,
-      "declaration": "export type YapmodPluginApi = { readonly apiVersion: 1;\n  readonly id: string;\n  readonly manifest: Readonly<PluginManifest>;\n  readonly storage: YapmodPluginStorageApi;\n  readonly settings: YapmodPluginSettingsApi;\n  readonly styles: {\n    add(css: string): PluginCleanup;\n  };\n  readonly webSocket: WebSocketInspector;\n  readonly http: HTTPInspector; readonly log: YapmodPluginLogger; readonly ui: YapmodPluginUiApi; onCleanup(cleanup: PluginCleanup): void;\n  banner(message: string): void; readonly modal: YapmodModalApi; readonly notify: YapmodPluginNotifyApi; readonly file: { createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  };\n};",
+      "declaration": "export type YapmodPluginApi = { readonly apiVersion: 1;\n  readonly id: string;\n  readonly manifest: Readonly<PluginManifest>;\n  readonly storage: YapmodPluginStorageApi;\n  readonly settings: YapmodPluginSettingsApi;\n  readonly styles: {\n    add(css: string): PluginCleanup;\n  };\n  readonly webSocket: WebSocketInspector;\n  readonly http: HTTPInspector; readonly log: YapmodPluginLogger; readonly ui: YapmodPluginUiApi; onCleanup(cleanup: PluginCleanup): void;\n  banner(message: string): void; readonly modal: YapmodModalApi; readonly notify: YapmodPluginNotifyApi; readonly file: { createBlobUrl(dataUri: string): Promise<string>; revokeObjectURL(url: string): void;\n  }; invoke(command: string, args?: Record<string, unknown>): Promise<unknown>;\n};",
       "members": [
         {
           "name": "apiVersion",
@@ -115,6 +115,13 @@
           "optional": false,
           "readonly": true,
           "description": "File utilities for working with file-type settings. When a plugin declares a **file** setting, the user picks a file and the plugin receives a base64 data URI (e.g. \"data:image/png;base64,...\") as the setting value. Use `createBlobUrl()` to convert it to a blob URL for use in CSS or image elements. The file is read at pick time, not at runtime — there is no generic file-reading command. Plugins execute as trusted page code. Data URIs may be at most 8 MiB; other setting values are limited to 64 KiB."
+        },
+        {
+          "name": "invoke",
+          "type": "(command: string, args?: Record<string, unknown>) => Promise<unknown>",
+          "optional": false,
+          "readonly": false,
+          "description": "Calls a native Tauri command. Only commands explicitly exposed to plugins are available. Use this to interact with native backend functionality."
         }
       ]
     },

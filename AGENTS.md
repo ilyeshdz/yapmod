@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- FOR AI AGENTS - human readability is a side effect, not a goal -->
-<!-- Last verified: 2026-10-31 -->
+<!-- Last verified: 2026-11-03 -->
 
 **Precedence:** This file contains the project's instructions and conventions. Explicit user instructions override these rules.
 
@@ -38,7 +38,7 @@ web/                 Astro website and documentation (own package)
 scripts/             Node tooling for generated types and client updates
 community-plugins/   Source packages published to the plugin catalog
 community-themes/    Source packages published to the theme catalog
-.github/workflows/   CI, release, nightly, and website deployment
+.github/workflows/   CI, release (stable + nightly), and website deployment
 ```
 
 ## Golden Samples (follow these patterns)
@@ -78,7 +78,7 @@ community-themes/    Source packages published to the theme catalog
 - Early development; interfaces and bundle formats can still change.
 - The website is a separate pnpm project. Root `pnpm install` does not install `web/node_modules`.
 - `src-tauri/build.rs` embeds the client bundles and fails the build if they are missing.
-- CI has independent backend, frontend, and website workflows; release publication is manual or scheduled and channel-scoped.
+- `ci.yml` checks the client, Rust, generated types, and website. `release.yml` builds stable and nightly artifacts and publishes channel-scoped client updates; nightly is a scheduled build of `main`.
 
 ## Boundaries
 
@@ -89,7 +89,7 @@ community-themes/    Source packages published to the theme catalog
 - Regenerate committed types after changing their Rust sources; rebuild client bundles locally before Rust/Tauri builds.
 - Add or update tests when changing validation, channels, config, plugins, or themes.
 - Use conventional commit prefixes such as `feat(scope):`, `fix(scope):`, `refactor(scope):`.
-- Keep pull requests focused; development targets the `nightly` branch, stable hotfixes target `main`.
+- Keep pull requests focused; all development targets `main`.
 
 ### Ask First
 
@@ -106,7 +106,7 @@ community-themes/    Source packages published to the theme catalog
 - Bypass plugin/theme validation, size limits, or path/symlink checks.
 - Run a non-dry-run release or client-update publication from the wrong branch.
 - Commit signing keys, tokens, or downloaded private assets.
-- Push directly to `main` or merge unreviewed nightly work into it.
+- Push directly to `main`.
 
 ## Terminology
 
