@@ -23,19 +23,12 @@ const rows =
         ["Manifest file", formatBytes(pluginRules.maxManifestBytes)],
         ["Stylesheet", formatBytes(pluginRules.maxCssBytes)],
         ["Script", formatBytes(pluginRules.maxScriptBytes)],
-        ["Settings per plugin", String(pluginRules.maxSettings)],
-        ["Tags per plugin", String(pluginRules.maxTags)],
-        ["Display name", `${pluginRules.maxNameLength} characters`],
-        ["Plugins in the Community catalog", String(pluginRules.maxPlugins)],
       ]
     : [
         ["Theme API version", String(themeRules.themeApi)],
         ["Manifest file", formatBytes(themeRules.maxManifestBytes)],
         ["Stylesheet", formatBytes(themeRules.maxCssBytes)],
         ["Preview image", formatBytes(themeRules.maxPreviewBytes)],
-        ["Tags per theme", String(themeRules.maxTags)],
-        ["Display name", `${themeRules.maxNameLength} characters`],
-        ["Themes in the Community catalog", String(themeRules.maxThemes)],
         ["Preview formats", themeRules.previewExtensions.join(", ")],
       ];
 ---

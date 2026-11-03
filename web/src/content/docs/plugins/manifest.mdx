@@ -50,14 +50,14 @@ Every plugin has a `manifest.json` at the root of its folder. The manifest is pa
 | Field | Required | Type | Notes |
 | --- | --- | --- | --- |
 | `id` | Yes | string | 1–24 letters, digits, `-` or `_`; must start with a letter or digit. Used for storage, settings attributes and the installed folder. |
-| `name` | Yes | string | Display name, 1–100 characters. |
+| `name` | Yes | string | Display name. Must not be empty. |
 | `api` | Yes | number | Must be exactly `1`. Other versions are refused. |
-| `version` | No | string | Up to 100 characters. Included in the consent record. |
-| `author` | No | string | Up to 100 characters. |
-| `description` | No | string | Up to 500 characters. |
-| `license` | No | string | Up to 100 characters. |
-| `tags` | No | string[] | Up to 12 search words, each up to 32 characters. |
-| `settings` | No | object[] | Up to 12 settings. Omitted and empty are equivalent. |
+| `version` | No | string | Included in the consent record. |
+| `author` | No | string | |
+| `description` | No | string | |
+| `license` | No | string | |
+| `tags` | No | string[] | Search words. |
+| `settings` | No | object[] | Omitted and empty are equivalent. |
 | `stylesheet` | No | string | Must be `"plugin.css"` when present. If omitted, `plugin.css` is used. The file must exist. |
 | `script` | No | string | Must be `"plugin.js"` when present. Omit it for a CSS-only plugin. |
 
@@ -74,8 +74,8 @@ Each setting has:
 | Field | Required | Type | Notes |
 | --- | --- | --- | --- |
 | `id` | Yes | string | Same key format as the plugin id; unique within the plugin. Used in the DOM attribute and storage key. |
-| `label` | Yes | string | 1–80 characters. |
-| `description` | No | string | Up to 200 characters. |
+| `label` | Yes | string | Must not be empty. |
+| `description` | No | string | |
 | `type` | Yes | string | `toggle`, `text`, `file` or `color`. |
 | `default` | Type-dependent | boolean, string or null | `toggle` requires a boolean. `text`, `file` and `color` require a string or `null`. |
 | `accept` | No | string | An optional file-type hint, used by the native picker for `file` settings, for example `"image/*"`. |

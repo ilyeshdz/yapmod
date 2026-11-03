@@ -12,8 +12,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use ts_rs::TS;
 
-use base64::Engine as _;
-
 use crate::{config::Config, http};
 
 const MANIFEST_FILE: &str = "manifest.json";
@@ -32,9 +30,6 @@ struct ThemeRules {
     max_manifest_bytes: usize,
     max_css_bytes: usize,
     max_preview_bytes: usize,
-    max_name_length: usize,
-    max_themes: usize,
-    max_tags: usize,
     preview_extensions: Vec<String>,
 }
 
@@ -220,10 +215,6 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
         ));
     }
 
-    if catalog.themes.len() > THEME_RULES.max_themes {
-        return Err("the community theme catalog contains too many themes".to_string());
-    }
-
     let mut ids = HashSet::new();
     let mut themes = Vec::new();
 
@@ -238,8 +229,7 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             continue;
         }
 
-        if theme.name.trim().is_empty() || theme.name.chars().count() > THEME_RULES.max_name_length
-        {
+        if theme.name.trim().is_empty() {
             return Err(format!(
                 "community theme `{}` has an invalid name",
                 theme.id
@@ -259,7 +249,7 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             version: theme.version,
             license: theme.license,
             mode: normalize_mode(theme.mode.as_deref()),
-            tags: theme.tags.into_iter().take(THEME_RULES.max_tags).collect(),
+            tags: theme.tags,
             preview_url,
         });
     }
@@ -291,9 +281,7 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
         return Err("the downloaded theme id does not match the catalog".to_string());
     }
 
-    if manifest.name.trim().is_empty()
-        || manifest.name.chars().count() > THEME_RULES.max_name_length
-    {
+    if manifest.name.trim().is_empty() {
         return Err("the community theme has an invalid name".to_string());
     }
 
@@ -372,14 +360,7 @@ fn read_preview(folder: &Path, name: Option<&str>) -> Option<String> {
     if !THEME_RULES.preview_extensions.contains(&extension) {
         return None;
     }
-    let mime = match extension.as_str() {
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "webp" => "image/webp",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        _ => return None,
-    };
+    let mime = crate::mime::image_mime(&extension)?;
 
     let path = folder.join(name);
     if fs::metadata(&path).ok()?.len() > THEME_RULES.max_preview_bytes as u64 {
@@ -387,10 +368,7 @@ fn read_preview(folder: &Path, name: Option<&str>) -> Option<String> {
     }
     let bytes = fs::read(path).ok()?;
 
-    Some(format!(
-        "data:{mime};base64,{}",
-        base64::engine::general_purpose::STANDARD.encode(bytes)
-    ))
+    Some(crate::mime::data_uri(mime, &bytes))
 }
 
 /// Reads a theme folder into a bundle.

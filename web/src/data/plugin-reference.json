@@ -3,17 +3,13 @@
     "community-plugins/rules.json",
     "client/shared/types.ts"
   ],
-  "sourceHash": "42cb8c6e327bcd51",
+  "sourceHash": "a7ac0b662e1af459",
   "rules": {
     "pluginApi": 1,
     "maxCatalogBytes": 1048576,
     "maxManifestBytes": 65536,
     "maxCssBytes": 524288,
-    "maxScriptBytes": 524288,
-    "maxPlugins": 200,
-    "maxSettings": 12,
-    "maxTags": 12,
-    "maxNameLength": 100
+    "maxScriptBytes": 524288
   },
   "types": {
     "PluginManifest": {

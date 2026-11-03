@@ -4,7 +4,7 @@
     "client/features/themes/tokens.ts",
     "community-themes/rules.json"
   ],
-  "sourceHash": "8443c94b6f904aa8",
+  "sourceHash": "b3845a92dd1a1c9c",
   "types": {
     "ThemeManifest": {
       "name": "ThemeManifest",
@@ -341,9 +341,6 @@
     "maxManifestBytes": 65536,
     "maxCssBytes": 1048576,
     "maxPreviewBytes": 4194304,
-    "maxNameLength": 120,
-    "maxThemes": 500,
-    "maxTags": 20,
     "previewExtensions": [
       "png",
       "jpg",

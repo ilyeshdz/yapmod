@@ -34,10 +34,6 @@ struct PluginRules {
     max_manifest_bytes: usize,
     max_css_bytes: usize,
     max_script_bytes: usize,
-    max_plugins: usize,
-    max_settings: usize,
-    max_tags: usize,
-    max_name_length: usize,
 }
 
 static PLUGIN_RULES: LazyLock<PluginRules> = LazyLock::new(|| {
@@ -195,20 +191,8 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     if !valid_id(&manifest.id) {
         return Err("the plugin id must be 1–24 letters, numbers, underscores, or hyphens".into());
     }
-    if manifest.name.trim().is_empty()
-        || manifest.name.chars().count() > PLUGIN_RULES.max_name_length
-    {
-        return Err("the plugin name is empty or too long".into());
-    }
-    for (label, value, max) in [
-        ("version", manifest.version.as_deref(), 100),
-        ("author", manifest.author.as_deref(), 100),
-        ("description", manifest.description.as_deref(), 500),
-        ("license", manifest.license.as_deref(), 100),
-    ] {
-        if value.is_some_and(|value| value.chars().count() > max) {
-            return Err(format!("the plugin {label} is too long"));
-        }
+    if manifest.name.trim().is_empty() {
+        return Err("the plugin name is empty".into());
     }
     if manifest.api != PLUGIN_RULES.plugin_api {
         return Err(format!(
@@ -226,24 +210,11 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     {
         return Err(format!("the plugin script must be named {SCRIPT_FILE}"));
     }
-    if manifest.tags.len() > PLUGIN_RULES.max_tags
-        || manifest.tags.iter().any(|tag| tag.chars().count() > 32)
-    {
-        return Err("the plugin has too many or invalid tags".into());
-    }
-    if manifest.settings.len() > PLUGIN_RULES.max_settings {
-        return Err("the plugin contains too many settings".into());
-    }
     let mut setting_ids = HashSet::new();
     for setting in &manifest.settings {
         if !valid_id(&setting.id)
             || !setting_ids.insert(&setting.id)
             || setting.label.trim().is_empty()
-            || setting.label.chars().count() > 80
-            || setting
-                .description
-                .as_ref()
-                .is_some_and(|description| description.chars().count() > 200)
             || !valid_setting_type(&setting.setting_type)
         {
             return Err("the plugin contains an invalid or duplicate setting".into());
@@ -436,9 +407,6 @@ async fn community_catalog() -> Result<PluginCatalog, String> {
     if catalog.api > PLUGIN_RULES.plugin_api {
         return Err("the community plugin catalog needs a newer version of Yapmod".into());
     }
-    if catalog.plugins.len() > PLUGIN_RULES.max_plugins {
-        return Err("the community plugin catalog contains too many entries".into());
-    }
     let mut ids = HashSet::new();
     for plugin in &catalog.plugins {
         if !valid_id(&plugin.manifest.id) || !ids.insert(&plugin.manifest.id) {
@@ -577,28 +545,10 @@ pub async fn pick_plugin_file(
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
-        .map(|s| s.to_lowercase())
-        .unwrap_or_else(|| "bin".to_string());
+        .unwrap_or_default();
+    let mime_type = crate::mime::image_mime(ext).unwrap_or("application/octet-stream");
 
-    let mime_type = match ext.as_str() {
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        "svg" => "image/svg+xml",
-        "bmp" => "image/bmp",
-        "ico" => "image/x-icon",
-        "avif" => "image/avif",
-        _ => "application/octet-stream",
-    };
-
-    let base64_string = base64_encode(&bytes);
-    Ok(Some(format!("data:{};base64,{}", mime_type, base64_string)))
-}
-
-fn base64_encode(bytes: &[u8]) -> String {
-    use base64::Engine;
-    base64::engine::general_purpose::STANDARD.encode(bytes)
+    Ok(Some(crate::mime::data_uri(mime_type, &bytes)))
 }
 
 /// Opens a native folder picker and returns validated metadata for consent.

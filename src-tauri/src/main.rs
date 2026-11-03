@@ -14,6 +14,7 @@ mod config;
 mod hosts;
 mod http;
 mod injection;
+mod mime;
 mod notify;
 mod plugin;
 mod theme;

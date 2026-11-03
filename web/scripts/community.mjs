@@ -147,30 +147,16 @@ function createContext(kind, sourceName, webRoot) {
     if (
       manifest.id !== folder ||
       typeof manifest.name !== "string" ||
-      !manifest.name.trim() ||
-      Array.from(manifest.name).length > rules.maxNameLength
+      !manifest.name.trim()
     ) {
       fail(`${folder}: manifest id must match the folder and name must be set`);
-    }
-    if (typeof manifest.author === "string" && manifest.author.length > 100) {
-      fail(`${folder}: author is too long`);
-    }
-    if (
-      typeof manifest.description === "string" &&
-      manifest.description.length > 500
-    ) {
-      fail(`${folder}: description is too long`);
-    }
-    if (typeof manifest.license === "string" && manifest.license.length > 100) {
-      fail(`${folder}: license is too long`);
     }
     manifest.tags ??= [];
     if (
       !Array.isArray(manifest.tags) ||
-      manifest.tags.length > rules.maxTags ||
-      manifest.tags.some((tag) => typeof tag !== "string" || tag.length > 32)
+      manifest.tags.some((tag) => typeof tag !== "string")
     ) {
-      fail(`${folder}: tags must be short strings (at most ${rules.maxTags})`);
+      fail(`${folder}: tags must be a list of strings`);
     }
   };
 
@@ -272,8 +258,8 @@ export function buildPlugins({ dev = false, webRoot = process.cwd() } = {}) {
       fail(`${folder}: plugin API must be an integer no newer than ${rules.pluginApi}`);
     }
     manifest.settings ??= [];
-    if (!Array.isArray(manifest.settings) || manifest.settings.length > rules.maxSettings) {
-      fail(`${folder}: settings must be a list of at most ${rules.maxSettings} entries`);
+    if (!Array.isArray(manifest.settings)) {
+      fail(`${folder}: settings must be a list`);
     }
 
     const settingIds = new Set();
@@ -285,12 +271,10 @@ export function buildPlugins({ dev = false, webRoot = process.cwd() } = {}) {
         settingIds.has(setting.id) ||
         typeof setting.label !== "string" ||
         !setting.label.trim() ||
-        setting.label.length > 80 ||
         !SETTING_TYPES.includes(setting.type) ||
         Object.keys(setting).some((key) => !SETTING_FIELDS.has(key)) ||
         (setting.description !== undefined &&
-          (typeof setting.description !== "string" ||
-            setting.description.length > 200)) ||
+          typeof setting.description !== "string") ||
         (setting.accept !== undefined && typeof setting.accept !== "string")
       ) {
         fail(`${folder}: plugin setting is invalid or duplicated`);
@@ -328,10 +312,6 @@ export function buildPlugins({ dev = false, webRoot = process.cwd() } = {}) {
       stylesheet: cssName,
     });
     files.push({ folder, manifestPath, cssPath, scriptPath });
-  }
-
-  if (plugins.length > rules.maxPlugins) {
-    fail(`catalog contains more than ${rules.maxPlugins} plugins`);
   }
 
   const catalog = `${JSON.stringify({ api: rules.pluginApi, plugins }, null, 2)}\n`;
@@ -417,9 +397,6 @@ export function buildThemes({ dev = false, webRoot = process.cwd() } = {}) {
     files.push({ folder, manifestPath, cssPath, cssName, previewPath });
   }
 
-  if (themes.length > rules.maxThemes) {
-    fail(`catalog contains more than ${rules.maxThemes} themes`);
-  }
   themes.sort(
     (left, right) =>
       left.name.toLowerCase().localeCompare(right.name.toLowerCase()) ||

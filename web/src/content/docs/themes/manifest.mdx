@@ -94,7 +94,7 @@ The app is deliberately forgiving with a local theme and strict with the publish
 | `id` characters | Letters, digits, `-`, `_`, `.`; any length | Letters, digits, `-`, `_`; must start with a letter or digit; at most 24 characters |
 | Folder name | Does not have to match `id` | Must match `id` |
 | `mode` | Unknown values fall back to `dark` | Must be `dark`, `light` or `both` |
-| `tags` | Not limited by the app | At most 20, each at most 32 characters |
+| `tags` | Not limited by the app | Must be strings |
 | CSS | Applied as written | `@import`, `behavior:` and backslash escapes rejected |
 | Size | Read from disk | Enforced at the [limits](#limits) above |
 
