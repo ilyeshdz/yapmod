@@ -386,7 +386,6 @@ async function runCleanup(entry: InstalledEntry): Promise<void> {
   }
 }
 
-
 async function enableEntry(entry: InstalledEntry): Promise<void> {
   if (entry.enabled) return;
   validateBundle(entry.bundle);

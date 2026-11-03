@@ -47,10 +47,7 @@ export type InstalledPluginCardProps = {
 export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Element {
   const { manifest } = props.plugin;
   return (
-    <article classList={{
-      "yapmod-plugin-card": true,
-      "yapmod-plugin-active": props.plugin.enabled,
-    }}>
+    <article class="yapmod-plugin-card">
       <div class="yapmod-plugin-card-body">
         <div class="yapmod-plugin-card-title-row">
           <div class="yapmod-plugin-card-heading">
@@ -71,7 +68,7 @@ export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Elemen
           {manifest.description ?? "No description provided."}
         </p>
         {manifest.script && (
-          <p class="yapmod-plugin-warning">
+          <p>
             Trusted JavaScript plugin — runs in the Yapper page.
           </p>
         )}

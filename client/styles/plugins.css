@@ -8,9 +8,6 @@
   margin-bottom: 12px;
   justify-content: flex-end;
 }
-.yapmod-plugin-toolbar[hidden] {
-  display: none;
-}
 
 .yapmod-plugin-search {
   flex: 1 1 220px;
@@ -21,9 +18,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
-}
-.yapmod-plugin-grid[hidden] {
-  display: none;
 }
 
 .yapmod-plugin-card {
