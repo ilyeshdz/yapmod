@@ -7,6 +7,7 @@ plus a distribution format; it is not a runtime plugin system.
 client/
   platform/host.ts      the ports feature code depends on
   targets/desktop/      Tauri composition roots and host adapter
+  targets/web/          isolated-world extension entry, adapter and manifest
   core/, features/      shared client code
 ```
 
@@ -26,7 +27,20 @@ client/
 - A new target needs an adapter and a composition root, not changes to feature
   logic.
 
-The Web target is not implemented yet. It will start as an isolated-world
-extension with settings, themes and notifications. Plugins, page-realm hooks
-and remote client updates stay out of scope until their execution and policy
-questions are settled.
+## Web target
+
+`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`. It runs
+at `document_start` in an isolated world on the two Yapper origins.
+
+| Capability | Desktop | Web |
+| --- | --- | --- |
+| Settings | Tauri config | extension storage |
+| Themes | filesystem folders | community catalog in extension storage |
+| Notifications | system notification center | Web Notifications |
+| Window controls | native | none |
+| Unread badge | dock/taskbar | none |
+| Plugins | page realm, trusted JS | not installed |
+| Updates | app and signed client bundle | browser extension update |
+
+Plugins, page-realm hooks and remote client updates stay out of scope for the
+Web target until their execution and policy questions are settled.

@@ -5,6 +5,7 @@
   "scripts": {
     "tauri": "tauri",
     "client:build": "node client/build.mjs",
+    "client:build:web": "node client/build.mjs --target=web",
     "client:dev": "node client/build.mjs --watch",
     "client:check": "tsc -p client/tsconfig.json",
     "test:scripts": "node --test scripts/*.test.mjs",

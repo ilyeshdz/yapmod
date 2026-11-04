@@ -1,9 +1,11 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build } from "esbuild";
 import { solidPlugin } from "esbuild-plugin-solid";
+
+import { createManifest } from "./targets/web/manifest.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDir = join(root, "client");
@@ -11,8 +13,9 @@ const sourceDir = join(root, "client");
 /**
  * The bundles the client can build.
  *
- * A target owns its composition roots and its output directory. Targets share
- * the rest of `client/`; they must not import each other.
+ * A target owns its composition roots, its output directory and, when it is a
+ * browser extension, its manifest. Targets share the rest of `client/`; they
+ * must not import each other.
  */
 const targets = {
   desktop: {
@@ -22,9 +25,21 @@ const targets = {
     ],
     outdir: join(root, "src-tauri", "gen", "injection"),
   },
+  web: {
+    entryPoints: [
+      join(sourceDir, "targets", "web", "preinject.ts"),
+      join(sourceDir, "targets", "web", "background.ts"),
+    ],
+    outdir: join(root, "dist", "web"),
+    manifest: createManifest,
+  },
 };
 
-const targetName = process.env.YAPMOD_TARGET ?? "desktop";
+const targetArg = process.argv.find((argument) =>
+  argument.startsWith("--target="),
+);
+const targetName =
+  targetArg?.slice("--target=".length) ?? process.env.YAPMOD_TARGET ?? "desktop";
 const target = targets[targetName];
 
 if (!target) {
@@ -34,6 +49,17 @@ if (!target) {
 }
 
 await mkdir(target.outdir, { recursive: true });
+
+if (target.manifest) {
+  const versionFile = JSON.parse(
+    await readFile(join(sourceDir, "version.json"), "utf8"),
+  );
+
+  await writeFile(
+    join(target.outdir, "manifest.json"),
+    `${JSON.stringify(target.manifest(versionFile.version), null, 2)}\n`,
+  );
+}
 
 const options = {
   entryPoints: target.entryPoints,
