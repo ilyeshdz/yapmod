@@ -1,5 +1,5 @@
 import { getScope, getYapmod } from "./scope";
-import { invokeCommand } from "./tauri";
+import { getHost } from "../platform/host";
 
 /**
  * The bridge the host app looks for.
@@ -43,12 +43,13 @@ export function installDesktopBridge(): void {
         return;
       }
 
-      void invokeCommand<void>("set_badge_count", {
-        count:
+      void getHost()
+        .badge?.set(
           typeof count === "number" && Number.isFinite(count) ? count : null,
-      }).catch((error: unknown) => {
-        console.error("[yapmod] could not set the badge", error);
-      });
+        )
+        .catch((error: unknown) => {
+          console.error("[yapmod] could not set the badge", error);
+        });
     },
   };
 

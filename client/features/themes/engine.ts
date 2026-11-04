@@ -1,7 +1,7 @@
 import type { CommunityTheme, ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
 import { getYapmod } from "../../core/scope";
-import { invokeCommand } from "../../core/tauri";
+import { getHost } from "../../platform/host";
 
 const THEME_STYLE_ID = "yapmod-theme-styles";
 
@@ -333,7 +333,7 @@ function watchStore(): void {
 
     if (id) {
       try {
-        const themes = await invokeCommand<ThemeBundle[]>("list_themes");
+        const themes = (await getHost().themes?.list()) ?? [];
         const theme = themes.find((t) => t.id === id);
 
         if (theme) {
@@ -385,6 +385,16 @@ function watchHost(): void {
 export function installThemeEngine(theme: ThemeBundle | null): void {
   activeTheme = theme;
 
+  const themes = getHost().themes;
+
+  function repository(): NonNullable<typeof themes> {
+    if (!themes) {
+      throw new Error("[yapmod] this target has no theme repository");
+    }
+
+    return themes;
+  }
+
   const api: YapmodThemeApi = {
     get active(): ThemeBundle | null {
       return activeTheme;
@@ -397,35 +407,35 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
     },
 
     list(): Promise<ThemeBundle[]> {
-      return invokeCommand<ThemeBundle[]>("list_themes");
+      return themes?.list() ?? Promise.resolve([]);
     },
 
     listCommunity(): Promise<CommunityTheme[]> {
-      return invokeCommand<CommunityTheme[]>("list_community_themes");
+      return themes?.listCommunity() ?? Promise.resolve([]);
     },
 
     pickFolder(): Promise<string | null> {
-      return invokeCommand<string | null>("pick_theme_folder");
+      return themes?.pickFolder() ?? Promise.resolve(null);
     },
 
     install(source: string): Promise<ThemeBundle> {
-      return invokeCommand<ThemeBundle>("install_theme", { source });
+      return repository().install(source);
     },
 
     installCommunity(id: string): Promise<ThemeBundle> {
-      return invokeCommand<ThemeBundle>("install_community_theme", { id });
+      return repository().installCommunity(id);
     },
 
     remove(id: string): Promise<void> {
-      return invokeCommand<void>("remove_theme", { id });
+      return repository().remove(id);
     },
 
     folder(): Promise<string> {
-      return invokeCommand<string>("themes_folder");
+      return repository().folder();
     },
 
     openFolder(): Promise<void> {
-      return invokeCommand<void>("open_themes_folder");
+      return themes?.openFolder() ?? Promise.resolve();
     },
 
     onChange(listener: ThemeListener): () => void {

@@ -3,7 +3,7 @@ import type {
   UpdateInfo,
   YapmodModal,
 } from "../../shared/types";
-import { invokeCommand } from "../../core/tauri";
+import { getHost } from "../../platform/host";
 import { openExternally } from "../../core/links";
 import { getYapmod } from "../../core/scope";
 import { showBanner } from "../banners/api";
@@ -18,9 +18,9 @@ export async function prepareClientUpdate(
   currentClientVersion: string,
 ): Promise<ClientUpdateInfo | null> {
   try {
-    return await invokeCommand<ClientUpdateInfo | null>("prepare_client_update", {
-      currentClientVersion,
-    });
+    return (
+      (await getHost().updates?.prepareClientUpdate(currentClientVersion)) ?? null
+    );
   } catch (error) {
     console.error("[yapmod] the client update check failed", error);
     return null;
@@ -35,7 +35,7 @@ export async function prepareClientUpdate(
  */
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   try {
-    return await invokeCommand<UpdateInfo>("check_for_update");
+    return (await getHost().updates?.check()) ?? null;
   } catch (error) {
     console.error("[yapmod] the update check failed", error);
     return null;
@@ -101,7 +101,13 @@ export function showClientUpdateBanner(info: ClientUpdateInfo): void {
       label: "Restart",
       onClick: async (banner) => {
         try {
-          await invokeCommand<void>("restart_app");
+          const updates = getHost().updates;
+
+          if (!updates) {
+            throw new Error("This target does not support restarting.");
+          }
+
+          await updates.restart();
         } catch (error) {
           console.error(
             "[yapmod] could not restart for the client update",

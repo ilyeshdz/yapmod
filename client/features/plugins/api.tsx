@@ -1,6 +1,6 @@
 import { getYapmod } from "../../core/scope";
+import { getHost } from "../../platform/host";
 import { upsertStyle } from "../../shared/ui";
-import { invokeCommand } from "../../core/tauri";
 import { render } from "solid-js/web";
 import { PluginGallery } from "./plugins-gallery";
 import {
@@ -10,7 +10,6 @@ import {
   PluginSourceViewer,
 } from "./plugin-modals";
 import type {
-  CommunityPlugin,
   PluginBundle,
   PluginCleanup,
   PluginDiagnostic,
@@ -581,7 +580,13 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           },
         }),
         async invoke(command: string, args?: Record<string, unknown>): Promise<unknown> {
-          return invokeCommand(command, args);
+          const invoke = getHost().invoke;
+
+          if (!invoke) {
+            throw new Error("[yapmod] this target does not expose host commands to plugins");
+          }
+
+          return invoke(command, args);
         },
       });
       // Plugins are trusted page code by design. This does not sandbox or
@@ -695,14 +700,24 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
 
 /** Installs the package import, consent, and lifecycle API. */
 export function installPluginApi(): void {
+  const plugins = getHost().plugins;
+
+  function repository(): NonNullable<typeof plugins> {
+    if (!plugins) {
+      throw new Error("[yapmod] this target has no plugin repository");
+    }
+
+    return plugins;
+  }
+
   const api: YapmodPluginsApi = {
     list: listPlugins,
     setEnabled,
     onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     async importLocal() {
-      const manifest = await invokeCommand<PluginManifest | null>("pick_plugin_folder");
+      const manifest = await plugins?.pickFolder() ?? null;
       if (!manifest || !(await requestConsent(manifest, "import"))) return null;
-      const bundle = await invokeCommand<PluginBundle>("install_picked_plugin", { expectedManifest: manifest });
+      const bundle = await repository().installPicked(manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
         throw new Error("The plugin changed after you reviewed its import warning.");
@@ -712,11 +727,11 @@ export function installPluginApi(): void {
       emitChange();
       return bundle.manifest;
     },
-    listCommunity() { return invokeCommand<CommunityPlugin[]>("list_community_plugins"); },
+    listCommunity() { return plugins?.listCommunity() ?? Promise.resolve([]); },
     async installCommunity(id) {
-      const manifest = await invokeCommand<PluginManifest>("preview_community_plugin", { id });
+      const manifest = await repository().previewCommunity(id);
       if (!(await requestConsent(manifest, "import"))) throw new Error("Plugin installation was cancelled.");
-      const bundle = await invokeCommand<PluginBundle>("install_community_plugin", { id, expectedManifest: manifest });
+      const bundle = await repository().installCommunity(id, manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
         throw new Error("The community plugin changed after you reviewed its import warning.");
@@ -730,12 +745,12 @@ export function installPluginApi(): void {
       const entry = registry.get(id);
       if (!entry) return;
       await disableEntry(entry);
-      await invokeCommand<void>("remove_plugin", { id });
+      await repository().remove(id);
       registry.delete(id);
       emitChange();
     },
     async refreshInstalled() {
-      const bundles = await invokeCommand<PluginBundle[]>("list_plugins");
+      const bundles = await plugins?.list() ?? [];
       const next = new Map(bundles.map((bundle) => [bundle.manifest.id, bundle]));
       for (const [id, entry] of registry) {
         const bundle = next.get(id);
@@ -747,7 +762,7 @@ export function installPluginApi(): void {
       for (const bundle of bundles) await registerBundle(bundle);
       emitChange();
     },
-    openFolder() { return invokeCommand<void>("open_plugins_folder"); },
+    openFolder() { return plugins?.openFolder() ?? Promise.resolve(); },
   };
   getYapmod().plugins = api;
 }

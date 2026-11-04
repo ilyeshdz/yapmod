@@ -1,5 +1,5 @@
 import type { YapmodStoreApi } from "../shared/types";
-import { invokeCommand } from "./tauri";
+import { getHost } from "../platform/host";
 import { getYapmod } from "./scope";
 
 const FLUSH_DELAY_MS = 300;
@@ -57,7 +57,7 @@ export function installStore(): void {
 
     pending.clear();
 
-    return invokeCommand<void>("set_settings", { values: batch }).catch(
+    return getHost().settings.save(batch).catch(
       (error: unknown) => {
         console.error("[yapmod] could not persist settings", error);
       },
