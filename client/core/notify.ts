@@ -75,7 +75,11 @@ class YapmodNotification {
     }
 
     try {
-      await getHost().notifications?.request();
+      const state = await getHost().notifications?.request();
+
+      if (state) {
+        permission = state;
+      }
     } catch (error: unknown) {
       console.error(
         "[yapmod] could not ask for the notification permission",
@@ -83,7 +87,9 @@ class YapmodNotification {
       );
     }
 
-    permission = "granted";
+    if (permission === "default") {
+      permission = "granted";
+    }
 
     return permission;
   }
@@ -161,13 +167,19 @@ function onClick(tag: string): void {
  * The webview cannot show notifications by itself, so the shell does it.
  */
 export function installNotificationApi(): void {
+  const notifications = getHost().notifications;
+
+  if (!notifications) {
+    return;
+  }
+
   sync();
 
   getYapmod().store?.onChange("notifications", () => {
     sync();
   });
 
-  getHost().notifications?.onClick(onClick);
+  notifications.onClick(onClick);
 
   const scope = getScope() as unknown as { Notification: unknown };
 

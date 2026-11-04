@@ -190,6 +190,12 @@ function installLeavingDialogHandler(): void {
 }
 
 export function installExternalLinks(): void {
-  installWindowOpenPatch();
+  // In an isolated world, replacing `window.open` only affects our own realm;
+  // the page keeps its native behaviour. The host still handles links that
+  // yapmod opens itself.
+  if (getHost().capabilities.pageRealm) {
+    installWindowOpenPatch();
+  }
+
   installLeavingDialogHandler();
 }

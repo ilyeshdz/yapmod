@@ -1,6 +1,7 @@
 import { render } from "solid-js/web";
 import type { SettingsSection } from "../../shared/types";
 import { getYapmod } from "../../core/scope";
+import { getHost } from "../../platform/host";
 import { ThemePicker } from "./theme-picker";
 
 const SECTION_ID = "yapmod-themes";
@@ -11,14 +12,18 @@ const SECTION_ID = "yapmod-themes";
 const GROUP_LABEL = "Yapmod";
 
 function createThemeSection(): SettingsSection {
+  const host = getHost();
+  const filesystem = host.capabilities.packages === "filesystem";
+
   return {
     id: SECTION_ID,
     label: "Themes",
     icon: "palette",
     group: GROUP_LABEL,
     order: 1,
-    description:
-      "Change how yapmod looks. A theme is a folder with a manifest and a stylesheet, and it is applied to the whole app.",
+    description: filesystem
+      ? "Change how yapmod looks. A theme is a folder with a manifest and a stylesheet, and it is applied to the whole app."
+      : "Change how yapmod looks. Browse community themes and apply one to the whole app.",
     render: (host) => {
       const themeApi = getYapmod().theme;
       const store = getYapmod().store;
@@ -42,7 +47,7 @@ function createThemeSection(): SettingsSection {
 export function installThemeSettings(): void {
   const yapmod = getYapmod();
 
-  if (!yapmod.settings) {
+  if (!yapmod.settings || !getHost().themes) {
     return;
   }
 
