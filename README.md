@@ -14,9 +14,6 @@
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License: GPL v3" /></a>
 </p>
 
-> [!WARNING]
-> **yapmod is in early development.** Expect missing features, rough edges, and breaking changes.
-
 yapmod gives Yapper a real home on your computer: its own window, native
 integration with your operating system, and small builds that use the webview
 your system already ships instead of bundling a browser. It aims to be more
