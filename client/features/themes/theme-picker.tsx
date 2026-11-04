@@ -9,7 +9,7 @@ import {
 } from "solid-js";
 
 import type { CommunityTheme, ThemeBundle } from "./types";
-import type { YapmodThemeApi } from "./engine";
+import type { YapmodThemeApi } from "./api";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
 import { openExternally } from "../../core/links";

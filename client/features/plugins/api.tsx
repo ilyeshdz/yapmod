@@ -1,5 +1,6 @@
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
+import { createPluginRepository } from "./repository";
 import { upsertStyle } from "../../shared/ui";
 import { render } from "solid-js/web";
 import { PluginGallery } from "./plugins-gallery";
@@ -700,24 +701,16 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
 
 /** Installs the package import, consent, and lifecycle API. */
 export function installPluginApi(): void {
-  const plugins = getHost().plugins;
-
-  function repository(): NonNullable<typeof plugins> {
-    if (!plugins) {
-      throw new Error("[yapmod] this target has no plugin repository");
-    }
-
-    return plugins;
-  }
+  const repository = createPluginRepository(getHost().plugins);
 
   const api: YapmodPluginsApi = {
     list: listPlugins,
     setEnabled,
     onChange(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     async importLocal() {
-      const manifest = await plugins?.pickFolder() ?? null;
+      const manifest = await repository.pickFolder();
       if (!manifest || !(await requestConsent(manifest, "import"))) return null;
-      const bundle = await repository().installPicked(manifest);
+      const bundle = await repository.installPicked(manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
         throw new Error("The plugin changed after you reviewed its import warning.");
@@ -727,11 +720,11 @@ export function installPluginApi(): void {
       emitChange();
       return bundle.manifest;
     },
-    listCommunity() { return plugins?.listCommunity() ?? Promise.resolve([]); },
+    listCommunity() { return repository.listCommunity(); },
     async installCommunity(id) {
-      const manifest = await repository().previewCommunity(id);
+      const manifest = await repository.previewCommunity(id);
       if (!(await requestConsent(manifest, "import"))) throw new Error("Plugin installation was cancelled.");
-      const bundle = await repository().installCommunity(id, manifest);
+      const bundle = await repository.installCommunity(id, manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
         throw new Error("The community plugin changed after you reviewed its import warning.");
@@ -745,12 +738,12 @@ export function installPluginApi(): void {
       const entry = registry.get(id);
       if (!entry) return;
       await disableEntry(entry);
-      await repository().remove(id);
+      await repository.remove(id);
       registry.delete(id);
       emitChange();
     },
     async refreshInstalled() {
-      const bundles = await plugins?.list() ?? [];
+      const bundles = await repository.list();
       const next = new Map(bundles.map((bundle) => [bundle.manifest.id, bundle]));
       for (const [id, entry] of registry) {
         const bundle = next.get(id);
@@ -762,7 +755,7 @@ export function installPluginApi(): void {
       for (const bundle of bundles) await registerBundle(bundle);
       emitChange();
     },
-    openFolder() { return plugins?.openFolder() ?? Promise.resolve(); },
+    openFolder() { return repository.openFolder(); },
   };
   getYapmod().plugins = api;
 }

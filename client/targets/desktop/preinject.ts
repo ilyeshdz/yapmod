@@ -8,7 +8,7 @@ import { installBannerApi } from "../../features/banners/api";
 import { installSettingsApi } from "../../features/settings/api";
 import { installStore } from "../../core/store";
 import { installDefaultSettings } from "../../features/settings/defaults";
-import { installThemeEngine } from "../../features/themes/engine";
+import { installThemeApi } from "../../features/themes/api";
 import { installThemeSettings } from "../../features/themes/settings";
 import { installDesktopBridge } from "../../core/desktop";
 import { installNotificationApi } from "../../core/notify";
@@ -92,7 +92,7 @@ try {
 // The theme is applied before anything else, so the app never shows the
 // wrong colours while it loads.
 try {
-  installThemeEngine(payload.theme ?? null);
+  installThemeApi(payload.theme ?? null);
 } catch (error) {
   console.error("[yapmod] failed to install theme engine", error);
 }

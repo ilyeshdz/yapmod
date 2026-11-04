@@ -10,7 +10,7 @@ import type {
 } from "../generated/types";
 import type { DesktopBridge } from "../core/desktop";
 import type { YapmodBannerApi } from "../features/banners/api";
-import type { YapmodThemeApi } from "../features/themes/engine";
+import type { YapmodThemeApi } from "../features/themes/api";
 
 export type {
   Config,

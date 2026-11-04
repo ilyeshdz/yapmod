@@ -8,6 +8,7 @@ import type {
   PluginSettingValue,
 } from "../../shared/types";
 import { getHost } from "../../platform/host";
+import { createPluginRepository } from "./repository";
 
 type PluginSettingsDraft = Map<string, PluginSettingValue>;
 
@@ -133,8 +134,9 @@ function PluginSettingInput(
             class="btn small"
             type="button"
             onClick={async () => {
-              const dataUri =
-                (await getHost().plugins?.pickFile(setting.accept)) ?? null;
+              const dataUri = await createPluginRepository(
+                getHost().plugins,
+              ).pickFile(setting.accept);
               if (dataUri !== null) {
                 update(dataUri);
               }

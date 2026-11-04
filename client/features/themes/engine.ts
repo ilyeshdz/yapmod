@@ -1,4 +1,4 @@
-import type { CommunityTheme, ResolvedMode, ThemeBundle } from "./types";
+import type { ResolvedMode, ThemeBundle } from "./types";
 import { buildTokenLayer } from "./tokens";
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
@@ -15,18 +15,16 @@ const HOST_THEME_KEY = "yapper-theme";
 
 export type ThemeListener = (theme: ThemeBundle | null) => void;
 
-export type YapmodThemeApi = {
+/**
+ * The part of the theme API that applies and observes themes.
+ *
+ * Reading, installing and removing packages lives in `repository.ts`, so the
+ * renderer does not depend on how a target stores packages.
+ */
+export type YapmodThemeEngineApi = {
   /** The theme that is applied. */
   readonly active: ThemeBundle | null;
   apply(theme: ThemeBundle | null): void;
-  list(): Promise<ThemeBundle[]>;
-  listCommunity(): Promise<CommunityTheme[]>;
-  pickFolder(): Promise<string | null>;
-  install(source: string): Promise<ThemeBundle>;
-  installCommunity(id: string): Promise<ThemeBundle>;
-  remove(id: string): Promise<void>;
-  folder(): Promise<string>;
-  openFolder(): Promise<void>;
   onChange(listener: ThemeListener): () => void;
 };
 
@@ -382,20 +380,10 @@ function watchHost(): void {
   });
 }
 
-export function installThemeEngine(theme: ThemeBundle | null): void {
+export function installThemeEngine(theme: ThemeBundle | null): YapmodThemeEngineApi {
   activeTheme = theme;
 
-  const themes = getHost().themes;
-
-  function repository(): NonNullable<typeof themes> {
-    if (!themes) {
-      throw new Error("[yapmod] this target has no theme repository");
-    }
-
-    return themes;
-  }
-
-  const api: YapmodThemeApi = {
+  const api: YapmodThemeEngineApi = {
     get active(): ThemeBundle | null {
       return activeTheme;
     },
@@ -404,38 +392,6 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
       activeTheme = theme;
       render(theme);
       notify();
-    },
-
-    list(): Promise<ThemeBundle[]> {
-      return themes?.list() ?? Promise.resolve([]);
-    },
-
-    listCommunity(): Promise<CommunityTheme[]> {
-      return themes?.listCommunity() ?? Promise.resolve([]);
-    },
-
-    pickFolder(): Promise<string | null> {
-      return themes?.pickFolder() ?? Promise.resolve(null);
-    },
-
-    install(source: string): Promise<ThemeBundle> {
-      return repository().install(source);
-    },
-
-    installCommunity(id: string): Promise<ThemeBundle> {
-      return repository().installCommunity(id);
-    },
-
-    remove(id: string): Promise<void> {
-      return repository().remove(id);
-    },
-
-    folder(): Promise<string> {
-      return repository().folder();
-    },
-
-    openFolder(): Promise<void> {
-      return themes?.openFolder() ?? Promise.resolve();
     },
 
     onChange(listener: ThemeListener): () => void {
@@ -447,8 +403,6 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
     },
   };
 
-  getYapmod().theme = api;
-
   if (theme) {
     render(theme);
   }
@@ -456,4 +410,6 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
   watchSystem();
   watchStore();
   watchHost();
+
+  return api;
 }

@@ -4,7 +4,7 @@ import { installBannerApi } from "../../features/banners/api";
 import { installModalApi } from "../../features/modal/api";
 import { installDefaultSettings } from "../../features/settings/defaults";
 import { installSettingsApi } from "../../features/settings/api";
-import { installThemeEngine } from "../../features/themes/engine";
+import { installThemeApi } from "../../features/themes/api";
 import { installThemeSettings } from "../../features/themes/settings";
 import { installExternalLinks } from "../../core/links";
 import { installNotificationApi } from "../../core/notify";
@@ -63,7 +63,7 @@ async function start(): Promise<void> {
   }
 
   try {
-    installThemeEngine(theme);
+    installThemeApi(theme);
   } catch (error) {
     console.error("[yapmod] failed to install theme engine", error);
   }
