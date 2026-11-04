@@ -38,6 +38,7 @@ function VerifiedBadge(): JSX.Element {
 export type InstalledPluginCardProps = {
   plugin: YapmodPluginInfo;
   onToggle: () => void;
+  onReload: () => void;
   onRemove: () => void;
   onSettings: () => void;
   onInspect: () => void;
@@ -97,6 +98,15 @@ export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Elemen
             onClick={props.onInspect}
           >
             <Icon class="yapmod-plugin-action-icon" size={22} strokeWidth={1.9} paths={[PLUGIN_ICON_PATHS.files]} />
+          </button>
+          <button
+            class="btn small ghost"
+            type="button"
+            disabled={props.plugin.busy}
+            title="Reload the plugin files from disk and disable the plugin"
+            onClick={props.onReload}
+          >
+            Reload
           </button>
           <button class="btn small ghost" type="button" onClick={props.onRemove}>
             Remove

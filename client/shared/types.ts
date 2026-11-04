@@ -622,6 +622,7 @@ export type YapmodPluginsApi = {
   importLocal(): Promise<PluginManifest | null>;
   listCommunity(): Promise<CommunityPlugin[]>;
   installCommunity(id: string): Promise<PluginManifest>;
+  reload(id: string): Promise<boolean>;
   remove(id: string): Promise<void>;
   refreshInstalled(): Promise<void>;
   openFolder(): Promise<void>;

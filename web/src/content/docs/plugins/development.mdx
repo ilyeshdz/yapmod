@@ -33,17 +33,16 @@ When you import a folder, yapmod copies `manifest.json`, `plugin.css` and the op
 You normally do not need to open this folder. Use **View files** on an installed plugin card to inspect exactly what yapmod loaded, and **Open folder** in the Plugins settings to locate the installed copies.
 
 <Callout type="warning" title="Import copies, it does not link">
-Editing the source folder after import does not update the installed plugin. To iterate, remove the installed package and import the source folder again. The exception is deliberate debugging of the installed copy: you can edit it in place, but that copy is not your source of truth and will be replaced by the next import.
+Editing the source folder after import does not update the installed plugin. To iterate, edit the installed copy (use **Open folder** or **View files**), then choose **Reload** on the plugin card. Reload disables the plugin and re-reads its files; enable it again to apply the changes. Because consent is bound to a content hash, changed files require a new consent.
 </Callout>
 
 ## The edit and test loop
 
-1. Edit `manifest.json`, `plugin.css` or `plugin.js` in your source folder.
+1. Edit `manifest.json`, `plugin.css` or `plugin.js` in the installed copy.
 2. Open **Settings → Yapmod → Plugins**.
-3. Remove the previous installed copy if it exists.
-4. Choose **Import plugin**, pick the folder, and confirm the consent dialog.
-5. Enable the plugin and inspect the page.
-6. Disable it and confirm that its UI, timers, listeners and network interceptors are gone.
+3. Choose **Reload** on the plugin card. This disables the plugin and re-reads its files.
+4. Choose **Enable**, confirm the consent dialog if the content changed, and inspect the page.
+5. Disable it and confirm that its UI, timers, listeners and network interceptors are gone.
 
 Consent is recalculated from the manifest version plus a SHA-256 hash of the CSS and script. A changed stylesheet or script requires a new consent, even if you keep the same version. During development that is extra confirmation steps, but it also catches a package that changed between review and installation.
 

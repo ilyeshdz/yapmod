@@ -510,6 +510,24 @@ pub fn active_theme(app: &AppHandle, config: &Config) -> Option<ThemeBundle> {
     read_bundle(&folder, false)
 }
 
+/// Reads an installed theme again so local edits can be picked up without
+/// reinstalling. The id is validated before it is joined into a path.
+#[tauri::command]
+pub fn reload_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
+    if !is_valid_id(&id) {
+        return Err("that is not a valid theme id".to_string());
+    }
+    let folder = themes_dir(&app)
+        .map_err(|error| error.to_string())?
+        .join(&id);
+    let bundle = read_bundle(&folder, true)
+        .ok_or_else(|| "the theme files could not be read".to_string())?;
+    if bundle.id != id {
+        return Err("the theme folder declares a different id".to_string());
+    }
+    Ok(bundle)
+}
+
 /// Every theme that is installed.
 #[tauri::command]
 pub fn list_themes(app: AppHandle) -> Result<Vec<ThemeBundle>, String> {

@@ -12,6 +12,7 @@ import type { CommunityTheme, ThemeBundle } from "./types";
 import type { YapmodThemeApi } from "./engine";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
+import { Icon } from "../../components/icon";
 import { openExternally } from "../../core/links";
 import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
@@ -19,6 +20,11 @@ import themeCSS from "../../styles/themes.css";
 import { ThemePreview } from "./theme-preview";
 
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
+
+const RELOAD_ICON = [
+  "M21 12a9 9 0 1 1-2.64-6.36",
+  "M21 3v6h-6",
+] as const;
 
 export type ThemePickerProps = {
   themeApi: YapmodThemeApi;
@@ -171,6 +177,22 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
       await refresh();
     } catch (error) {
       setMessage(String(error), true);
+    }
+  }
+
+  async function reloadTheme(theme: ThemeBundle): Promise<void> {
+    try {
+      const reloaded = await themeApi.reload(theme.id);
+
+      if (activeId() === theme.id) {
+        themeApi.apply(reloaded);
+      }
+
+      await refresh();
+      setMessage(`Reloaded ${reloaded.name}.`);
+    } catch (error) {
+      setMessage(`Could not reload ${theme.name}: ${String(error)}`, true);
+      await refresh();
     }
   }
 
@@ -327,6 +349,18 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
                 </button>
                 <div class="yapmod-theme-card-foot">
                   <span class="yapmod-theme-card-meta">{describe(theme)}</span>
+                  <button
+                    class="yapmod-theme-reload"
+                    type="button"
+                    aria-label={`Reload the theme ${theme.name}`}
+                    title={`Reload ${theme.name} from disk`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void reloadTheme(theme);
+                    }}
+                  >
+                    <Icon class="yapmod-theme-reload-icon" size={14} strokeWidth={2} paths={[RELOAD_ICON]} />
+                  </button>
                   <button
                     class="yapmod-theme-remove"
                     type="button"

@@ -24,6 +24,7 @@ export type YapmodThemeApi = {
   pickFolder(): Promise<string | null>;
   install(source: string): Promise<ThemeBundle>;
   installCommunity(id: string): Promise<ThemeBundle>;
+  reload(id: string): Promise<ThemeBundle>;
   remove(id: string): Promise<void>;
   folder(): Promise<string>;
   openFolder(): Promise<void>;
@@ -414,6 +415,10 @@ export function installThemeEngine(theme: ThemeBundle | null): void {
 
     installCommunity(id: string): Promise<ThemeBundle> {
       return invokeCommand<ThemeBundle>("install_community_theme", { id });
+    },
+
+    reload(id: string): Promise<ThemeBundle> {
+      return invokeCommand<ThemeBundle>("reload_theme", { id });
     },
 
     remove(id: string): Promise<void> {

@@ -96,7 +96,8 @@
   padding: 0 6px 8px 10px;
 }
 
-.yapmod-theme-remove {
+.yapmod-theme-remove,
+.yapmod-theme-reload {
   flex: none;
   display: grid;
   place-items: center;
@@ -119,6 +120,17 @@
   opacity: 1;
   color: var(--ym-danger, var(--danger, #f2555a));
   outline: none;
+}
+
+.yapmod-theme-reload:hover,
+.yapmod-theme-reload:focus-visible {
+  opacity: 1;
+  color: var(--ym-accent, var(--accent, #ff6b4a));
+  outline: none;
+}
+
+.yapmod-theme-reload-icon {
+  display: block;
 }
 
 .yapmod-theme-preview {

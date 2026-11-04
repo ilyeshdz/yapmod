@@ -531,6 +531,20 @@ pub fn install_picked_plugin(
     )
 }
 
+/// Reads an installed plugin again so local edits can be picked up without
+/// reinstalling. The folder id is validated before it is joined into a path.
+#[tauri::command]
+pub fn reload_plugin(app: AppHandle, id: String) -> Result<PluginBundle, String> {
+    if !valid_id(&id) {
+        return Err("that is not a valid plugin id".into());
+    }
+    let bundle = read_bundle(&plugins_dir(&app)?.join(&id))?;
+    if bundle.manifest.id != id {
+        return Err("the plugin folder declares a different id".into());
+    }
+    Ok(bundle)
+}
+
 #[tauri::command]
 pub fn list_plugins(app: AppHandle) -> Result<Vec<PluginBundle>, String> {
     let folder = plugins_dir(&app)?;

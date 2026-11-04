@@ -705,6 +705,32 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
   }
 }
 
+/** Reloads an installed plugin from disk, disabling it first if it is running. */
+async function reloadPlugin(id: string): Promise<boolean> {
+  const entry = registry.get(id);
+  if (!entry || entry.busy) return false;
+  entry.busy = true;
+  entry.error = null;
+  entry.diagnostic = null;
+  emitChange();
+  try {
+    // Tear down the running copy before its files are swapped.
+    await disableEntry(entry);
+    const bundle = await invokeCommand<PluginBundle>("reload_plugin", { id });
+    if (bundle.manifest.id !== id) {
+      throw new Error("the plugin folder now declares a different id");
+    }
+    entry.bundle = bundle;
+    return true;
+  } catch (error) {
+    diagnose(entry, "load", error);
+    return false;
+  } finally {
+    entry.busy = false;
+    emitChange();
+  }
+}
+
 /** Installs the package import, consent, and lifecycle API. */
 export function installPluginApi(): void {
   const api: YapmodPluginsApi = {
@@ -736,6 +762,7 @@ export function installPluginApi(): void {
       emitChange();
       return bundle.manifest;
     },
+    reload: reloadPlugin,
     async remove(id) {
       const entry = registry.get(id);
       if (!entry) return;
