@@ -129,10 +129,6 @@
   outline: none;
 }
 
-.yapmod-theme-reload-icon {
-  display: block;
-}
-
 .yapmod-theme-preview {
   display: grid;
   grid-template-columns: 10px 34px 1fr;

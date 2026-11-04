@@ -5,6 +5,7 @@ import { close } from "./close";
 import { code } from "./code";
 import { copy } from "./copy";
 import { dock } from "./dock";
+import { files } from "./files";
 import { float } from "./float";
 import { history } from "./history";
 import { monitor } from "./monitor";
@@ -23,6 +24,7 @@ export {
   code,
   copy,
   dock,
+  files,
   float,
   history,
   monitor,
@@ -49,6 +51,7 @@ export const iconPaths = {
   close,
   check,
   copy,
+  files,
   refresh,
   plus,
   search,

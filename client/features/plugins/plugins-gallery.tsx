@@ -152,9 +152,15 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
 
       if (!success) {
         setMessage(`Could not reload ${plugin.manifest.name}. Check the error on its card.`, true);
-      } else {
-        setMessage(`Reloaded ${plugin.manifest.name}. Enable it to apply the new files.`);
+        return;
       }
+
+      const current = props.plugins.list().find((item) => item.manifest.id === plugin.manifest.id);
+      setMessage(
+        current?.enabled
+          ? `Reloaded ${plugin.manifest.name}.`
+          : `Reloaded ${plugin.manifest.name}. Enable it to apply the new files.`,
+      );
     } catch (error) {
       setMessage(`Could not reload plugin: ${String(error)}`, true);
     }

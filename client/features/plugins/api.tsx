@@ -705,7 +705,7 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
   }
 }
 
-/** Reloads an installed plugin from disk, disabling it first if it is running. */
+/** Reloads an installed plugin from disk and restores its previous state. */
 async function reloadPlugin(id: string): Promise<boolean> {
   const entry = registry.get(id);
   if (!entry || entry.busy) return false;
@@ -714,6 +714,7 @@ async function reloadPlugin(id: string): Promise<boolean> {
   entry.diagnostic = null;
   emitChange();
   try {
+    const wasEnabled = entry.enabled;
     // Tear down the running copy before its files are swapped.
     await disableEntry(entry);
     const bundle = await invokeCommand<PluginBundle>("reload_plugin", { id });
@@ -721,6 +722,15 @@ async function reloadPlugin(id: string): Promise<boolean> {
       throw new Error("the plugin folder now declares a different id");
     }
     entry.bundle = bundle;
+    if (wasEnabled) {
+      // A changed manifest, stylesheet, or script is new code, so it needs a
+      // fresh consent before it runs again.
+      if (!await hasCurrentConsent(bundle)) {
+        if (!(await requestConsent(bundle.manifest, "enable"))) return true;
+        await saveConsent(bundle);
+      }
+      await enableEntry(entry);
+    }
     return true;
   } catch (error) {
     diagnose(entry, "load", error);

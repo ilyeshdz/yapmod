@@ -3,7 +3,7 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "2574782c1e1bb027",
+  "sourceHash": "1de83ca2b3dcbf34",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
@@ -665,7 +665,7 @@
       "name": "PluginUiIconName",
       "kind": "type",
       "description": "Built-in icons available to plugin UI components.",
-      "declaration": "export type PluginUiIconName =\n  | \"monitor\"\n  | \"palette\"\n  | \"history\"\n  | \"puzzle\"\n  | \"code\"\n  | \"save\"\n  | \"trash\"\n  | \"float\"\n  | \"dock\"\n  | \"close\"\n  | \"check\"\n  | \"copy\"\n  | \"refresh\"\n  | \"plus\"\n  | \"search\"\n  | \"settings\";",
+      "declaration": "export type PluginUiIconName =\n  | \"monitor\"\n  | \"palette\"\n  | \"history\"\n  | \"puzzle\"\n  | \"code\"\n  | \"save\"\n  | \"trash\"\n  | \"float\"\n  | \"dock\"\n  | \"close\"\n  | \"check\"\n  | \"copy\"\n  | \"files\"\n  | \"refresh\"\n  | \"plus\"\n  | \"search\"\n  | \"settings\";",
       "members": []
     },
     "PluginUiIconOptions": {

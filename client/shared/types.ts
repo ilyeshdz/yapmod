@@ -373,6 +373,7 @@ export type PluginUiIconName =
   | "close"
   | "check"
   | "copy"
+  | "files"
   | "refresh"
   | "plus"
   | "search"

@@ -12,7 +12,7 @@ import type { CommunityTheme, ThemeBundle } from "./types";
 import type { YapmodThemeApi } from "./engine";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
-import { Icon } from "../../components/icon";
+import { IconButton } from "../../components/icon-button";
 import { openExternally } from "../../core/links";
 import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
@@ -20,11 +20,6 @@ import themeCSS from "../../styles/themes.css";
 import { ThemePreview } from "./theme-preview";
 
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
-
-const RELOAD_ICON = [
-  "M21 12a9 9 0 1 1-2.64-6.36",
-  "M21 3v6h-6",
-] as const;
 
 export type ThemePickerProps = {
   themeApi: YapmodThemeApi;
@@ -349,30 +344,28 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
                 </button>
                 <div class="yapmod-theme-card-foot">
                   <span class="yapmod-theme-card-meta">{describe(theme)}</span>
-                  <button
+                  <IconButton
                     class="yapmod-theme-reload"
-                    type="button"
-                    aria-label={`Reload the theme ${theme.name}`}
+                    icon="refresh"
+                    size={14}
+                    label={`Reload the theme ${theme.name}`}
                     title={`Reload ${theme.name} from disk`}
                     onClick={(event) => {
                       event.stopPropagation();
                       void reloadTheme(theme);
                     }}
-                  >
-                    <Icon class="yapmod-theme-reload-icon" size={14} strokeWidth={2} paths={[RELOAD_ICON]} />
-                  </button>
-                  <button
+                  />
+                  <IconButton
                     class="yapmod-theme-remove"
-                    type="button"
-                    aria-label={`Remove the theme ${theme.name}`}
+                    icon="trash"
+                    size={14}
+                    label={`Remove the theme ${theme.name}`}
                     title={`Remove ${theme.name}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       void removeTheme(theme);
                     }}
-                  >
-                    ×
-                  </button>
+                  />
                 </div>
               </div>
             )}
