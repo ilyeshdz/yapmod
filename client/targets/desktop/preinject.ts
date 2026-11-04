@@ -1,26 +1,30 @@
-import { installModalApi } from "./features/modal/api";
+import { installModalApi } from "../../features/modal/api";
 import {
   initializePluginManager,
   installPluginApi,
   installPluginSettings,
-} from "./features/plugins/api";
-import { installBannerApi } from "./features/banners/api";
-import { installSettingsApi } from "./features/settings/api";
-import { installStore } from "./core/store";
-import { installDefaultSettings } from "./features/settings/defaults";
-import { installThemeEngine } from "./features/themes/engine";
-import { installThemeSettings } from "./features/themes/settings";
-import { installDesktopBridge } from "./core/desktop";
-import { installNotificationApi } from "./core/notify";
-import { installExternalLinks } from "./core/links";
-import { installWebSocketInspector } from "./core/websocket";
-import { installHTTPInspector } from "./core/http";
-import { getChangelog } from "./features/settings/release";
-import { getScope, getYapmod } from "./core/scope";
+} from "../../features/plugins/api";
+import { installBannerApi } from "../../features/banners/api";
+import { installSettingsApi } from "../../features/settings/api";
+import { installStore } from "../../core/store";
+import { installDefaultSettings } from "../../features/settings/defaults";
+import { installThemeEngine } from "../../features/themes/engine";
+import { installThemeSettings } from "../../features/themes/settings";
+import { installDesktopBridge } from "../../core/desktop";
+import { installNotificationApi } from "../../core/notify";
+import { installExternalLinks } from "../../core/links";
+import { installWebSocketInspector } from "../../core/websocket";
+import { installHTTPInspector } from "../../core/http";
+import { getChangelog } from "../../features/settings/release";
+import { getScope, getYapmod } from "../../core/scope";
+import { installHost } from "../../platform/host";
+import { createDesktopHost } from "./host";
 
 const scope = getScope();
 const yapmod = getYapmod();
 const payload = scope.__YAPMOD__ ?? {};
+
+installHost(createDesktopHost(payload));
 
 yapmod.config = payload.config;
 yapmod.os = payload.os;

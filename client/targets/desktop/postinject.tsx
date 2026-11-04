@@ -4,18 +4,21 @@ import {
   showClientUpdateOutcomeBanner,
   showClientUpdateBanner,
   showUpdateAvailableModal,
-} from "./features/updates/api";
-import { upsertStyle } from "./shared/ui";
-import { remountThemeStyles } from "./features/themes/engine";
-import { getYapmod } from "./core/scope";
-import { invokeCommand } from "./core/tauri";
+} from "../../features/updates/api";
+import { upsertStyle } from "../../shared/ui";
+import { remountThemeStyles } from "../../features/themes/engine";
+import { getScope, getYapmod } from "../../core/scope";
+import { installHost, getHost } from "../../platform/host";
 import { render } from "solid-js/web";
-import { WindowControls } from "./features/window-controls/window-controls";
+import { WindowControls } from "../../features/window-controls/window-controls";
 import type {
   ClientUpdateInfo,
   ClientUpdateLaunchStatus,
   UpdateInfo,
-} from "./shared/types";
+} from "../../shared/types";
+import { createDesktopHost } from "./host";
+
+installHost(createDesktopHost(getScope().__YAPMOD__ ?? {}));
 
 const STYLE_ELEMENT_ID = "yapmod-injected-styles";
 const TOPBAR_SELECTOR = ".topbar";
@@ -110,20 +113,19 @@ function installTopbarWindowControls(): void {
  */
 async function scheduleUpdatePrompts(): Promise<void> {
   const yapmod = getYapmod();
+  const updates = getHost().updates;
   let launchStatus: ClientUpdateLaunchStatus | null = null;
   let rollbackVersion: string | null = null;
 
   try {
-    launchStatus = await invokeCommand<ClientUpdateLaunchStatus>(
-      "get_client_update_launch_status",
-    );
+    launchStatus = (await updates?.launchStatus()) ?? null;
   } catch (error) {
     console.error("[yapmod] could not read the client update launch status", error);
   }
 
   if (launchStatus?.trial) {
     try {
-      await invokeCommand<void>("confirm_client_update");
+      await updates?.confirmClientUpdate();
     } catch (error) {
       console.error("[yapmod] client update confirmation failed", error);
     }

@@ -7,16 +7,37 @@ import { solidPlugin } from "esbuild-plugin-solid";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDir = join(root, "client");
-const outdir = join(root, "src-tauri", "gen", "injection");
 
-await mkdir(outdir, { recursive: true });
+/**
+ * The bundles the client can build.
+ *
+ * A target owns its composition roots and its output directory. Targets share
+ * the rest of `client/`; they must not import each other.
+ */
+const targets = {
+  desktop: {
+    entryPoints: [
+      join(sourceDir, "targets", "desktop", "preinject.ts"),
+      join(sourceDir, "targets", "desktop", "postinject.tsx"),
+    ],
+    outdir: join(root, "src-tauri", "gen", "injection"),
+  },
+};
+
+const targetName = process.env.YAPMOD_TARGET ?? "desktop";
+const target = targets[targetName];
+
+if (!target) {
+  throw new Error(
+    `[yapmod] unknown client target "${targetName}", expected one of: ${Object.keys(targets).join(", ")}`,
+  );
+}
+
+await mkdir(target.outdir, { recursive: true });
 
 const options = {
-  entryPoints: [
-    join(sourceDir, "preinject.ts"),
-    join(sourceDir, "postinject.tsx"),
-  ],
-  outdir,
+  entryPoints: target.entryPoints,
+  outdir: target.outdir,
   bundle: true,
   format: "iife",
   platform: "browser",
