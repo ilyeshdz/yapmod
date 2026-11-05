@@ -354,7 +354,13 @@ export async function pickPluginFile(
 }
 
 export async function listInstalledPlugins(): Promise<PluginBundle[]> {
-  return readStoredPlugins();
+  const plugins = await readStoredPlugins();
+
+  return plugins.sort((left, right) =>
+    left.manifest.name.localeCompare(right.manifest.name, undefined, {
+      sensitivity: "base",
+    }),
+  );
 }
 
 export async function removePlugin(id: string): Promise<void> {

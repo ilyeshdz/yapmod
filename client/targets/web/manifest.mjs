@@ -14,7 +14,8 @@ export function createManifest(version) {
     description:
       "Themes, plugins, settings and notifications for Yapper in the browser.",
     homepage_url: "https://github.com/ilyeshdz/yapmod",
-    permissions: ["storage"],
+    // Packages and file-setting data URIs can grow past the default quota.
+    permissions: ["storage", "unlimitedStorage"],
     host_permissions: [
       ...matches,
       "https://ilyeshdz.github.io/yapmod/community-themes/*",
