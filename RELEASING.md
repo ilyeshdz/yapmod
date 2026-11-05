@@ -86,6 +86,30 @@ Leave `release_sequence` empty unless a specific value is required. The
 workflow reads the currently published stable feed (and the legacy stable
 aliases) and uses the next sequence.
 
+## Releasing the web extension
+
+The browser extension is a separate distribution. It shares
+`client/version.json` with the injected desktop client, but it is not part of
+the desktop app artifacts, the `stable`/`nightly` app releases, or the signed
+client-update feed. Browser stores deliver its updates, and a build never
+switches channel through an extension update.
+
+To produce a package:
+
+1. Update `client/version.json` when the client changes. The manifest version
+   comes from that file.
+2. Run `pnpm client:build:web`. This writes `dist/web` with the bundles, the
+   `manifest.json` and the extension icons.
+3. Zip the contents of `dist/web` (not the folder itself) and upload that zip
+   to a browser store or attach it to a GitHub release.
+
+The extension is not published by `Nightly release` or `Publish client update`.
+Those workflows only build `pnpm client:build` for the signed desktop client.
+Adding the extension to a release would require a separate build/upload step,
+because its update path is the browser store rather than the signed manifest
+feed. Test a package by loading `dist/web` as an unpacked extension in a fresh
+browser profile before publishing.
+
 ## Promoting nightly to stable
 
 1. Merge `nightly` into `main`.

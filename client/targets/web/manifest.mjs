@@ -6,14 +6,22 @@
  */
 export function createManifest(version) {
   const matches = ["https://yapin.gg/*", "https://www.yapin.gg/*"];
+  const icons = {
+    16: "icons/icon-16.png",
+    32: "icons/icon-32.png",
+    48: "icons/icon-48.png",
+    128: "icons/icon-128.png",
+  };
 
   return {
     manifest_version: 3,
-    name: "yapmod",
+    name: "Yapmod Web",
+    short_name: "Yapmod",
     version,
     description:
-      "Themes, plugins, settings and notifications for Yapper in the browser.",
+      "Themes, plugins, settings and network inspectors for Yapper, kept in extension storage.",
     homepage_url: "https://github.com/ilyeshdz/yapmod",
+    icons,
     // Packages and file-setting data URIs can grow past the default quota.
     permissions: ["storage", "unlimitedStorage"],
     host_permissions: [

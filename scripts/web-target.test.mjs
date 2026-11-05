@@ -34,6 +34,20 @@ test("the web manifest runs the client in the page and the bridge in isolation",
   );
 });
 
+test("the web manifest carries its own identity and icons", () => {
+  const manifest = createManifest("1.2.3");
+
+  assert.equal(manifest.name, "Yapmod Web");
+  assert.equal(manifest.short_name, "Yapmod");
+  assert.equal(manifest.description.length <= 132, true);
+  assert.deepEqual(manifest.icons, {
+    16: "icons/icon-16.png",
+    32: "icons/icon-32.png",
+    48: "icons/icon-48.png",
+    128: "icons/icon-128.png",
+  });
+});
+
 test("the web manifest keeps privileged APIs inside the extension world", () => {
   const manifest = createManifest("1.2.3");
 

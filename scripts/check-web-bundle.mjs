@@ -16,8 +16,26 @@ const preinject = await readFile(join(outdir, "preinject.js"), "utf8");
 const bridge = await readFile(join(outdir, "bridge.js"), "utf8");
 const background = await readFile(join(outdir, "background.js"), "utf8");
 
+assert.equal(manifest.name, "Yapmod Web");
+assert.equal(manifest.short_name, "Yapmod");
+assert.equal(
+  manifest.description.length <= 132,
+  true,
+  "the manifest description must fit the browser limit",
+);
 assert.equal(manifest.version, version, "the manifest version must match client/version.json");
 assert.equal(manifest.manifest_version, 3);
+
+// Every icon the manifest points at must be a real PNG in the build output.
+for (const [size, path] of Object.entries(manifest.icons)) {
+  const bytes = await readFile(join(outdir, path));
+
+  assert.equal(
+    bytes.subarray(0, 8).toString("hex"),
+    "89504e470d0a1a0a",
+    `the ${size}px icon must be a PNG`,
+  );
+}
 assert.deepEqual(
   manifest.content_scripts.map((script) => [script.world, script.js]),
   [

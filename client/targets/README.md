@@ -29,8 +29,9 @@ client/
 
 ## Web target
 
-`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`. It runs
-at `document_start` on the two Yapper origins:
+`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`. The
+browser lists it as **Yapmod Web**. It runs at `document_start` on the two
+Yapper origins:
 
 - `preinject.js` runs in `MAIN`, so the client, plugins and network inspectors
   share the page's JavaScript realm.

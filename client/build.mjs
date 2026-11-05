@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +33,13 @@ const targets = {
     ],
     outdir: join(root, "dist", "web"),
     manifest: createManifest,
+    // Static files the manifest references; copied next to the bundles.
+    assets: [
+      {
+        from: join(sourceDir, "targets", "web", "icons"),
+        to: join(root, "dist", "web", "icons"),
+      },
+    ],
   },
 };
 
@@ -50,6 +57,12 @@ if (!target) {
 }
 
 await mkdir(target.outdir, { recursive: true });
+
+if (target.assets) {
+  for (const asset of target.assets) {
+    await cp(asset.from, asset.to, { recursive: true });
+  }
+}
 
 if (target.manifest) {
   const versionFile = JSON.parse(

@@ -23,7 +23,8 @@ Load `dist/web` as an unpacked extension:
 1. Open `chrome://extensions` in Chrome, Edge or another Chromium browser.
 2. Turn on **Developer mode**.
 3. Choose **Load unpacked** and select `dist/web`.
-4. Open [Yapper](https://www.yapin.gg) and use **Settings → Yapmod**.
+4. The extension appears as **Yapmod Web**.
+5. Open [Yapper](https://www.yapin.gg) and use **Settings → Yapmod**.
 
 The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
 
