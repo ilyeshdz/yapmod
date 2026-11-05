@@ -72,12 +72,13 @@ The `Nightly release` workflow runs daily and can be dispatched manually. It:
 2. builds nightly app artifacts and a nightly app version;
 3. publishes the rolling `nightly` prerelease and its `yapmod-version.json`;
 4. builds the client from `nightly` and publishes it under
-   `client-updates/nightly/`.
+   `client-updates/nightly/` and `client-updates-web/nightly/`.
 
-Nightly artifacts also include an unpacked web extension zip,
-`yapmod_web_nightly_<web_version>.zip`. It is not a store build: it bundles the
-nightly client and is attached to the rolling prerelease only. Do not upload a
-nightly package to a browser store.
+Nightly artifacts also include two web extension zips,
+`yapmod_web_nightly_<web_version>.zip` and
+`yapmod_web_loader_nightly_<web_version>.zip`. They are not store builds: they
+bundle the nightly client and are attached to the rolling prerelease only. Do
+not upload a nightly package to a browser store.
 
 The website files are always built from `main`, so nightly documentation or
 website changes are not deployed by the nightly job. Only the nightly client
@@ -119,42 +120,78 @@ aliases) and uses the next sequence.
 
 ## Releasing the web extension
 
-The browser extension is a distribution of the same client. It is not part of
-the desktop installers or the signed client-update feed, because a browser store
-delivers extension updates and a store package may not execute remotely hosted
-code. What it does share is the release train: the extension is built from the
-same ref and embeds the same client version as the desktop app and the signed
-feed.
+The browser extension is a distribution of the same client. It shares the
+release train: it is built from the same ref and embeds the same client version
+as the desktop app and the signed client feed. The desktop and web client
+bundles are still compiled per target, because each target embeds its own host
+adapter.
 
-The `Build` workflow produces the `yapmod-web-extension` artifact. Both release
-workflows attach it:
+`Publish client update` signs two feeds with the same key and envelope:
 
-- `Draft release` renames it to `yapmod_web_<web_version>.zip`.
-- `Nightly release` attaches `yapmod_web_nightly_<web_version>.zip`.
+- `client-updates/<channel>/` for the desktop app.
+- `client-updates-web/<channel>/` for the self-hosted web loader.
+
+Both feeds are deployed with the website. They have independent release
+sequences and independent `minAppVersion` values.
+
+The `Build` workflow produces two web artifacts, and both release workflows
+attach them:
+
+| Artifact | Distribution | Client delivery |
+| --- | --- | --- |
+| `yapmod-web-extension` | Browser store | Embedded in the package |
+| `yapmod-web-loader` | Self-hosted, unpacked, release zip | Signed web feed at runtime |
+
+`Draft release` renames them to `yapmod_web_<web_version>.zip` and
+`yapmod_web_loader_<web_version>.zip`. `Nightly release` attaches
+`yapmod_web_nightly_<web_version>.zip` and
+`yapmod_web_loader_nightly_<web_version>.zip`.
 
 To produce a package locally:
 
 1. Update `client/version.json` when the client changes.
 2. Update `client/targets/web/version.json` when the shell changes.
-3. Run `pnpm client:package:web`. This builds `dist/web` and writes
-   `dist/yapmod-web-<web_version>.zip` with the manifest at the archive root.
-4. Test the package by loading `dist/web` as an unpacked extension in a fresh
-   browser profile.
-5. Upload to the browser store manually. No workflow publishes to a store.
+3. Run `pnpm client:package:web` for the store package, or
+   `pnpm client:package:web:loader` for the loader. Both write a zip to `dist/`
+   with the manifest at the archive root.
+4. Build the loader with `YAPMOD_CLIENT_UPDATE_PUBLIC_KEY` set to the repository
+   variable. Without the key the loader falls back to the embedded client and
+   never updates.
+5. Test the package by loading `dist/web` or `dist/web-loader` as an unpacked
+   extension in a fresh browser profile.
+6. Upload to the browser store manually. No workflow publishes to a store.
 
-`node scripts/check-web-bundle.mjs` verifies that the manifest matches the web
-version and that the page bundle reports the client version. `pnpm check` runs it.
+`node scripts/check-web-bundle.mjs` verifies both manifests, the per-target
+version reporting, and that only the loader requests the update feed.
+`pnpm check` runs it.
 
-### What the extension can and cannot update
+### How each web build updates
 
-A client-only change still needs a new extension package, because a store build
-must contain the client code. Updating the extension is what delivers the new
-client on web, so the browser update is the web equivalent of the signed feed.
+A store build embeds the client and is updated by the browser. A client-only
+change still needs a new extension package, because a store build must contain
+the client code.
 
-Runtime client updates for the web are not implemented. They are only viable for
-self-hosted or unpacked builds, since they require executing downloaded code and
-depend on the page's CSP. That model remains a possible future target; it is not
-part of the current release process.
+The loader build embeds the client for a fresh install and also consumes the
+signed web feed:
+
+1. The bridge reads `client-updates-web/<channel>/` through the background
+   worker.
+2. It verifies the Ed25519 manifest signature, channel, expiry, release
+   sequence, bridge API version and bundle hash.
+3. It stages the verified `preinject` in `localStorage`.
+4. The loader runs the staged bundle on the next page load.
+5. A successful bootstrap confirms the bundle. An unconfirmed bundle is removed
+   after one failed start, which rolls the client back to the embedded copy.
+
+The loader is not store-compatible: browser store policy forbids executing
+code that is downloaded at runtime. It also relies on the page's CSP allowing
+the loader to inject the staged client; Yapper's current report-only policy
+does, but a strict `script-src` could break it. Publish the loader as an
+unpacked or self-hosted build only.
+
+The bridge is part of the extension shell and never updates at runtime. A client
+that needs a new bridge method must wait for a new shell version; the signed
+manifest's `bridgeApiVersion` enforces that compatibility.
 
 ## Promoting nightly to stable
 
@@ -181,6 +218,10 @@ part of development.
 - Locally, build with
   `YAPMOD_UPDATE_CHANNEL=nightly pnpm tauri build` to exercise the nightly
   update path. Local builds without the variable use stable.
+- Build the web loader with
+  `YAPMOD_CLIENT_UPDATE_PUBLIC_KEY=<base64 key> pnpm client:package:web:loader`
+  to exercise runtime client updates. A loader built without the key keeps
+  working but only runs its embedded client.
 - `pnpm test:scripts` tests the channel manifest tooling and the web packaging.
   `cargo test --manifest-path src-tauri/Cargo.toml` tests the Rust validation
   logic.

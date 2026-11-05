@@ -40,6 +40,16 @@ Yapper origins:
 - `bridge.js` runs in `ISOLATED` and owns extension storage and catalog fetches.
 - `background.js` proxies catalog requests with extension host permissions.
 
+`pnpm client:build:web:loader` builds a second package in `dist/web-loader`, and
+`pnpm client:package:web:loader` zips it. That build uses `loader.js` in `MAIN`:
+
+- The loader embeds the page-realm client for a fresh install.
+- The bridge reads the signed `client-updates-web/<channel>/` feed, verifies the
+  manifest signature and bundle hash, and stages the client in `localStorage`.
+- The loader prefers the staged client and confirms it after a successful
+  bootstrap. An unconfirmed bundle falls back to the embedded client.
+- The loader manifest requests the update feed; the store manifest does not.
+
 The target has two versions:
 
 - `client/targets/web/version.json` is the extension shell version placed in
@@ -48,8 +58,9 @@ The target has two versions:
   as `CLIENT_VERSION` and reported to the client at runtime.
 
 A client change therefore needs a new package, even when the shell is unchanged,
-because a store build must contain the client code. Runtime client updates are
-not implemented; see `RELEASING.md`.
+because a store build must contain the client code. A loader build can receive a
+client-only change through the signed web feed without a new shell; a store build
+needs a new package. See `RELEASING.md`.
 
 | Capability | Desktop | Web |
 | --- | --- | --- |
@@ -62,7 +73,7 @@ not implemented; see `RELEASING.md`.
 | Plugin packages | filesystem folders | community catalog and folder imports in extension storage |
 | WebSocket / HTTP inspectors | page realm | page realm |
 | Plugin `api.invoke` | native commands | unavailable |
-| Updates | app and signed client bundle | browser extension update |
+| Updates | app and signed client bundle | browser extension, or signed web bundle for the loader |
 
 The Web target mirrors the desktop injection model: client and plugin code run
 in the page realm, while a narrow isolated bridge supplies the extension-only

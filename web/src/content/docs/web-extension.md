@@ -26,6 +26,14 @@ pnpm client:package:web
 
 This writes `dist/yapmod-web-<version>.zip` with the manifest at the archive root.
 
+For runtime client updates, build the self-hosted loader instead:
+
+```bash
+YAPMOD_CLIENT_UPDATE_PUBLIC_KEY=<base64 key> pnpm client:package:web:loader
+```
+
+This writes `dist/yapmod-web-loader-<version>.zip` and `dist/web-loader`. Use the loader for unpacked or self-hosted installs only; browser stores do not allow downloading and running client code. Both builds share the same settings, themes, plugins and page-realm client.
+
 Load `dist/web` as an unpacked extension:
 
 1. Open `chrome://extensions` in Chrome, Edge or another Chromium browser.
@@ -47,6 +55,15 @@ The extension has its own shell version and embeds the shared client version:
 
 **Settings → Yapmod** shows both, for example `Extension v1.0.0 · Client v1.0.3`. A client-only change still ships as a new extension package, because a store build has to contain the client code. Desktop receives the same client version through the signed client feed; the browser receives it through the extension update.
 
+### Store build and loader build
+
+| Build | Intended for | How the client updates |
+| --- | --- | --- |
+| `dist/web` | Browser stores | The browser updates the whole extension |
+| `dist/web-loader` | Unpacked and self-hosted installs | The signed web feed updates the client at runtime |
+
+The loader verifies the Ed25519 manifest signature, the channel, the expiry, the release sequence and the bundle hash before it stages a client. The new client runs on the next page load; a successful start confirms it, and a bundle that never starts is discarded. The extension shell itself still updates like any extension, and a client that needs a new shell capability waits for a new shell.
+
 ## What works
 
 - **Settings** are stored in extension storage and survive updates.
@@ -64,7 +81,7 @@ The extension has its own shell version and embeds the shared client version:
 | Unread badge | Dock or taskbar | Not available |
 | Local theme folders | Yes | Imported into extension storage |
 | Plugin `api.invoke` | Native commands | Unavailable |
-| Client updates | Signed client bundle | Browser extension update |
+| Client updates | Signed client bundle | Store: browser extension update; loader: signed web bundle |
 
 ### How the client runs in the browser
 
