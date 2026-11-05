@@ -11,7 +11,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
@@ -109,8 +109,10 @@ async function buildClient() {
   const { build } = await import("esbuild");
   const { solidPlugin } = await import("esbuild-plugin-solid");
   const { cp, mkdir, writeFile } = await import("node:fs/promises");
+  // Dynamic imports need a file URL on Windows, where a drive-letter path is
+  // not a valid module specifier.
   const { createManifest } = await import(
-    join(root, "client", "targets", "web", "manifest.mjs")
+    pathToFileURL(join(root, "client", "targets", "web", "manifest.mjs")).href
   );
 
   const { sharedDefine, targets } = clientTargets();
