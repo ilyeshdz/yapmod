@@ -25,7 +25,7 @@ my-plugin/
 
 JavaScript plugins run directly inside the Yapper page. They are not sandboxed or isolated, and may access the page DOM, visible data, and functionality available from that page. Installing a JavaScript plugin means trusting its author.
 
-In the [web extension](web-extension), plugin scripts run in the extension's isolated world. They still have full DOM access, but they cannot patch page JavaScript objects, inspect the page's network traffic, or use `api.invoke`.
+In the [web extension](web-extension), plugin scripts run in the page realm like the desktop client, so page hooks and the network inspectors work. Only `api.invoke` is unavailable, because the browser has no native command bridge. Extension storage and catalog access go through an isolated bridge.
 
 CSS plugins can also change, hide, or imitate interface elements. Only install packages whose source you trust.
 
