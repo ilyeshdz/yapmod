@@ -87,6 +87,21 @@ assert.equal(
   "the isolated bridge must store plugin packages",
 );
 assert.equal(
+  bridge.includes("yapmod:themes"),
+  true,
+  "the isolated bridge must store theme packages",
+);
+assert.equal(
+  bridge.includes("themes:storeBundle"),
+  true,
+  "the isolated bridge must accept imported themes",
+);
+assert.equal(
+  preinject.includes("themes:storeBundle"),
+  true,
+  "the page realm must send imported themes to the bridge",
+);
+assert.equal(
   preinject.includes("yapmod:bridge-connect"),
   true,
   "the page realm must connect to the isolated bridge",

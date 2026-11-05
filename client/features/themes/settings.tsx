@@ -13,7 +13,7 @@ const GROUP_LABEL = "Yapmod";
 
 function createThemeSection(): SettingsSection {
   const host = getHost();
-  const filesystem = host.capabilities.packages === "filesystem";
+  const packages = host.capabilities.packages;
 
   return {
     id: SECTION_ID,
@@ -21,9 +21,12 @@ function createThemeSection(): SettingsSection {
     icon: "palette",
     group: GROUP_LABEL,
     order: 1,
-    description: filesystem
-      ? "Change how yapmod looks. A theme is a folder with a manifest and a stylesheet, and it is applied to the whole app."
-      : "Change how yapmod looks. Browse community themes and apply one to the whole app.",
+    description:
+      packages === "filesystem"
+        ? "Change how yapmod looks. A theme is a folder with a manifest and a stylesheet, and it is applied to the whole app."
+        : packages === "extension-storage"
+          ? "Change how yapmod looks. Browse community themes or import a theme folder; installed themes are kept in the extension."
+          : "Change how yapmod looks. Browse community themes and apply one to the whole app.",
     render: (host) => {
       const themeApi = getYapmod().theme;
       const store = getYapmod().store;

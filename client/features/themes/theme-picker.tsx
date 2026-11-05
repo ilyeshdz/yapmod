@@ -44,7 +44,9 @@ function describe(theme: ThemeMeta): string {
  */
 export function ThemePicker(props: ThemePickerProps): JSX.Element {
   const { themeApi, store } = props;
-  const filesystem = getHost().capabilities.packages === "filesystem";
+  const packages = getHost().capabilities.packages;
+  const filesystem = packages === "filesystem";
+  const canImport = packages !== "none";
 
   const [installedThemes, setInstalledThemes] = createSignal<ThemeBundle[]>([]);
   const [communityThemes, setCommunityThemes] = createSignal<CommunityTheme[]>(
@@ -238,7 +240,7 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
 
       <Show when={activeTab() === "installed"}>
         <div class="yapmod-theme-toolbar">
-          <Show when={filesystem}>
+          <Show when={canImport}>
             <button class="btn small" type="button" onClick={() => void importTheme()}>
               Import theme
             </button>

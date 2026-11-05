@@ -30,7 +30,7 @@ The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
 ## What works
 
 - **Settings** are stored in extension storage and survive updates.
-- **Themes** can be browsed and installed from the community catalog. Installed themes are kept in extension storage and applied to the page.
+- **Themes** can be browsed and installed from the community catalog, or imported from a local folder. Installed themes are kept in extension storage and applied to the page.
 - **Plugins** can be installed from the community catalog or imported from a folder. Packages, plugin settings and consent records live in extension storage, so they survive updates. Plugin scripts run in the page realm.
 - **Plugin inspectors** can observe and modify Yapper's WebSocket and HTTP traffic, just like on desktop.
 - **Notifications** use the browser notification API. The browser asks for permission the first time notifications are enabled.
@@ -42,7 +42,7 @@ The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
 | --- | --- | --- |
 | Window controls | Native window | Browser tab |
 | Unread badge | Dock or taskbar | Not available |
-| Local theme folders | Yes | Community catalog only |
+| Local theme folders | Yes | Imported into extension storage |
 | Plugin `api.invoke` | Native commands | Unavailable |
 | Client updates | Signed client bundle | Browser extension update |
 

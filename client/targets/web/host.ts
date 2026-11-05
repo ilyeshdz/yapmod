@@ -5,6 +5,7 @@ import type {
   YapmodHost,
 } from "../../platform/host";
 import { pickPluginFile, pickLocalPlugin, installPickedPlugin } from "./plugin-import";
+import { installPickedTheme, pickLocalTheme } from "./theme-import";
 import type { BridgeClient, WebBootstrap } from "./rpc";
 
 const INTERNAL_HOST = "yapin.gg";
@@ -165,12 +166,10 @@ export function createWebHost(
         return bridge.call("themes:listCommunity");
       },
       async pickFolder() {
-        return null;
+        return pickLocalTheme();
       },
-      async install() {
-        throw new Error(
-          "The browser extension installs themes from the community catalog.",
-        );
+      install(source) {
+        return installPickedTheme(bridge, source);
       },
       installCommunity(id) {
         return bridge.call("themes:installCommunity", { id });

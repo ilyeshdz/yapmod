@@ -11,14 +11,12 @@ export const PLUGIN_CATALOG_BASE =
   "https://ilyeshdz.github.io/yapmod/community-plugins";
 const CATALOG_BASES = [THEME_CATALOG_BASE, PLUGIN_CATALOG_BASE];
 
-export const THEME_API = 1;
 export const PLUGIN_API = 1;
 export const MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 64 * 1024;
 export const MAX_CSS_BYTES = 1024 * 1024;
 export const MAX_PLUGIN_CSS_BYTES = 512 * 1024;
 export const MAX_PLUGIN_SCRIPT_BYTES = 512 * 1024;
-export const DEFAULT_CSS_FILE = "theme.css";
 export const PLUGIN_CSS_FILE = "plugin.css";
 
 export const FETCH_MESSAGE = "yapmod:fetch-catalog-text";

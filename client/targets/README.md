@@ -40,7 +40,7 @@ at `document_start` on the two Yapper origins:
 | Capability | Desktop | Web |
 | --- | --- | --- |
 | Settings | Tauri config | extension storage via the bridge |
-| Themes | filesystem folders | community catalog in extension storage |
+| Themes | filesystem folders | community catalog and imported folders in extension storage |
 | Notifications | system notification center | Web Notifications |
 | Window controls | native | none |
 | Unread badge | dock/taskbar | none |

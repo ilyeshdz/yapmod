@@ -2,6 +2,7 @@ import type {
   PluginBundle,
   PluginManifest,
 } from "../../shared/types";
+import type { ThemeBundle } from "../../features/themes/types";
 import {
   BRIDGE_CONNECT,
   type BridgeRequest,
@@ -21,6 +22,7 @@ import {
   installCommunityTheme,
   listCommunityThemes,
   removeTheme,
+  storeImportedTheme,
 } from "./themes";
 import {
   readStoredSettings,
@@ -82,6 +84,8 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
   "themes:listCommunity": () => listCommunityThemes(),
   "themes:installCommunity": (params) =>
     installCommunityTheme(stringField(record(params), "id")),
+  "themes:storeBundle": (params) =>
+    storeImportedTheme(params as ThemeBundle),
   "themes:remove": async (params) => {
     await removeTheme(stringField(record(params), "id"));
 

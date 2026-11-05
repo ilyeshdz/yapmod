@@ -2,17 +2,24 @@ import type {
   CommunityTheme,
   ThemeBundle,
   ThemeManifest,
-  ThemeMode,
 } from "../../features/themes/types";
 import {
   THEME_CATALOG_BASE,
-  DEFAULT_CSS_FILE,
   MAX_CATALOG_BYTES,
   MAX_CSS_BYTES,
   MAX_MANIFEST_BYTES,
-  THEME_API,
 } from "./catalog";
 import { fetchCatalogJson, fetchCatalogText } from "./fetch";
+import {
+  DEFAULT_THEME_CSS,
+  MAX_THEME_TAGS,
+  THEME_API,
+  isValidThemeFileName,
+  isValidThemeId,
+  normalizeThemeManifest,
+  normalizeThemeMode,
+  validateThemeBundle,
+} from "../../features/themes/package";
 import { readStoredThemes, writeStoredThemes } from "./storage";
 
 /**
@@ -38,36 +45,10 @@ type Catalog = {
   themes: CatalogEntry[];
 };
 
-function isValidId(id: string): boolean {
-  return (
-    id.length > 0 &&
-    !id.startsWith(".") &&
-    [...id].every((character) =>
-      /[a-zA-Z0-9._-]/.test(character),
-    )
-  );
-}
-
-function isValidFileName(name: string): boolean {
-  return (
-    name.length > 0 &&
-    !name.includes("..") &&
-    [...name].every((character) => /[a-zA-Z0-9._-]/.test(character))
-  );
-}
-
-function normalizeMode(mode: string | null | undefined): ThemeMode {
-  if (mode === "light" || mode === "dark") {
-    return mode;
-  }
-
-  return "both";
-}
-
 function previewUrl(entry: CatalogEntry): string | null {
   const preview = entry.preview;
 
-  if (!preview || !isValidFileName(preview)) {
+  if (!preview || !isValidThemeFileName(preview)) {
     return null;
   }
 
@@ -93,7 +74,7 @@ export async function listCommunityThemes(): Promise<CommunityTheme[]> {
     .filter(
       (entry) =>
         typeof entry.id === "string" &&
-        isValidId(entry.id) &&
+        isValidThemeId(entry.id) &&
         typeof entry.name === "string" &&
         entry.name.trim().length > 0 &&
         (entry.api === undefined || entry.api <= THEME_API),
@@ -105,7 +86,7 @@ export async function listCommunityThemes(): Promise<CommunityTheme[]> {
       author: entry.author ?? null,
       version: entry.version ?? null,
       license: entry.license ?? null,
-      mode: normalizeMode(entry.mode),
+      mode: normalizeThemeMode(entry.mode),
       tags: Array.isArray(entry.tags) ? entry.tags.slice(0, 20) : [],
       previewUrl: previewUrl(entry),
     }))
@@ -116,32 +97,24 @@ export async function listCommunityThemes(): Promise<CommunityTheme[]> {
 
 /** Downloads one theme from the catalog and stores it in extension storage. */
 export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
-  if (!isValidId(id)) {
+  if (!isValidThemeId(id)) {
     throw new Error("that is not a valid theme id");
   }
 
-  const manifest = await fetchCatalogJson<ThemeManifest>(
-    `${THEME_CATALOG_BASE}/themes/${id}/manifest.json`,
-    MAX_MANIFEST_BYTES,
+  const manifest = normalizeThemeManifest(
+    await fetchCatalogJson<ThemeManifest>(
+      `${THEME_CATALOG_BASE}/themes/${id}/manifest.json`,
+      MAX_MANIFEST_BYTES,
+    ),
   );
 
   if (manifest.id !== id) {
     throw new Error("the downloaded theme id does not match the catalog");
   }
 
-  if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
-    throw new Error("the community theme has an invalid name");
-  }
+  const cssFile = manifest.css ?? DEFAULT_THEME_CSS;
 
-  const api = manifest.api;
-
-  if (typeof api === "number" && api > THEME_API) {
-    throw new Error("the theme was written for a newer theme API");
-  }
-
-  const cssFile = manifest.css ?? DEFAULT_CSS_FILE;
-
-  if (!isValidFileName(cssFile)) {
+  if (!isValidThemeFileName(cssFile)) {
     throw new Error("the theme manifest points at an unusable stylesheet");
   }
 
@@ -153,12 +126,12 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
   const theme: ThemeBundle = {
     id: manifest.id,
     name: manifest.name,
-    description: manifest.description ?? null,
-    author: manifest.author ?? null,
-    version: manifest.version ?? null,
-    license: manifest.license ?? null,
-    mode: normalizeMode(manifest.mode),
-    tags: Array.isArray(manifest.tags) ? manifest.tags.slice(0, 20) : [],
+    description: manifest.description,
+    author: manifest.author,
+    version: manifest.version,
+    license: manifest.license,
+    mode: normalizeThemeMode(manifest.mode),
+    tags: manifest.tags.slice(0, 20),
     css,
     preview: null,
   };
@@ -167,6 +140,50 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
   const next = installed.filter((candidate) => candidate.id !== id);
   next.push(theme);
   await writeStoredThemes(next);
+
+  return theme;
+}
+
+/**
+ * Stores a locally imported theme after the page realm has read and validated
+ * its folder. The bridge is the only writer of extension storage.
+ */
+export async function storeImportedTheme(
+  bundle: ThemeBundle,
+): Promise<ThemeBundle> {
+  if (typeof bundle !== "object" || bundle === null) {
+    throw new Error("the theme bundle is invalid");
+  }
+
+  // Rebuild the bundle so extension storage only holds known fields and the
+  // values the theme engine expects.
+  const theme: ThemeBundle = {
+    id: bundle.id,
+    name: bundle.name,
+    description:
+      typeof bundle.description === "string" ? bundle.description : null,
+    author: typeof bundle.author === "string" ? bundle.author : null,
+    version: typeof bundle.version === "string" ? bundle.version : null,
+    license: typeof bundle.license === "string" ? bundle.license : null,
+    mode: normalizeThemeMode(bundle.mode),
+    tags: Array.isArray(bundle.tags)
+      ? bundle.tags
+          .filter((tag): tag is string => typeof tag === "string")
+          .slice(0, MAX_THEME_TAGS)
+      : [],
+    css: bundle.css,
+    preview: typeof bundle.preview === "string" ? bundle.preview : null,
+  };
+
+  validateThemeBundle(theme);
+
+  const installed = await readStoredThemes();
+
+  if (installed.some((candidate) => candidate.id === theme.id)) {
+    throw new Error("a theme with this id is already installed; remove it first");
+  }
+
+  await writeStoredThemes([...installed, theme]);
 
   return theme;
 }
