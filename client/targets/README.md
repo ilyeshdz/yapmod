@@ -1,0 +1,82 @@
+# Client targets
+
+The client is compiled into a bundle per target. A target is a build target
+plus a distribution format; it is not a runtime plugin system.
+
+```text
+client/
+  platform/host.ts      the ports feature code depends on
+  targets/desktop/      Tauri composition roots and host adapter
+  targets/web/          page-realm extension entry, isolated bridge and manifest
+  core/, features/      shared client code
+```
+
+## What a target owns
+
+- A composition root (`preinject` and, for a page target, `postinject`).
+- A `YapmodHost` implementation that maps ports to the target's APIs.
+- Its output directory in `client/build.mjs`.
+- Its distribution and update mechanism.
+
+## Rules
+
+- Feature code reads `getHost()` and never imports a target or a Tauri command.
+- Targets may import shared code; they must not import each other.
+- Optional ports reflect real capabilities. A target does not fake a port it
+  cannot implement.
+- A new target needs an adapter and a composition root, not changes to feature
+  logic.
+
+## Web target
+
+`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`.
+`pnpm client:package:web` also writes `dist/yapmod-web-<version>.zip` with the
+manifest at the archive root, ready for a browser store or a release asset. The
+browser lists it as **Yapmod Web**. It runs at `document_start` on the two
+Yapper origins:
+
+- `preinject.js` runs in `MAIN`, so the client, plugins and network inspectors
+  share the page's JavaScript realm.
+- `bridge.js` runs in `ISOLATED` and owns extension storage and catalog fetches.
+- `background.js` proxies catalog requests with extension host permissions.
+
+`pnpm client:build:web:loader` builds a second package in `dist/web-loader`, and
+`pnpm client:package:web:loader` zips it. That build uses `loader.js` in `MAIN`:
+
+- The loader embeds the page-realm client for a fresh install.
+- The bridge reads the signed `client-updates-web/<channel>/` feed, verifies the
+  manifest signature and bundle hash, and stages the client in `localStorage`.
+- The loader prefers the staged client and confirms it after a successful
+  bootstrap. An unconfirmed bundle falls back to the embedded client.
+- The loader manifest requests the update feed; the store manifest does not.
+
+The target has two versions:
+
+- `client/targets/web/version.json` is the extension shell version placed in
+  `manifest.json`.
+- `client/version.json` is the injected client version, compiled into the bundle
+  as `CLIENT_VERSION` and reported to the client at runtime.
+
+A client change therefore needs a new package, even when the shell is unchanged,
+because a store build must contain the client code. A loader build can receive a
+client-only change through the signed web feed without a new shell; a store build
+needs a new package. See `RELEASING.md`.
+
+| Capability | Desktop | Web |
+| --- | --- | --- |
+| Settings | Tauri config | extension storage via the bridge |
+| Themes | filesystem folders | community catalog and imported folders in extension storage |
+| Notifications | system notification center | Web Notifications |
+| Window controls | native | none |
+| Unread badge | dock/taskbar | none |
+| Plugins | page realm, trusted JS | page realm, trusted JS |
+| Plugin packages | filesystem folders | community catalog and folder imports in extension storage |
+| WebSocket / HTTP inspectors | page realm | page realm |
+| Plugin `api.invoke` | native commands | unavailable |
+| Updates | app and signed client bundle | browser extension, or signed web bundle for the loader |
+
+The Web target mirrors the desktop injection model: client and plugin code run
+in the page realm, while a narrow isolated bridge supplies the extension-only
+capabilities. Plugins still cannot call native host commands or receive signed
+remote client updates. Settings show the extension shell version and the client
+version separately, because the shell and the client move independently.

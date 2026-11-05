@@ -1,5 +1,5 @@
 import type { ReleaseEntry } from "../../shared/types";
-import { invokeCommand } from "../../core/tauri";
+import { getHost } from "../../platform/host";
 
 let changelogCache: ReleaseEntry[] | null = null;
 
@@ -11,7 +11,7 @@ let changelogCache: ReleaseEntry[] | null = null;
  */
 export async function getChangelog(): Promise<ReleaseEntry[]> {
   if (!changelogCache) {
-    changelogCache = await invokeCommand<ReleaseEntry[]>("get_changelog");
+    changelogCache = (await getHost().release?.changelog()) ?? [];
   }
 
   return changelogCache;

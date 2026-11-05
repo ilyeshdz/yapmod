@@ -7,7 +7,8 @@ import type {
   PluginSetting,
   PluginSettingValue,
 } from "../../shared/types";
-import { invokeCommand } from "../../core/tauri";
+import { getHost } from "../../platform/host";
+import { createPluginRepository } from "./repository";
 
 type PluginSettingsDraft = Map<string, PluginSettingValue>;
 
@@ -133,9 +134,9 @@ function PluginSettingInput(
             class="btn small"
             type="button"
             onClick={async () => {
-              const dataUri = await invokeCommand<string | null>("pick_plugin_file", {
-                accept: setting.accept,
-              });
+              const dataUri = await createPluginRepository(
+                getHost().plugins,
+              ).pickFile(setting.accept);
               if (dataUri !== null) {
                 update(dataUri);
               }

@@ -7,6 +7,7 @@ import type {
 } from "../../shared/types";
 import { getChangelog } from "./release";
 import { getYapmod } from "../../core/scope";
+import { getHost } from "../../platform/host";
 import { requestNotificationPermission } from "../../core/notify";
 import { ChangelogList } from "./changelog";
 
@@ -122,8 +123,11 @@ export function installDefaultSettings(): void {
   }
 
   const items: SettingsItem[] = [];
+  const host = getHost();
+  const capabilities = host.capabilities;
+  const desktop = host.id === "desktop";
 
-  if (yapmod.os === "macos") {
+  if (desktop && yapmod.os === "macos") {
     items.push(
       createToggle({
         id: "use_native_titlebar",
@@ -135,52 +139,76 @@ export function installDefaultSettings(): void {
     );
   }
 
-  items.push(
-    createToggle({
-      id: "start_maximized",
-      label: "Start maximized",
-      description: "Open yapmod maximized. Takes effect after a restart.",
-      fallback: false,
-    }),
-    createToggle({
-      id: "auto_update",
-      label: "Check for updates automatically",
-      description:
-        "Look for yapmod app and client updates when the app starts and show update prompts.",
-      fallback: true,
-    }),
-    createToggle({
-      id: "notifications",
-      label: "Desktop notifications",
-      description:
-        "Show a notification in the notification center when a message arrives while the window is in the background.",
-      fallback: true,
-      onChange: (value) => {
-        if (value) {
-          void requestNotificationPermission();
-        }
-      },
-    }),
-    createToggle({
-      id: "unread_badge",
-      label: "Show the unread badge",
-      description:
-        "Put the number of unread messages on the dock or taskbar icon.",
-      fallback: true,
-    }),
-    createToggle({
-      id: "keep_in_tray",
-      label:
-        yapmod.os === "macos"
-          ? "Keep running in the menu bar"
-          : "Keep running in the system tray",
-      description:
-        yapmod.os === "macos"
-          ? "Show an icon in the menu bar and keep yapmod running when you close the window, so notifications keep arriving. Quit from the menu bar."
-          : "Show an icon in the system tray and keep yapmod running when you close the window, so notifications keep arriving. Quit from the tray menu.",
-      fallback: true,
-    }),
-  );
+  if (desktop) {
+    items.push(
+      createToggle({
+        id: "start_maximized",
+        label: "Start maximized",
+        description: "Open yapmod maximized. Takes effect after a restart.",
+        fallback: false,
+      }),
+    );
+  }
+
+  if (capabilities.updates === "app-and-client" || capabilities.updates === "client") {
+    items.push(
+      createToggle({
+        id: "auto_update",
+        label: "Check for updates automatically",
+        description: desktop
+          ? "Look for yapmod app and client updates when the app starts and show update prompts."
+          : "Look for signed client updates when the page loads and show update prompts.",
+        fallback: true,
+      }),
+    );
+  }
+
+  if (capabilities.notifications) {
+    items.push(
+      createToggle({
+        id: "notifications",
+        label: desktop ? "Desktop notifications" : "Notifications",
+        description: desktop
+          ? "Show a notification in the notification center when a message arrives while the window is in the background."
+          : "Show a browser notification when a message arrives while the Yapper tab is in the background.",
+        fallback: true,
+        onChange: (value) => {
+          if (value) {
+            void requestNotificationPermission();
+          }
+        },
+      }),
+    );
+  }
+
+  if (capabilities.badge) {
+    items.push(
+      createToggle({
+        id: "unread_badge",
+        label: "Show the unread badge",
+        description:
+          "Put the number of unread messages on the dock or taskbar icon.",
+        fallback: true,
+      }),
+    );
+  }
+
+  if (desktop) {
+    items.push(
+      createToggle({
+        id: "keep_in_tray",
+        label:
+          yapmod.os === "macos"
+            ? "Keep running in the menu bar"
+            : "Keep running in the system tray",
+        description:
+          yapmod.os === "macos"
+            ? "Show an icon in the menu bar and keep yapmod running when you close the window, so notifications keep arriving. Quit from the menu bar."
+            : "Show an icon in the system tray and keep yapmod running when you close the window, so notifications keep arriving. Quit from the tray menu.",
+        fallback: true,
+      }),
+    );
+  }
 
   const section: SettingsSection = {
     id: SECTION_ID,
@@ -188,7 +216,9 @@ export function installDefaultSettings(): void {
     icon: "monitor",
     group: GROUP_LABEL,
     order: 0,
-    description: "Options for the yapmod desktop client.",
+    description: desktop
+      ? "Options for the yapmod desktop client."
+      : "Options for the yapmod browser extension.",
     items,
     render: (host) => {
       const appVersion = yapmod.release?.version ?? "unknown";
@@ -197,7 +227,9 @@ export function installDefaultSettings(): void {
       return render(
         () => (
           <p class="hint yapmod-version">
-            Desktop v{appVersion} · Client v{clientVersion}
+            {desktop
+              ? `Desktop v${appVersion} · Client v${clientVersion}`
+              : `Extension v${appVersion} · Client v${clientVersion}`}
           </p>
         ),
         host,
@@ -206,5 +238,8 @@ export function installDefaultSettings(): void {
   };
 
   yapmod.settings.register(section);
-  yapmod.settings.register(createChangelogSection());
+
+  if (capabilities.releaseNotes && host.release) {
+    yapmod.settings.register(createChangelogSection());
+  }
 }

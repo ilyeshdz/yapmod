@@ -17,6 +17,8 @@ Plugins are how you add behavior yapmod does not ship with: a custom unread coun
 A JavaScript plugin is not a sandboxed extension. It runs in the Yapper page with the same DOM and JavaScript access as the page itself, including any data visible to the page. Read [Security and limitations](/yapmod/docs/plugins/security) before you distribute a plugin.
 </Callout>
 
+Plugins run in the page realm on the desktop app and in the browser extension alike, so page hooks and the network inspectors behave the same way. The web extension lacks only the native `api.invoke` escape hatch, and its storage and catalog access pass through an isolated bridge. See [Web extension](/yapmod/docs/web-extension).
+
 ## What a plugin can do
 
 The current plugin API (`api: 1`) exposes:

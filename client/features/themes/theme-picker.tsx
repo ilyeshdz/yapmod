@@ -9,11 +9,12 @@ import {
 } from "solid-js";
 
 import type { CommunityTheme, ThemeBundle } from "./types";
-import type { YapmodThemeApi } from "./engine";
+import type { YapmodThemeApi } from "./api";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
 import { IconButton } from "../../components/icon-button";
 import { openExternally } from "../../core/links";
+import { getHost } from "../../platform/host";
 import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
@@ -44,6 +45,9 @@ function describe(theme: ThemeMeta): string {
  */
 export function ThemePicker(props: ThemePickerProps): JSX.Element {
   const { themeApi, store } = props;
+  const packages = getHost().capabilities.packages;
+  const filesystem = packages === "filesystem";
+  const canImport = packages !== "none";
 
   const [installedThemes, setInstalledThemes] = createSignal<ThemeBundle[]>([]);
   const [communityThemes, setCommunityThemes] = createSignal<CommunityTheme[]>(
@@ -253,19 +257,23 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
 
       <Show when={activeTab() === "installed"}>
         <div class="yapmod-theme-toolbar">
-          <button class="btn small" type="button" onClick={() => void importTheme()}>
-            Import theme
-          </button>
+          <Show when={canImport}>
+            <button class="btn small" type="button" onClick={() => void importTheme()}>
+              Import theme
+            </button>
+          </Show>
           <button class="btn small ghost" type="button" onClick={() => void refresh()}>
             Refresh
           </button>
-          <button
-            class="btn small ghost"
-            type="button"
-            onClick={() => void themeApi.openFolder()}
-          >
-            Open folder
-          </button>
+          <Show when={filesystem}>
+            <button
+              class="btn small ghost"
+              type="button"
+              onClick={() => void themeApi.openFolder()}
+            >
+              Open folder
+            </button>
+          </Show>
         </div>
       </Show>
 

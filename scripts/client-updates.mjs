@@ -268,8 +268,8 @@ function updatesUrl(baseUrl = DEFAULT_UPDATES_URL, relativePath) {
   return `${baseUrl.replace(/\/$/, "")}/${relativePath}`;
 }
 
-function outputPath(outputDir, relativePath) {
-  return join(outputDir, "client-updates", relativePath);
+function outputPath(outputDir, relativePath, feedDir = "client-updates") {
+  return join(outputDir, feedDir, relativePath);
 }
 
 async function fetchBytes(url) {
@@ -358,8 +358,7 @@ export async function prepare(options) {
     options.clientVersion ??
     readJson(join(root, "client/version.json")).version;
   const minAppVersion =
-    options.minAppVersion || defaultMinAppVersion(root);
-  const now = Math.floor(Date.now() / 1000);
+    options.minAppVersion || defaultMinAppVersion(root);  const now = Math.floor(Date.now() / 1000);
   const expiresAt = options.expiresAt ?? now + DEFAULT_MANIFEST_LIFETIME;
   if (
     !Number.isSafeInteger(expiresAt) ||
@@ -383,7 +382,8 @@ export async function prepare(options) {
     releaseSequence,
     minAppVersion,
     preinject: readFileSync(
-      join(root, "src-tauri/gen/injection/preinject.js"),
+      options.preinjectPath ??
+        join(root, "src-tauri/gen/injection/preinject.js"),
       "utf8",
     ),
     postinject: readFileSync(
@@ -404,12 +404,13 @@ export async function prepare(options) {
   });
   const paths = channelPaths(channel);
   const outputDir = resolve(root, options.outputDir ?? "web/dist");
+  const feedDir = options.feedDir ?? "client-updates";
 
   for (const [relativePath, bytes] of [
     [paths.bundle, bundleBytes],
     [paths.manifest, Buffer.from(JSON.stringify(manifest))],
   ]) {
-    const path = outputPath(outputDir, relativePath);
+    const path = outputPath(outputDir, relativePath, feedDir);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);
   }
@@ -421,12 +422,12 @@ export async function prepare(options) {
     minAppVersion,
     expiresAt,
     bundleSha256: manifest.bundleSha256,
-    manifestPath: outputPath(outputDir, paths.manifest),
-    signaturePath: outputPath(outputDir, paths.signature),
+    manifestPath: outputPath(outputDir, paths.manifest, feedDir),
+    signaturePath: outputPath(outputDir, paths.signature, feedDir),
   };
 }
 
-async function preserveChannel(baseUrl, channel, outputDir) {
+async function preserveChannel(baseUrl, channel, outputDir, feedDir) {
   const paths = channelPaths(channel);
   const published = await fetchManifest(baseUrl, channel);
   if (!published) {
@@ -453,13 +454,13 @@ async function preserveChannel(baseUrl, channel, outputDir) {
     [paths.signature, signature],
     [paths.bundle, bundleBytes],
   ]) {
-    const path = outputPath(outputDir, relativePath);
+    const path = outputPath(outputDir, relativePath, feedDir);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);
   }
 }
 
-async function preserveLegacyStable(baseUrl, outputDir) {
+async function preserveLegacyStable(baseUrl, outputDir, feedDir) {
   const paths = legacyStablePaths();
   const published = await fetchManifest(baseUrl, "stable", { legacy: true });
   if (!published) {
@@ -492,7 +493,7 @@ async function preserveLegacyStable(baseUrl, outputDir) {
     [paths.signature, signature],
     [paths.bundle, bundleBytes],
   ]) {
-    const path = outputPath(outputDir, relativePath);
+    const path = outputPath(outputDir, relativePath, feedDir);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, bytes);
   }
@@ -502,17 +503,18 @@ export async function preserve(options = {}) {
   const root = options.root ?? process.cwd();
   const baseUrl = options.baseUrl ?? DEFAULT_UPDATES_URL;
   const outputDir = resolve(root, options.outputDir ?? "web/dist");
+  const feedDir = options.feedDir ?? "client-updates";
   const skipChannel = options.skipChannel
     ? assertChannel(options.skipChannel)
     : null;
 
   for (const channel of CHANNELS) {
     if (channel !== skipChannel) {
-      await preserveChannel(baseUrl, channel, outputDir);
+      await preserveChannel(baseUrl, channel, outputDir, feedDir);
     }
   }
   if (skipChannel !== "stable") {
-    await preserveLegacyStable(baseUrl, outputDir);
+    await preserveLegacyStable(baseUrl, outputDir, feedDir);
   }
 }
 
@@ -524,11 +526,13 @@ async function main() {
   );
   const baseUrl = process.env.CLIENT_UPDATES_URL || DEFAULT_UPDATES_URL;
   const outputDir = process.env.OUTPUT_DIR || "web/dist";
+  const feedDir = process.env.CLIENT_UPDATES_DIR || "client-updates";
 
   if (command === "prepare") {
     const result = await prepare({
       root,
       outputDir,
+      feedDir,
       baseUrl,
       channel: nonEmpty("CHANNEL", process.env.CHANNEL),
       clientVersion: process.env.CLIENT_VERSION || undefined,
@@ -539,6 +543,7 @@ async function main() {
       expiresAt: process.env.EXPIRES_AT
         ? Number(process.env.EXPIRES_AT)
         : undefined,
+      preinjectPath: process.env.PREINJECT_PATH || undefined,
     });
 
     console.log(`release_sequence=${result.releaseSequence}`);
@@ -553,6 +558,7 @@ async function main() {
     await preserve({
       root,
       outputDir,
+      feedDir,
       baseUrl,
       skipChannel: process.env.SKIP_CHANNEL || undefined,
     });

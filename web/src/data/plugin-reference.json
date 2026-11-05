@@ -3,7 +3,7 @@
     "community-plugins/rules.json",
     "client/shared/types.ts"
   ],
-  "sourceHash": "f05f456c22f9834e",
+  "sourceHash": "c57faed3d0009b99",
   "rules": {
     "pluginApi": 1,
     "maxCatalogBytes": 1048576,

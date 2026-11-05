@@ -3,7 +3,7 @@ import type {
   UpdateInfo,
   YapmodModal,
 } from "../../shared/types";
-import { invokeCommand } from "../../core/tauri";
+import { getHost } from "../../platform/host";
 import { openExternally } from "../../core/links";
 import { getYapmod } from "../../core/scope";
 import { showBanner } from "../banners/api";
@@ -18,9 +18,9 @@ export async function prepareClientUpdate(
   currentClientVersion: string,
 ): Promise<ClientUpdateInfo | null> {
   try {
-    return await invokeCommand<ClientUpdateInfo | null>("prepare_client_update", {
-      currentClientVersion,
-    });
+    return (
+      (await getHost().updates?.prepareClientUpdate(currentClientVersion)) ?? null
+    );
   } catch (error) {
     console.error("[yapmod] the client update check failed", error);
     return null;
@@ -35,7 +35,7 @@ export async function prepareClientUpdate(
  */
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   try {
-    return await invokeCommand<UpdateInfo>("check_for_update");
+    return (await getHost().updates?.check()) ?? null;
   } catch (error) {
     console.error("[yapmod] the update check failed", error);
     return null;
@@ -94,21 +94,33 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
 
 /** Shows a nonblocking restart banner once the signed client bundle is staged. */
 export function showClientUpdateBanner(info: ClientUpdateInfo): void {
+  const web = getHost().id === "web";
+
   showBanner({
     id: CLIENT_UPDATE_BANNER_ID,
-    message: `yapmod client v${info.latestVersion} is ready. Restart to apply; active calls will disconnect.`,
+    message: web
+      ? `yapmod client v${info.latestVersion} is ready. Reload to apply.`
+      : `yapmod client v${info.latestVersion} is ready. Restart to apply; active calls will disconnect.`,
     action: {
-      label: "Restart",
+      label: web ? "Reload" : "Restart",
       onClick: async (banner) => {
         try {
-          await invokeCommand<void>("restart_app");
+          const updates = getHost().updates;
+
+          if (!updates) {
+            throw new Error("This target does not support applying updates.");
+          }
+
+          await updates.restart();
         } catch (error) {
           console.error(
             "[yapmod] could not restart for the client update",
             error,
           );
           banner.setMessage(
-            "yapmod could not restart. Quit from the menu bar or system tray to apply the update.",
+            web
+              ? "yapmod could not reload. Reload the page to apply the update."
+              : "yapmod could not restart. Quit from the menu bar or system tray to apply the update.",
             "warning",
           );
         }

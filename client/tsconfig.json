@@ -14,5 +14,5 @@
     "jsxImportSource": "solid-js",
     "types": []
   },
-  "include": ["*.ts", "*.tsx", "shared/**/*.ts", "shared/**/*.tsx", "core/**/*.ts", "core/**/*.tsx", "components/**/*.tsx", "features/**/*.ts", "features/**/*.tsx", "types/**/*.ts", "generated/**/*.ts"]
+  "include": ["*.ts", "*.tsx", "shared/**/*.ts", "shared/**/*.tsx", "core/**/*.ts", "core/**/*.tsx", "components/**/*.tsx", "features/**/*.ts", "features/**/*.tsx", "platform/**/*.ts", "targets/**/*.ts", "targets/**/*.tsx", "types/**/*.ts", "generated/**/*.ts"]
 }

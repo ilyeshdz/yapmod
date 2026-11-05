@@ -1,5 +1,5 @@
 import { getScope, getYapmod } from "./scope";
-import { invokeCommand } from "./tauri";
+import { getHost } from "../platform/host";
 
 /**
  * The options the host app passes to a notification.
@@ -15,11 +15,6 @@ type NotificationOptions = {
  * The state of the permission to show notifications.
  */
 type PermissionState = "granted" | "denied" | "default";
-
-/**
- * The event the shell sends when the user clicks a notification.
- */
-const CLICK_EVENT = "yapmod:notification-click";
 
 /**
  * The handlers of the notifications the user clicked, by tag.
@@ -80,7 +75,11 @@ class YapmodNotification {
     }
 
     try {
-      await invokeCommand<string>("request_notification_permission");
+      const state = await getHost().notifications?.request();
+
+      if (state) {
+        permission = state;
+      }
     } catch (error: unknown) {
       console.error(
         "[yapmod] could not ask for the notification permission",
@@ -88,7 +87,9 @@ class YapmodNotification {
       );
     }
 
-    permission = "granted";
+    if (permission === "default") {
+      permission = "granted";
+    }
 
     return permission;
   }
@@ -106,14 +107,15 @@ class YapmodNotification {
   constructor(title: string, options: NotificationOptions = {}) {
     this.tag = options.tag ?? title;
 
-    void invokeCommand<void>("notify", {
-      title,
-      body: options.body ?? "",
-      tag: this.tag,
-      silent: options.silent ?? false,
-    }).catch((error: unknown) => {
-      console.error("[yapmod] could not show the notification", error);
-    });
+    void getHost().notifications
+      ?.show(title, {
+        body: options.body ?? "",
+        tag: this.tag,
+        silent: options.silent ?? false,
+      })
+      .catch((error: unknown) => {
+        console.error("[yapmod] could not show the notification", error);
+      });
   }
 
   get onclick(): (() => void) | null {
@@ -148,8 +150,7 @@ export function requestNotificationPermission(): Promise<PermissionState> {
 /**
  * Hands the click on a notification back to the host app.
  */
-function onClick(event: Event): void {
-  const tag = (event as CustomEvent<string>).detail;
+function onClick(tag: string): void {
   const handler = handlers.get(tag);
 
   if (!handler) {
@@ -166,13 +167,19 @@ function onClick(event: Event): void {
  * The webview cannot show notifications by itself, so the shell does it.
  */
 export function installNotificationApi(): void {
+  const notifications = getHost().notifications;
+
+  if (!notifications) {
+    return;
+  }
+
   sync();
 
   getYapmod().store?.onChange("notifications", () => {
     sync();
   });
 
-  window.addEventListener(CLICK_EVENT, onClick);
+  notifications.onClick(onClick);
 
   const scope = getScope() as unknown as { Notification: unknown };
 

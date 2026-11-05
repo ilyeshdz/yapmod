@@ -1,7 +1,6 @@
-import { invokeCommand } from "./tauri";
+import { getHost } from "../platform/host";
 import { getYapmod } from "./scope";
 
-const OPEN_URL_COMMAND = "plugin:opener|open_url";
 const EXTERNAL_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const VISIT_BUTTON_LABEL = "visit site";
 const LEAVING_URL_SELECTOR = ".leaving-url";
@@ -70,7 +69,14 @@ export function openExternally(url: URL | string): void {
 
   recentlyOpened.set(href, now);
 
-  invokeCommand(OPEN_URL_COMMAND, { url: href }).catch((error: unknown) => {
+  const links = getHost().links;
+
+  if (!links) {
+    window.location.assign(href);
+    return;
+  }
+
+  void links.open(href).catch((error: unknown) => {
     console.error("[yapmod] failed to open external link", href, error);
   });
 }
@@ -184,6 +190,12 @@ function installLeavingDialogHandler(): void {
 }
 
 export function installExternalLinks(): void {
-  installWindowOpenPatch();
+  // In an isolated world, replacing `window.open` only affects our own realm;
+  // the page keeps its native behaviour. The host still handles links that
+  // yapmod opens itself.
+  if (getHost().capabilities.pageRealm) {
+    installWindowOpenPatch();
+  }
+
   installLeavingDialogHandler();
 }
