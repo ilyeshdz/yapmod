@@ -79,6 +79,16 @@
   --ym-accent-soft: #e8e1d21a;
   --ym-on-accent: #000000;
 
+  /* Host app variables that the token map does not cover. */
+  --accent: #e8e1d2;
+  --accent-fill: #e8e1d2;
+  --accent-fill-hover: #d6cfbf;
+  --accent-hover: #d6cfbf;
+  --accent-soft: #e8e1d21a;
+  --on-accent: #000000;
+  --tint-a: #e8e1d2;
+  --fx-accent: #e8e1d2;
+
   --ym-danger: #ff5f5f;
   --ym-success: #79d99a;
   --ym-warning: #e3c47a;
