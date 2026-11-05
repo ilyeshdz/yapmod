@@ -12,6 +12,21 @@ const sourceDir = join(root, "client");
 const clientVersion = JSON.parse(
   await readFile(join(sourceDir, "version.json"), "utf8"),
 ).version;
+const updateChannel =
+  process.env.YAPMOD_UPDATE_CHANNEL === "nightly" ? "nightly" : "stable";
+const updatePublicKey = process.env.YAPMOD_CLIENT_UPDATE_PUBLIC_KEY ?? "";
+
+/**
+ * Values esbuild substitutes into every bundle.
+ *
+ * The channel is baked in, exactly like the desktop app, so a nightly package
+ * never reads the stable signed feed.
+ */
+const sharedDefine = {
+  __YAPMOD_CLIENT_VERSION__: JSON.stringify(clientVersion),
+  __YAPMOD_UPDATE_CHANNEL__: JSON.stringify(updateChannel),
+  __YAPMOD_CLIENT_UPDATE_PUBLIC_KEY__: JSON.stringify(updatePublicKey),
+};
 
 /**
  * The bundles the client can build.
@@ -39,6 +54,7 @@ const targets = {
     // The extension shell has its own version; the client version is reported
     // at runtime and may move independently.
     versionFile: join(sourceDir, "targets", "web", "version.json"),
+    define: { __YAPMOD_WEB_LOADER__: "false" },
     // Static files the manifest references; copied next to the bundles.
     assets: [
       {
@@ -46,6 +62,29 @@ const targets = {
         to: join(root, "dist", "web", "icons"),
       },
     ],
+  },
+  "web-loader": {
+    entryPoints: [
+      join(sourceDir, "targets", "web", "bridge.ts"),
+      join(sourceDir, "targets", "web", "loader.ts"),
+      join(sourceDir, "targets", "web", "background.ts"),
+    ],
+    outdir: join(root, "dist", "web-loader"),
+    manifest: createManifest,
+    versionFile: join(sourceDir, "targets", "web", "version.json"),
+    define: { __YAPMOD_WEB_LOADER__: "true" },
+    assets: [
+      {
+        from: join(sourceDir, "targets", "web", "icons"),
+        to: join(root, "dist", "web-loader", "icons"),
+      },
+    ],
+    // The loader embeds the page-realm client so a fresh install works before
+    // the first signed update arrives.
+    embeddedClient: join(root, "dist", "web", "preinject.js"),
+    // The loader build depends on the store build that produces the embedded
+    // client.
+    dependsOn: "web",
   },
 };
 
@@ -62,48 +101,82 @@ if (!target) {
   );
 }
 
-await mkdir(target.outdir, { recursive: true });
+const built = new Set();
 
-if (target.assets) {
-  for (const asset of target.assets) {
-    await cp(asset.from, asset.to, { recursive: true });
+async function buildTarget(name) {
+  if (built.has(name)) {
+    return;
+  }
+  built.add(name);
+
+  const current = targets[name];
+
+  if (current.dependsOn) {
+    await buildTarget(current.dependsOn);
+  }
+
+  await mkdir(current.outdir, { recursive: true });
+
+  if (current.assets) {
+    for (const asset of current.assets) {
+      await cp(asset.from, asset.to, { recursive: true });
+    }
+  }
+
+  if (current.manifest) {
+    const versionFile = JSON.parse(
+      await readFile(
+        current.versionFile ?? join(sourceDir, "version.json"),
+        "utf8",
+      ),
+    );
+
+    await writeFile(
+      join(current.outdir, "manifest.json"),
+      `${JSON.stringify(
+        current.manifest(versionFile.version, {
+          loader: name === "web-loader",
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+  }
+
+  const define = { ...sharedDefine, ...current.define };
+
+  if (current.embeddedClient) {
+    define.__YAPMOD_EMBEDDED_CLIENT__ = JSON.stringify(
+      await readFile(current.embeddedClient, "utf8"),
+    );
+  }
+
+  const options = {
+    entryPoints: current.entryPoints,
+    outdir: current.outdir,
+    bundle: true,
+    format: "iife",
+    platform: "browser",
+    target: "es2020",
+    minify: true,
+    sourcemap: false,
+    legalComments: "none",
+    loader: { ".svg": "text", ".css": "text" },
+    // Solid compiles JSX to DOM templates, so it needs its own transform.
+    plugins: [solidPlugin()],
+    define,
+    logLevel: "info",
+  };
+
+  if (process.argv.includes("--watch")) {
+    const context = await build.context(options);
+    await context.watch();
+    console.log(
+      `Watching ${name} client source files for changes...`,
+    );
+  } else {
+    await build(options);
   }
 }
 
-if (target.manifest) {
-  const versionFile = JSON.parse(
-    await readFile(target.versionFile ?? join(sourceDir, "version.json"), "utf8"),
-  );
-
-  await writeFile(
-    join(target.outdir, "manifest.json"),
-    `${JSON.stringify(target.manifest(versionFile.version), null, 2)}\n`,
-  );
-}
-
-const options = {
-  entryPoints: target.entryPoints,
-  outdir: target.outdir,
-  bundle: true,
-  format: "iife",
-  platform: "browser",
-  target: "es2020",
-  minify: true,
-  sourcemap: false,
-  legalComments: "none",
-  loader: { ".svg": "text", ".css": "text" },
-  // Solid compiles JSX to DOM templates, so it needs its own transform.
-  plugins: [solidPlugin()],
-  define: {
-    __YAPMOD_CLIENT_VERSION__: JSON.stringify(clientVersion),
-  },
-  logLevel: "info",
-};
-
-if (process.argv.includes("--watch")) {
-  const context = await build.context(options);
-  await context.watch();
-  console.log("Watching client source files for changes...");
-} else {
-  await build(options);
-}
+await buildTarget(targetName);

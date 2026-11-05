@@ -6,7 +6,7 @@
  * archive, so the contents of `dist/web` are zipped, not the folder itself.
  */
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { deflateRawSync } from "node:zlib";
 
@@ -127,8 +127,11 @@ async function collectFiles(directory, base = directory) {
 export async function packageWebExtension(outdir = DEFAULT_OUTDIR, output) {
   const manifestPath = join(outdir, "manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  // `dist/web` becomes `yapmod-web-<version>.zip`; `dist/web-loader` becomes
+  // `yapmod-web-loader-<version>.zip`.
+  const packageName = `yapmod-${basename(resolve(outdir)).replace(/[^a-z0-9-]/gi, "-")}`;
   const target = resolve(
-    output ?? join(dirname(outdir), `yapmod-web-${manifest.version}.zip`),
+    output ?? join(dirname(outdir), `${packageName}-${manifest.version}.zip`),
   );
   const files = await collectFiles(outdir);
 
@@ -144,7 +147,9 @@ export async function packageWebExtension(outdir = DEFAULT_OUTDIR, output) {
 async function main() {
   const outArgIndex = process.argv.indexOf("--out");
   const output = outArgIndex === -1 ? undefined : process.argv[outArgIndex + 1];
-  const outdir = resolve(process.env.WEB_OUTDIR ?? DEFAULT_OUTDIR);
+  const dirArgIndex = process.argv.indexOf("--dir");
+  const dir = dirArgIndex === -1 ? undefined : process.argv[dirArgIndex + 1];
+  const outdir = resolve(dir ?? process.env.WEB_OUTDIR ?? DEFAULT_OUTDIR);
 
   await stat(join(outdir, "manifest.json"));
   const result = await packageWebExtension(outdir, output);
