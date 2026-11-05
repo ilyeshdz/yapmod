@@ -21,6 +21,14 @@ fn nightly_build(version: &Version) -> Option<Vec<u64>> {
         .collect::<Option<Vec<_>>>()
 }
 
+/// Returns true when the version carries the `+nightly.*` build metadata.
+pub fn is_nightly(version: &str) -> bool {
+    Version::parse(version.trim().trim_start_matches('v'))
+        .ok()
+        .and_then(|version| version.build.as_str().split('.').next().map(str::to_owned))
+        .is_some_and(|prefix| prefix == "nightly")
+}
+
 /// Compares semantic versions, with a numeric fallback for legacy strings.
 pub fn compare_versions(left: &str, right: &str) -> Ordering {
     let left_semver = Version::parse(left.trim().trim_start_matches('v'));

@@ -1,0 +1,67 @@
+:root[data-yapmod-mode="dark"] {
+    /* Embedded background image (base64 JPEG) */
+    --ym-bg-image: url("https://files.yapper.website/attachments/2d856386-e1b2-4c47-924a-39d4b7c391cb/r2-1792682595223-w0sxsf.png");
+
+    /* Panels are slightly translucent so the image shows through */
+    --ym-bg-rail: #07080acc;
+    --ym-bg-side: #0d0e12b3;
+    --ym-bg-main: #12131959;
+    --ym-bg-elev: #191b22d9;
+    --ym-bg-hover: #21232ce6;
+    --ym-bg-active: #2a2d38f2;
+    --ym-bg-input: #16171ee6;
+    --ym-bg-float: #0d0e12f2;
+
+    --ym-text: #e8e9ee;
+    --ym-text-muted: #9a9caa;
+    --ym-text-faint: #6c6e7d;
+
+    --ym-border: #ffffff10;
+
+    --ym-accent: #7ee2a8;
+    --ym-accent-hover: #63c78d;
+    --ym-accent-soft: #7ee2a826;
+    --ym-on-accent: #08211a;
+
+    --ym-danger: #ff6b6b;
+    --ym-success: #4ade80;
+    --ym-warning: #fbbf24;
+
+    --ym-radius: 6px;
+    --ym-shadow: 0 16px 48px #000000a6;
+}
+
+/* Apply the image behind the whole app */
+:root[data-yapmod-mode="dark"] body {
+    background-color: #07080a;
+    background-image: var(--ym-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+:root[data-yapmod-mode="light"] {
+    --ym-bg-rail: #e7e9ee;
+    --ym-bg-side: #f1f3f6;
+    --ym-bg-main: #fafbfc;
+    --ym-bg-elev: #ffffff;
+    --ym-bg-hover: #eaecf1;
+    --ym-bg-active: #dde0e8;
+    --ym-bg-input: #ffffff;
+    --ym-bg-float: #ffffff;
+
+    --ym-text: #14161b;
+    --ym-text-muted: #545866;
+    --ym-text-faint: #848895;
+
+    --ym-border: #00000014;
+
+    --ym-accent: #0f9d58;
+    --ym-accent-hover: #0c8149;
+    --ym-accent-soft: #0f9d5822;
+    --ym-on-accent: #ffffff;
+
+    --ym-radius: 6px;
+    --ym-shadow: 0 16px 40px #0000001f;
+}

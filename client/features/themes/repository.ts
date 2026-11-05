@@ -13,6 +13,7 @@ export type YapmodThemeRepositoryApi = {
   pickFolder(): Promise<string | null>;
   install(source: string): Promise<ThemeBundle>;
   installCommunity(id: string): Promise<ThemeBundle>;
+  reload(id: string): Promise<ThemeBundle>;
   remove(id: string): Promise<void>;
   folder(): Promise<string>;
   openFolder(): Promise<void>;
@@ -48,6 +49,10 @@ export function createThemeRepository(
 
     installCommunity(id) {
       return repository().installCommunity(id);
+    },
+
+    reload(id) {
+      return repository().reload(id);
     },
 
     remove(id) {

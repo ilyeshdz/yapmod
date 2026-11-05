@@ -1,12 +1,10 @@
-import { JSX } from "solid-js";
-import { render } from "solid-js/web";
-
 import { Icon } from "../../components/icon";
 import { history } from "../../components/icons/history";
 import { monitor } from "../../components/icons/monitor";
 import { palette } from "../../components/icons/palette";
 import { puzzle } from "../../components/icons/puzzle";
 import type { SettingsSection } from "../../shared/types";
+import { renderElement } from "../../shared/solid";
 
 type SettingsSectionIcon = NonNullable<SettingsSection["icon"]>;
 
@@ -17,22 +15,14 @@ const SECTION_ICON_SHAPES: Record<SettingsSectionIcon, readonly string[]> = {
   puzzle,
 };
 
-function renderStatic(component: () => JSX.Element): HTMLElement {
-  const host = document.createElement("div");
-  const dispose = render(component, host);
-  const element = host.firstElementChild as HTMLElement;
-  dispose();
-  return element;
-}
-
 /** The label that introduces a group of sections in the host navigation. */
 export function createNavLabel(name: string): HTMLElement {
-  return renderStatic(() => <div class="settings-nav-label">{name}</div>);
+  return renderElement(() => <div class="settings-nav-label">{name}</div>);
 }
 
 /** One section button in the host navigation. */
 export function createNavButton(section: SettingsSection): HTMLButtonElement {
-  return renderStatic(() => (
+  return renderElement<HTMLButtonElement>(() => (
     <button
       type="button"
       data-yapmod-section={section.id}
@@ -47,5 +37,5 @@ export function createNavButton(section: SettingsSection): HTMLButtonElement {
       ) : null}
       {section.label}
     </button>
-  )) as HTMLButtonElement;
+  ));
 }

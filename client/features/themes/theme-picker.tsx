@@ -12,6 +12,7 @@ import type { CommunityTheme, ThemeBundle } from "./types";
 import type { YapmodThemeApi } from "./api";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
+import { IconButton } from "../../components/icon-button";
 import { openExternally } from "../../core/links";
 import { getHost } from "../../platform/host";
 import { confirmRemove } from "./picker-preview";
@@ -178,6 +179,22 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
     }
   }
 
+  async function reloadTheme(theme: ThemeBundle): Promise<void> {
+    try {
+      const reloaded = await themeApi.reload(theme.id);
+
+      if (activeId() === theme.id) {
+        themeApi.apply(reloaded);
+      }
+
+      await refresh();
+      setMessage(`Reloaded ${reloaded.name}.`);
+    } catch (error) {
+      setMessage(`Could not reload ${theme.name}: ${String(error)}`, true);
+      await refresh();
+    }
+  }
+
   function show(view: "installed" | "community"): void {
     setActiveTab(view);
 
@@ -335,18 +352,28 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
                 </button>
                 <div class="yapmod-theme-card-foot">
                   <span class="yapmod-theme-card-meta">{describe(theme)}</span>
-                  <button
+                  <IconButton
+                    class="yapmod-theme-reload"
+                    icon="refresh"
+                    size={14}
+                    label={`Reload the theme ${theme.name}`}
+                    title={`Reload ${theme.name} from disk`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void reloadTheme(theme);
+                    }}
+                  />
+                  <IconButton
                     class="yapmod-theme-remove"
-                    type="button"
-                    aria-label={`Remove the theme ${theme.name}`}
+                    icon="trash"
+                    size={14}
+                    label={`Remove the theme ${theme.name}`}
                     title={`Remove ${theme.name}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       void removeTheme(theme);
                     }}
-                  >
-                    ×
-                  </button>
+                  />
                 </div>
               </div>
             )}

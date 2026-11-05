@@ -1,7 +1,7 @@
 {
   "id": "custom-background",
   "name": "Custom Background",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "author": "Yapmod",
   "description": "Set a custom background image and optionally change the accent color. Panels become slightly translucent so the image shows through.",
   "api": 1,
@@ -35,6 +35,13 @@
       "description": "Toggle the custom background on and off.",
       "type": "toggle",
       "default": true
+    },
+    {
+      "id": "background-opacity",
+      "label": "Background Opacity",
+      "description": "Control the visibility of the background image (0–100).",
+      "type": "text",
+      "default": "100"
     }
   ],
   "stylesheet": "plugin.css",

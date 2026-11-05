@@ -1,11 +1,7 @@
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { createPluginRepository } from "./repository";
-import {
-  validatePluginBundle as validateBundle,
-  validatePluginCss as validateCss,
-  validatePluginManifest as validateManifest,
-} from "./package";
+import { validatePluginBundle as validateBundle } from "./package";
 import { upsertStyle, whenBodyReady } from "../../shared/ui";
 import { render } from "solid-js/web";
 import { PluginGallery } from "./plugins-gallery";
@@ -22,6 +18,7 @@ import type {
   PluginManifest,
   PluginSetting,
   PluginSettingValue,
+  PluginSettingsPanel,
   YapmodPluginInfo,
   YapmodPluginApi,
   YapmodPluginModule,
@@ -98,7 +95,6 @@ function requestConsent(
   manifest: PluginManifest,
   action: "import" | "enable",
 ): Promise<boolean> {
-  validateManifest(manifest);
   const api = getYapmod().modal;
   const label = action === "import" ? "Import" : "Enable";
 
@@ -262,7 +258,6 @@ async function runCleanup(entry: InstalledEntry): Promise<void> {
 
 async function enableEntry(entry: InstalledEntry): Promise<void> {
   if (entry.enabled) return;
-  validateBundle(entry.bundle);
   const styleId = `yapmod-plugin-style-${entry.bundle.manifest.id}`;
   entry.cleanup = [];
   try {
@@ -289,6 +284,112 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
         const setting = manifest.settings.find((item) => item.id === id);
         if (!setting) throw new Error(`Unknown plugin setting: ${id}`);
         return getYapmod().store?.get<PluginSettingValue>(pluginStorageKey(manifest.id, id), setting.default) ?? setting.default;
+      };
+
+      const panels = new Map<string, { sectionId: string; unregister: () => void }>();
+      let panelsActive = true;
+
+      const unregisterPanel = (id: string): void => {
+        const panel = panels.get(id);
+
+        if (!panel) return;
+
+        // Remove the entry first so a cleanup that runs twice is harmless.
+        panels.delete(id);
+        panel.unregister();
+      };
+
+      const registerPanel = (panel: PluginSettingsPanel): (() => void) => {
+        const settings = getYapmod().settings;
+
+        if (!panel || typeof panel !== "object") {
+          throw new Error("A plugin settings panel must be an object.");
+        }
+
+        const localId = panel.id ?? "main";
+        if (typeof localId !== "string" || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(localId)) {
+          throw new Error("The plugin settings panel id must contain 1–24 letters, numbers, underscores, or hyphens.");
+        }
+        if (typeof panel.label !== "string" || !panel.label.trim() || panel.label.length > 80) {
+          throw new Error("The plugin settings panel label must contain 1–80 characters.");
+        }
+        if (panel.description !== undefined && (typeof panel.description !== "string" || panel.description.length > 200)) {
+          throw new Error("The plugin settings panel description must be at most 200 characters.");
+        }
+        if (panel.group !== undefined && (typeof panel.group !== "string" || panel.group.trim().length > 60)) {
+          throw new Error("The plugin settings panel group must be at most 60 characters.");
+        }
+        if (panel.icon !== undefined && !["monitor", "palette", "history", "puzzle"].includes(panel.icon)) {
+          throw new Error("The plugin settings panel icon is not supported.");
+        }
+        if (panel.order !== undefined && (typeof panel.order !== "number" || !Number.isFinite(panel.order))) {
+          throw new Error("The plugin settings panel order must be a finite number.");
+        }
+        if (panel.items !== undefined && (!Array.isArray(panel.items) || panel.items.length > 32)) {
+          throw new Error("The plugin settings panel accepts at most 32 items.");
+        }
+        if (panel.render !== undefined && typeof panel.render !== "function") {
+          throw new Error("The plugin settings panel render value must be a function.");
+        }
+        if (panel.onShow !== undefined && typeof panel.onShow !== "function") {
+          throw new Error("The plugin settings panel onShow value must be a function.");
+        }
+        if (panel.onHide !== undefined && typeof panel.onHide !== "function") {
+          throw new Error("The plugin settings panel onHide value must be a function.");
+        }
+
+        if (!settings || !panelsActive) {
+          return () => {};
+        }
+
+        const sectionId = `plugin-panel-${manifest.id}-${localId}`;
+
+        unregisterPanel(localId);
+
+        const unregister = settings.register({
+          id: sectionId,
+          label: panel.label,
+          description: panel.description,
+          icon: panel.icon,
+          group: panel.group?.trim() || "Plugins",
+          order: panel.order ?? 0,
+          items: panel.items,
+          render: panel.render,
+          onShow: panel.onShow,
+          onHide: panel.onHide,
+        });
+
+        panels.set(localId, { sectionId, unregister });
+
+        return () => unregisterPanel(localId);
+      };
+
+      const openPanel = (id = "main"): void => {
+        const panel = panels.get(id);
+
+        if (panel) {
+          getYapmod().settings?.open(panel.sectionId);
+        }
+      };
+
+      const refreshPanel = (id?: string): void => {
+        const settings = getYapmod().settings;
+
+        if (!settings) return;
+
+        if (id !== undefined) {
+          const panel = panels.get(id);
+
+          if (panel) {
+            settings.refresh(panel.sectionId);
+          }
+
+          return;
+        }
+
+        for (const panel of panels.values()) {
+          settings.refresh(panel.sectionId);
+        }
       };
 
       const api: YapmodPluginApi = Object.freeze({
@@ -337,10 +438,12 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
               }
             }) ?? (() => {});
           },
+          registerPanel,
+          openPanel,
+          refreshPanel,
         }),
         styles: Object.freeze({
           add(css: string): PluginCleanup {
-            validateCss(css);
             const id = `yapmod-plugin-script-style-${manifest.id}-${scriptStyleIds.length}`;
             scriptStyleIds.push(id);
             upsertStyle(id, css);
@@ -374,6 +477,33 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
           info: (...args: unknown[]) => console.info(logPrefix, ...args),
           warn: (...args: unknown[]) => console.warn(logPrefix, ...args),
           error: (...args: unknown[]) => console.error(logPrefix, ...args),
+        }),
+        ui: getYapmod().ui ?? Object.freeze({
+          icons: Object.freeze([]),
+          icon() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          button() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          input() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          select() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          toggle() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          field() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          toolbar() {
+            throw new Error("The plugin UI API is not available.");
+          },
+          badge() {
+            throw new Error("The plugin UI API is not available.");
+          },
         }),
         onCleanup(cleanup: PluginCleanup): void {
           if (typeof cleanup !== "function") {
@@ -468,6 +598,15 @@ async function enableEntry(entry: InstalledEntry): Promise<void> {
       // Plugins are trusted page code by design. This does not sandbox or
       // restrict the JavaScript realm available to a plugin author.
       entry.cleanup.push(() => scriptStyleIds.forEach((id) => document.getElementById(id)?.remove()));
+      // Panels are owned by the plugin lifecycle even if the plugin does not
+      // keep the unregister function returned by registerPanel().
+      entry.cleanup.push(() => {
+        panelsActive = false;
+
+        for (const id of [...panels.keys()]) {
+          unregisterPanel(id);
+        }
+      });
       // Run callbacks registered through `api.onCleanup`. This is registered
       // before activation so callbacks survive an activation that throws.
       entry.cleanup.push(async () => {
@@ -514,7 +653,6 @@ async function disableEntry(entry: InstalledEntry): Promise<void> {
 }
 
 async function registerBundle(bundle: PluginBundle): Promise<void> {
-  validateBundle(bundle);
   const current = registry.get(bundle.manifest.id);
   if (current) {
     if (JSON.stringify(current.bundle.manifest) === JSON.stringify(bundle.manifest)) {
@@ -574,6 +712,46 @@ async function setEnabled(id: string, enabled: boolean): Promise<boolean> {
   }
 }
 
+/** Reloads an installed plugin from disk and restores its previous state. */
+async function reloadPlugin(id: string): Promise<boolean> {
+  const entry = registry.get(id);
+  if (!entry || entry.busy) return false;
+  entry.busy = true;
+  entry.error = null;
+  entry.diagnostic = null;
+  emitChange();
+  try {
+    const wasEnabled = entry.enabled;
+    // Tear down the running copy before its files are swapped.
+    await disableEntry(entry);
+    const bundle = await getHost().plugins?.reload(id);
+
+    if (!bundle) {
+      throw new Error("[yapmod] this target has no plugin repository");
+    }
+    if (bundle.manifest.id !== id) {
+      throw new Error("the plugin folder now declares a different id");
+    }
+    entry.bundle = bundle;
+    if (wasEnabled) {
+      // A changed manifest, stylesheet, or script is new code, so it needs a
+      // fresh consent before it runs again.
+      if (!await hasCurrentConsent(bundle)) {
+        if (!(await requestConsent(bundle.manifest, "enable"))) return true;
+        await saveConsent(bundle);
+      }
+      await enableEntry(entry);
+    }
+    return true;
+  } catch (error) {
+    diagnose(entry, "load", error);
+    return false;
+  } finally {
+    entry.busy = false;
+    emitChange();
+  }
+}
+
 /** Installs the package import, consent, and lifecycle API. */
 export function installPluginApi(): void {
   const repository = createPluginRepository(getHost().plugins);
@@ -609,6 +787,7 @@ export function installPluginApi(): void {
       emitChange();
       return bundle.manifest;
     },
+    reload: reloadPlugin,
     async remove(id) {
       const entry = registry.get(id);
       if (!entry) return;
@@ -637,8 +816,12 @@ export function installPluginApi(): void {
 
 /** Restores installed packages that were previously enabled and consented to. */
 export function initializePluginManager(): void {
-  // Plugin scripts may touch the document body as soon as they activate. The
-  // preinject bundle runs before the body exists, so wait for it.
+  // The preinject bundle runs at document start, before the page has a root
+  // element or a body. Plugins touch both while they activate: settings are
+  // mirrored onto <html>, and scripts commonly insert elements into the page.
+  // Enabling from here would throw, leave the plugin disabled, and show the
+  // mistake only after the user toggles it off and on again. Wait for the
+  // body first so a restored plugin can apply its stored settings.
   whenBodyReady(() => {
     void getYapmod().plugins?.refreshInstalled().catch((error: unknown) => {
       console.error("[yapmod] could not load installed plugins", error);

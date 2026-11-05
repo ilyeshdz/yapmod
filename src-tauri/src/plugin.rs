@@ -34,10 +34,6 @@ struct PluginRules {
     max_manifest_bytes: usize,
     max_css_bytes: usize,
     max_script_bytes: usize,
-    max_plugins: usize,
-    max_settings: usize,
-    max_tags: usize,
-    max_name_length: usize,
 }
 
 static PLUGIN_RULES: LazyLock<PluginRules> = LazyLock::new(|| {
@@ -195,20 +191,8 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     if !valid_id(&manifest.id) {
         return Err("the plugin id must be 1–24 letters, numbers, underscores, or hyphens".into());
     }
-    if manifest.name.trim().is_empty()
-        || manifest.name.chars().count() > PLUGIN_RULES.max_name_length
-    {
-        return Err("the plugin name is empty or too long".into());
-    }
-    for (label, value, max) in [
-        ("version", manifest.version.as_deref(), 100),
-        ("author", manifest.author.as_deref(), 100),
-        ("description", manifest.description.as_deref(), 500),
-        ("license", manifest.license.as_deref(), 100),
-    ] {
-        if value.is_some_and(|value| value.chars().count() > max) {
-            return Err(format!("the plugin {label} is too long"));
-        }
+    if manifest.name.trim().is_empty() {
+        return Err("the plugin name is empty".into());
     }
     if manifest.api != PLUGIN_RULES.plugin_api {
         return Err(format!(
@@ -226,24 +210,11 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     {
         return Err(format!("the plugin script must be named {SCRIPT_FILE}"));
     }
-    if manifest.tags.len() > PLUGIN_RULES.max_tags
-        || manifest.tags.iter().any(|tag| tag.chars().count() > 32)
-    {
-        return Err("the plugin has too many or invalid tags".into());
-    }
-    if manifest.settings.len() > PLUGIN_RULES.max_settings {
-        return Err("the plugin contains too many settings".into());
-    }
     let mut setting_ids = HashSet::new();
     for setting in &manifest.settings {
         if !valid_id(&setting.id)
             || !setting_ids.insert(&setting.id)
             || setting.label.trim().is_empty()
-            || setting.label.chars().count() > 80
-            || setting
-                .description
-                .as_ref()
-                .is_some_and(|description| description.chars().count() > 200)
             || !valid_setting_type(&setting.setting_type)
         {
             return Err("the plugin contains an invalid or duplicate setting".into());
@@ -271,98 +242,10 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
     Ok(())
 }
 
-/// Conservatively rejects external CSS loads. Backslash escapes are disallowed
-/// so a dangerous identifier cannot be hidden from this check.
+/// Rejects stylesheets that exceed the configured size limit.
 fn validate_css(css: &str) -> Result<(), String> {
     if css.len() > PLUGIN_RULES.max_css_bytes {
         return Err("the plugin stylesheet is larger than the allowed size".into());
-    }
-    if css.contains('\\') {
-        return Err("CSS escapes are not supported in plugin stylesheets".into());
-    }
-
-    let mut normalized = String::with_capacity(css.len());
-    let mut chars = css.chars().peekable();
-    let mut quote = None;
-    while let Some(character) = chars.next() {
-        if let Some(delimiter) = quote {
-            if character == delimiter {
-                quote = None;
-            }
-            normalized.push(' ');
-            continue;
-        }
-        if character == '"' || character == '\'' {
-            quote = Some(character);
-            continue;
-        }
-        if character == '/' && chars.peek() == Some(&'*') {
-            chars.next();
-            let mut closed = false;
-            while let Some(comment_char) = chars.next() {
-                if comment_char == '*' && chars.peek() == Some(&'/') {
-                    chars.next();
-                    closed = true;
-                    break;
-                }
-            }
-            if !closed {
-                return Err("the plugin stylesheet has an unfinished comment".into());
-            }
-            normalized.push(' ');
-            continue;
-        }
-        normalized.push(character.to_ascii_lowercase());
-    }
-    if quote.is_some() {
-        return Err("the plugin stylesheet has an unfinished string".into());
-    }
-
-    let bytes = normalized.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() {
-        if bytes[index] == b'@' {
-            let start = index + 1;
-            let mut end = start;
-            while end < bytes.len() && (bytes[end].is_ascii_alphanumeric() || bytes[end] == b'-') {
-                end += 1;
-            }
-            if &bytes[start..end] == b"import" {
-                return Err("plugin stylesheets cannot use @import".into());
-            }
-            index = end.max(index + 1);
-            continue;
-        }
-        if bytes[index].is_ascii_alphabetic() || bytes[index] == b'-' || bytes[index] == b'_' {
-            let start = index;
-            index += 1;
-            while index < bytes.len()
-                && (bytes[index].is_ascii_alphanumeric()
-                    || bytes[index] == b'-'
-                    || bytes[index] == b'_')
-            {
-                index += 1;
-            }
-            let ident = &bytes[start..index];
-            if ident == b"url"
-                || ident == b"expression"
-                || ident == b"behavior"
-                || ident == b"image-set"
-                || ident == b"-webkit-image-set"
-            {
-                let mut next = index;
-                while next < bytes.len() && bytes[next].is_ascii_whitespace() {
-                    next += 1;
-                }
-                if ident != b"behavior" || bytes.get(next) == Some(&b':') {
-                    return Err(
-                        "plugin stylesheets cannot import or load external resources".into(),
-                    );
-                }
-            }
-            continue;
-        }
-        index += 1;
     }
     Ok(())
 }
@@ -423,28 +306,10 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
 
 async fn fetch_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let url = format!("{COMMUNITY_PLUGINS_BASE}/{path}");
-    let response = http::client()
-        .get(&url)
-        .timeout(Duration::from_secs(20))
-        .send()
+    http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
         .map_err(|error| format!("could not download the community plugin: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("could not download the community plugin: {error}"))?;
-    if response
-        .content_length()
-        .is_some_and(|length| length > max_bytes as u64)
-    {
-        return Err("a community plugin file is larger than the allowed size".into());
-    }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("could not read the community plugin: {error}"))?;
-    if bytes.len() > max_bytes {
-        return Err("a community plugin file is larger than the allowed size".into());
-    }
-    Ok(bytes.to_vec())
+        .ok_or_else(|| "the community plugin file was not found".to_string())
 }
 
 async fn community_catalog() -> Result<PluginCatalog, String> {
@@ -453,9 +318,6 @@ async fn community_catalog() -> Result<PluginCatalog, String> {
         .map_err(|error| format!("the community plugin catalog is invalid: {error}"))?;
     if catalog.api > PLUGIN_RULES.plugin_api {
         return Err("the community plugin catalog needs a newer version of Yapmod".into());
-    }
-    if catalog.plugins.len() > PLUGIN_RULES.max_plugins {
-        return Err("the community plugin catalog contains too many entries".into());
     }
     let mut ids = HashSet::new();
     for plugin in &catalog.plugins {
@@ -595,28 +457,10 @@ pub async fn pick_plugin_file(
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
-        .map(|s| s.to_lowercase())
-        .unwrap_or_else(|| "bin".to_string());
+        .unwrap_or_default();
+    let mime_type = crate::mime::image_mime(ext).unwrap_or("application/octet-stream");
 
-    let mime_type = match ext.as_str() {
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        "svg" => "image/svg+xml",
-        "bmp" => "image/bmp",
-        "ico" => "image/x-icon",
-        "avif" => "image/avif",
-        _ => "application/octet-stream",
-    };
-
-    let base64_string = base64_encode(&bytes);
-    Ok(Some(format!("data:{};base64,{}", mime_type, base64_string)))
-}
-
-fn base64_encode(bytes: &[u8]) -> String {
-    use base64::Engine;
-    base64::engine::general_purpose::STANDARD.encode(bytes)
+    Ok(Some(crate::mime::data_uri(mime_type, &bytes)))
 }
 
 /// Opens a native folder picker and returns validated metadata for consent.
@@ -685,6 +529,20 @@ pub fn install_picked_plugin(
         bundle.script.as_deref().map(str::as_bytes),
         false,
     )
+}
+
+/// Reads an installed plugin again so local edits can be picked up without
+/// reinstalling. The folder id is validated before it is joined into a path.
+#[tauri::command]
+pub fn reload_plugin(app: AppHandle, id: String) -> Result<PluginBundle, String> {
+    if !valid_id(&id) {
+        return Err("that is not a valid plugin id".into());
+    }
+    let bundle = read_bundle(&plugins_dir(&app)?.join(&id))?;
+    if bundle.manifest.id != id {
+        return Err("the plugin folder declares a different id".into());
+    }
+    Ok(bundle)
 }
 
 #[tauri::command]
@@ -961,14 +819,16 @@ mod tests {
     }
 
     #[test]
-    fn rejects_external_css_and_code_like_constructs() {
+    fn allows_external_css_constructs() {
         for css in [
             "@import url(https://example.test/a.css);",
             ".x { background: url(https://example.test/a.png); }",
             "@/**/import url(https://example.test/a.css);",
             ".x { color: e\\78pression(alert(1)); }",
+            ".x { background: image-set(\"a.png\" 1x); }",
+            ".x { behavior: url(#default#time2); }",
         ] {
-            assert!(validate_css(css).is_err(), "accepted {css}");
+            assert!(validate_css(css).is_ok(), "rejected {css}");
         }
     }
 

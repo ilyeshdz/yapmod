@@ -147,6 +147,29 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     syncInstalled();
   }
 
+  async function reload(plugin: YapmodPluginInfo): Promise<void> {
+    try {
+      setMessage(`Reloading ${plugin.manifest.name}…`);
+      const success = await props.plugins.reload(plugin.manifest.id);
+
+      if (!success) {
+        setMessage(`Could not reload ${plugin.manifest.name}. Check the error on its card.`, true);
+        return;
+      }
+
+      const current = props.plugins.list().find((item) => item.manifest.id === plugin.manifest.id);
+      setMessage(
+        current?.enabled
+          ? `Reloaded ${plugin.manifest.name}.`
+          : `Reloaded ${plugin.manifest.name}. Enable it to apply the new files.`,
+      );
+    } catch (error) {
+      setMessage(`Could not reload plugin: ${String(error)}`, true);
+    }
+
+    syncInstalled();
+  }
+
   async function remove(plugin: YapmodPluginInfo): Promise<void> {
     const modalApi = getYapmod().modal;
     let confirmed = false;
@@ -309,6 +332,7 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
                 <InstalledPluginCard
                   plugin={plugin}
                   onToggle={() => void toggle(plugin)}
+                  onReload={() => void reload(plugin)}
                   onRemove={() => void remove(plugin)}
                   onSettings={() => props.onOpenSettings(plugin.manifest.id)}
                   onInspect={() => props.onOpenFiles(plugin.manifest.id)}

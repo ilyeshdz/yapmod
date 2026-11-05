@@ -1,6 +1,5 @@
 ---
 import logo from "../assets/yapmod-logo.png";
-import Banner from "../components/Banner.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -61,7 +60,6 @@ const favicon = new URL(`${base}/favicon.svg`, Astro.site);
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-    <Banner />
     <slot />
   </body>
 </html>

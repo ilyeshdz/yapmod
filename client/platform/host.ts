@@ -83,6 +83,7 @@ export type ThemeRepository = {
   pickFolder(): Promise<string | null>;
   install(source: string): Promise<ThemeBundle>;
   installCommunity(id: string): Promise<ThemeBundle>;
+  reload(id: string): Promise<ThemeBundle>;
   remove(id: string): Promise<void>;
   folder(): Promise<string>;
   openFolder(): Promise<void>;
@@ -96,6 +97,7 @@ export type PluginRepository = {
   pickFolder(): Promise<PluginManifest | null>;
   installPicked(expectedManifest: PluginManifest): Promise<PluginBundle>;
   pickFile(accept: string | null | undefined): Promise<string | null>;
+  reload(id: string): Promise<PluginBundle>;
   remove(id: string): Promise<void>;
   openFolder(): Promise<void>;
 };

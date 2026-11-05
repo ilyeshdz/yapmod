@@ -1,0 +1,129 @@
+---
+title: Create your first theme
+group: Overview
+order: 2
+area: themes
+eyebrow: Themes
+description: Build a two-file theme, install it locally, and verify light and dark modes.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+A theme is a folder with a manifest and a stylesheet. This guide creates a complete theme, installs it from the settings, and checks both modes.
+
+## 1. Create the folder
+
+```text
+midnight-blurple/
+├── manifest.json
+└── theme.css
+```
+
+The folder name does not have to match the id for a local theme, but the id becomes the installed folder name. Keep them identical to avoid duplicate-id confusion.
+
+## 2. Write the manifest
+
+```json
+{
+  "id": "midnight-blurple",
+  "name": "Midnight Blurple",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Cool blues on a deep navy base.",
+  "license": "MIT",
+  "mode": "both",
+  "tags": ["dark", "blue"],
+  "api": 1,
+  "css": "theme.css"
+}
+```
+
+`id` and `name` are the required identity fields. `api` is optional but should be `1` for the current format. `mode` is `dark`, `light` or `both`; `both` follows the app's mode setting, which can follow the system.
+
+The manifest reference covers every field and the exact file rules: [Structure and manifest](/yapmod/docs/themes/manifest).
+
+## 3. Write the stylesheet
+
+```css
+/* theme.css */
+
+:root[data-yapmod-mode="dark"] {
+  --ym-bg-rail: #101116;
+  --ym-bg-side: #16171e;
+  --ym-bg-main: #1b1c23;
+  --ym-bg-elev: #22232c;
+  --ym-bg-hover: #292a34;
+  --ym-bg-active: #33343f;
+  --ym-text: #ececf1;
+  --ym-text-muted: #9c9daa;
+  --ym-border: #ffffff14;
+  --ym-accent: #5865f2;
+  --ym-accent-soft: #5865f233;
+  --ym-on-accent: #ffffff;
+  --ym-radius: 10px;
+}
+
+:root[data-yapmod-mode="light"] {
+  --ym-bg-rail: #e3e5e8;
+  --ym-bg-side: #f2f3f5;
+  --ym-bg-main: #ffffff;
+  --ym-bg-elev: #ebedef;
+  --ym-bg-hover: #e6e7ea;
+  --ym-bg-active: #d7d9de;
+  --ym-text: #1d1f23;
+  --ym-text-muted: #5b5d66;
+  --ym-border: #00000017;
+  --ym-accent: #5865f2;
+  --ym-accent-soft: #5865f224;
+  --ym-on-accent: #ffffff;
+  --ym-radius: 10px;
+}
+```
+
+The `--ym-*` tokens are yapmod's stable names. The token layer maps the ones you set onto the app's own variables. You do not need to touch every token; a missing token keeps the value from the generated token layer.
+
+Browse the full generated list on [Styling and tokens](/yapmod/docs/themes/styling).
+
+## 4. Install it
+
+1. Open **Settings → Themes** in yapmod.
+2. Choose **Import theme** and select the theme folder.
+3. Confirm that the theme appears in the Installed gallery.
+4. Pick it. The change is immediate and remembered.
+
+Alternatively, press **Open folder**, copy the theme folder into the themes directory, and press **Refresh**. Import is safer because it copies the folder for you and rejects a duplicate id.
+
+An imported theme is copied under its id. To import an updated version of the same theme, remove the installed theme first.
+
+## 5. Test both modes
+
+If the theme declares `"mode": "both"`, use the **Mode** control in the theme settings to switch between following the system, dark and light. Confirm that:
+
+- every token you set has a sensible value in both blocks;
+- text remains readable on every surface;
+- borders remain visible;
+- the accent and `--ym-on-accent` have sufficient contrast;
+- dialogs, popovers and hover states are still legible.
+
+If the theme is dark-only or light-only, set `mode` accordingly. A one-mode theme does not need a second token block, and the app will keep that mode while the theme is active.
+
+## 6. Recover safely
+
+A theme is plain CSS and can break the layout. If the interface becomes unusable:
+
+1. Open **Settings → Themes** if it is still visible.
+2. Pick **Yapper's theme** to restore the normal look.
+3. Remove the broken theme with the × on its card.
+
+There is no JavaScript in a theme, so removing it is enough; there is no background code to stop.
+
+<Callout type="tip" title="Start with tokens, then add CSS">
+A theme built only from tokens is portable across app updates. Add component-specific rules after the token layer looks right, and keep those rules narrow.
+</Callout>
+
+## Next steps
+
+- Read [Structure and manifest](/yapmod/docs/themes/manifest) before adding metadata or a preview.
+- Learn how tokens map onto the app in [Styling and tokens](/yapmod/docs/themes/styling).
+- Understand mode resolution and stylesheet order in [Loading and modes](/yapmod/docs/themes/loading).
+- Copy a pattern from [Recipes](/yapmod/docs/themes/recipes).

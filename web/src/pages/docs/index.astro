@@ -1,18 +1,57 @@
 ---
 import { getCollection } from "astro:content";
 import DocsLayout from "../../layouts/DocsLayout.astro";
-import { docUrl, groupDocs, sortDocs } from "../../lib/docs";
+import { areaMeta, areaUrl, docUrl, groupDocs, sortDocs } from "../../lib/docs";
+import type { DocArea } from "../../lib/docs";
 
 const docs = sortDocs(await getCollection("docs"));
-const groups = groupDocs(docs);
+const groups = groupDocs(docs.filter((doc) => !doc.data.area));
+const areas = Object.keys(areaMeta) as DocArea[];
+
+const areaCounts = Object.fromEntries(
+  areas.map((area) => [area, docs.filter((doc) => doc.data.area === area).length]),
+);
+
+const icons: Record<DocArea, string> = {
+  plugins:
+    "M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5Zm0 0v6h6M8 13h8M8 17h6",
+  themes:
+    "M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h6.5A2.5 2.5 0 0 0 21 10.5 9 9 0 0 0 12 3Z",
+};
 ---
 
 <DocsLayout
   title="Documentation"
   eyebrow="Start here"
-  description="Install yapmod, use themes, fix common problems, or contribute."
+  description="Install yapmod, use themes, fix common problems, or build plugins and themes of your own."
   current="index"
 >
+  <section class="developer-areas" aria-labelledby="developer-heading">
+    <div class="section-heading">
+      <h2 id="developer-heading">Build for yapmod</h2>
+      <p>Two separate guides with their own references, examples, and publishing workflow.</p>
+    </div>
+
+    <div class="area-grid">
+      {
+        areas.map((area) => (
+          <a class={`area-card area-${area}`} href={areaUrl(area)}>
+            <span class="area-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d={icons[area]} />
+              </svg>
+            </span>
+            <span class="area-card-title">{areaMeta[area].label}</span>
+            <span class="area-card-copy">{areaMeta[area].description}</span>
+            <span class="area-card-foot">
+              {areaCounts[area]} pages <span aria-hidden="true">→</span>
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
   <div class="doc-cards">
     {
       [...groups.entries()].map(([group, entries]) => (
@@ -33,8 +72,89 @@ const groups = groupDocs(docs);
 </DocsLayout>
 
 <style>
+  .developer-areas {
+    margin: 38px 0 48px;
+    padding-bottom: 38px;
+    border-bottom: 1.5px solid var(--line);
+  }
+
+  .section-heading h2 {
+    margin: 0 0 4px;
+  }
+
+  .section-heading p {
+    margin: 0 0 20px;
+    color: var(--m);
+  }
+
+  .area-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .area-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 24px;
+    border: 1.5px solid var(--line);
+    border-radius: 18px;
+    background:
+      radial-gradient(120% 120% at 100% 0%, var(--accent-soft), transparent 55%),
+      var(--s);
+    text-decoration: none;
+    color: var(--t);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .area-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .area-icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--g);
+    color: var(--on);
+    margin-bottom: 4px;
+  }
+
+  .area-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .area-card-title {
+    font: 800 24px Sora, sans-serif;
+    letter-spacing: -0.04em;
+  }
+
+  .area-card-copy {
+    font-size: 15px;
+    color: var(--m);
+    line-height: 1.5;
+  }
+
+  .area-card-foot {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-ink);
+  }
+
   .doc-cards section {
     margin-bottom: 40px;
+  }
+
+  .doc-cards section > h2 {
+    font-size: 25px;
+    margin: 0 0 12px;
   }
 
   .cards {
@@ -71,6 +191,7 @@ const groups = groupDocs(docs);
   }
 
   @media (max-width: 700px) {
+    .area-grid,
     .cards {
       grid-template-columns: 1fr;
     }

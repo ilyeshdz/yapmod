@@ -6,8 +6,8 @@
 # will have schema files for capabilities auto-completion
 /gen/schemas
 
-# Generated injection bundles (see scripts/build-injection.mjs)
+# Generated injection bundles (see scripts/build.mjs)
 /gen/injection/
 
-# Generated TypeScript bindings (see scripts/generate-types.mjs)
+# Generated TypeScript bindings (see scripts/build.mjs)
 /bindings/

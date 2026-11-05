@@ -19,12 +19,14 @@ import {
   listCommunityPlugins,
   listInstalledPlugins,
   previewCommunityPlugin,
+  reloadPlugin,
   removePlugin,
   storeImportedPlugin,
 } from "./plugins";
 import {
   installCommunityTheme,
   listCommunityThemes,
+  reloadTheme,
   removeTheme,
   storeImportedTheme,
 } from "./themes";
@@ -167,6 +169,8 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
     installCommunityTheme(stringField(record(params), "id")),
   "themes:storeBundle": (params) =>
     storeImportedTheme(params as ThemeBundle),
+  "themes:reload": (params) =>
+    reloadTheme(stringField(record(params), "id")),
   "themes:remove": async (params) => {
     await removeTheme(stringField(record(params), "id"));
 
@@ -187,6 +191,8 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
   },
   "plugins:storeBundle": (params) =>
     storeImportedPlugin(params as PluginBundle),
+  "plugins:reload": (params) =>
+    reloadPlugin(stringField(record(params), "id")),
   "plugins:remove": async (params) => {
     await removePlugin(stringField(record(params), "id"));
 

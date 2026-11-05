@@ -6,8 +6,9 @@ import DocsSidebar from "../components/docs/DocsSidebar.astro";
 import DocsToc from "../components/docs/DocsToc.astro";
 import PrevNext from "../components/docs/PrevNext.astro";
 import Footer from "../components/Footer.astro";
-import SearchPalette from "../components/docs/SearchPalette.astro";
-import { sortDocs } from "../lib/docs";
+import SearchPalette from "../components/docs/SearchPalette.tsx";
+import DocsRouter from "../components/docs/DocsRouter.tsx";
+import { areaMeta, docUrl, docsInArea, sortDocs, type DocArea } from "../lib/docs";
 import "../styles/docs.css";
 
 interface Props {
@@ -15,32 +16,66 @@ interface Props {
   description?: string;
   eyebrow?: string;
   current?: string;
+  area?: DocArea;
   headings?: { depth: number; slug: string; text: string }[];
 }
 
-const { title, description, eyebrow, current = "", headings = [] } = Astro.props;
+const {
+  title,
+  description,
+  eyebrow,
+  current = "",
+  area,
+  headings = [],
+} = Astro.props;
 
-const docs = sortDocs(await getCollection("docs"));
+const allDocs = sortDocs(await getCollection("docs"));
+const docs = area ? docsInArea(allDocs, area) : allDocs.filter((doc) => !doc.data.area);
 const index = docs.findIndex((doc) => doc.id === current);
 
 // The overview page is not part of the collection, so it links to the first
-// document and has no previous page.
+// document and has no previous page. An area landing page works the same way.
+const isOverview = current === "index";
+const isAreaLanding = Boolean(area && current === area);
 const prev = index > 0 ? docs[index - 1] : undefined;
 const next =
-  current === "index" ? docs[0] : index !== -1 && index < docs.length - 1 ? docs[index + 1] : undefined;
+  isOverview || isAreaLanding
+    ? docs[isOverview ? 0 : 1]
+    : index !== -1 && index < docs.length - 1
+      ? docs[index + 1]
+      : undefined;
 
-const pageTitle = current === "index" ? "Documentation" : `${title} | yapmod docs`;
+const pageTitle = isOverview ? "Documentation" : `${title} | yapmod docs`;
 const pageDescription =
   description ?? `Documentation for yapmod, the open-source desktop app for Yapper.`;
+const areaInfo = area ? areaMeta[area] : null;
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
-  <DocsHeader />
+  <DocsHeader area={area} />
 
-  <div class="docs-layout">
-    <DocsSidebar docs={docs} current={current} />
+  <div class="docs-layout" class:list={{ "docs-layout-area": Boolean(area) }}>
+    <DocsSidebar docs={area ? docs : allDocs} current={current} area={area} />
 
     <main id="main" class="docs-main">
+      {
+        areaInfo && (
+          <nav class="breadcrumbs" aria-label="Breadcrumb">
+            <a href={docUrl("index")}>Docs</a>
+            <span aria-hidden="true">/</span>
+            {isAreaLanding ? (
+              <span aria-current="page">{areaInfo.label}</span>
+            ) : (
+              <>
+                <a href={docUrl(area!)}>{areaInfo.label}</a>
+                <span aria-hidden="true">/</span>
+                <span aria-current="page">{title}</span>
+              </>
+            )}
+          </nav>
+        )
+      }
+
       <article class="prose">
         {eyebrow && <p class="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
@@ -56,47 +91,6 @@ const pageDescription =
 
   <Footer />
 
-  <SearchPalette />
+  <SearchPalette client:idle />
+  <DocsRouter client:load />
 </BaseLayout>
-
-<script>
-  // Copy buttons on every code block.
-  for (const pre of document.querySelectorAll<HTMLElement>(".prose pre")) {
-    if (pre.parentElement?.classList.contains("code-block")) continue;
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "code-block";
-    pre.replaceWith(wrapper);
-    wrapper.append(pre);
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "copy-btn";
-    button.textContent = "Copy";
-    button.setAttribute("aria-label", "Copy the code to the clipboard");
-
-    button.addEventListener("click", async () => {
-      const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
-
-      try {
-        await navigator.clipboard.writeText(code);
-        button.textContent = "Copied";
-      } catch {
-        button.textContent = "Press Ctrl+C";
-      }
-
-      setTimeout(() => (button.textContent = "Copy"), 1500);
-    });
-
-    wrapper.append(button);
-  }
-
-  // The sidebar toggles on small screens.
-  const toggle = document.getElementById("docs-menu");
-  const sidebar = document.getElementById("docs-sidebar");
-
-  toggle?.addEventListener("click", () => {
-    const open = sidebar?.classList.toggle("open") ?? false;
-    toggle.setAttribute("aria-expanded", String(open));
-  });
-</script>

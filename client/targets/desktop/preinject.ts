@@ -6,6 +6,7 @@ import {
 } from "../../features/plugins/api";
 import { installBannerApi } from "../../features/banners/api";
 import { installSettingsApi } from "../../features/settings/api";
+import { installPluginUiApi } from "../../features/plugins/ui";
 import { installStore } from "../../core/store";
 import { installDefaultSettings } from "../../features/settings/defaults";
 import { installThemeApi } from "../../features/themes/api";
@@ -51,6 +52,12 @@ try {
   installModalApi();
 } catch (error) {
   console.error("[yapmod] failed to install modal API", error);
+}
+
+try {
+  installPluginUiApi();
+} catch (error) {
+  console.error("[yapmod] failed to install plugin UI API", error);
 }
 
 try {

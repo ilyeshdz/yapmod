@@ -1,0 +1,46 @@
+---
+import themeReference from "../../data/theme-reference.json";
+
+interface Props {
+  /** Show only the yapmod-owned tokens that have no app variable. */
+  filter?: "all" | "app" | "yapmod";
+}
+
+const { filter = "all" } = Astro.props;
+
+const tokens = themeReference.tokens.filter((token) =>
+  filter === "app" ? token.variable !== null : filter === "yapmod" ? token.variable === null : true,
+);
+---
+
+<div class="token-table">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Token</th>
+        <th scope="col">App variable</th>
+        <th scope="col">Dark default</th>
+        <th scope="col">Light default</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        tokens.map((token) => (
+          <tr>
+            <td>
+              <span class="token-swatch" style={`--swatch:${token.dark}`} aria-hidden="true"></span>
+              <code>--ym-{token.name}</code>
+            </td>
+            <td>{token.variable ? <code>{token.variable}</code> : <span class="muted">yapmod only</span>}</td>
+            <td><code>{token.dark}</code></td>
+            <td><code>{token.light}</code></td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+<p class="token-note">
+  Generated from <code>{themeReference.generatedFrom[1]}</code>. A theme only needs to set the tokens it
+  changes; the rest keep the defaults shown here.
+</p>

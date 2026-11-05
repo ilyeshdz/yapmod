@@ -14,6 +14,7 @@ mod config;
 mod hosts;
 mod http;
 mod injection;
+mod mime;
 mod notify;
 mod plugin;
 mod theme;
@@ -49,6 +50,7 @@ fn main() {
             theme::pick_theme_folder,
             theme::install_theme,
             theme::install_community_theme,
+            theme::reload_theme,
             theme::remove_theme,
             plugin::pick_plugin_file,
             plugin::pick_plugin_folder,
@@ -57,6 +59,7 @@ fn main() {
             plugin::list_community_plugins,
             plugin::preview_community_plugin,
             plugin::install_community_plugin,
+            plugin::reload_plugin,
             plugin::open_plugins_folder,
             plugin::remove_plugin,
             yaplay::yaplay_connect,

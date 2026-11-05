@@ -1,0 +1,184 @@
+---
+title: Complete example
+group: Guides
+order: 4
+area: plugins
+eyebrow: Example
+description: A complete activity badge package with a manifest, stylesheet and script.
+---
+
+This is a complete, local plugin. It counts live HTTP exchanges and WebSocket messages without storing their contents, shows a badge, and removes everything when disabled.
+
+## Package
+
+```text
+activity-badge/
+├── manifest.json
+├── plugin.css
+└── plugin.js
+```
+
+## `manifest.json`
+
+```json
+{
+  "id": "activity-badge",
+  "name": "Activity Badge",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Shows a small badge with live HTTP and WebSocket counters.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["network", "badge"],
+  "stylesheet": "plugin.css",
+  "script": "plugin.js",
+  "settings": [
+    {
+      "id": "show-badge",
+      "label": "Show activity badge",
+      "description": "Display a small badge with live HTTP and WebSocket counts.",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "id": "badge-color",
+      "label": "Badge colour",
+      "description": "The colour of the badge text.",
+      "type": "color",
+      "default": "#ff6b4a"
+    },
+    {
+      "id": "log-http",
+      "label": "Log HTTP exchanges",
+      "description": "Print completed HTTP exchanges to the browser console.",
+      "type": "toggle",
+      "default": false
+    },
+    {
+      "id": "log-websocket",
+      "label": "Log WebSocket messages",
+      "description": "Print WebSocket message metadata to the browser console.",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}
+```
+
+## `plugin.css`
+
+```css
+/* A namespaced fixed badge. The id is also set by the script. */
+#activity-badge {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid var(--ym-border);
+  border-radius: var(--ym-radius);
+  background: var(--ym-bg-elev);
+  color: var(--ym-text);
+  box-shadow: var(--ym-shadow);
+  font: 600 12px/1 Figtree, sans-serif;
+  pointer-events: none;
+}
+
+#activity-badge [data-dot] {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+```
+
+## `plugin.js`
+
+```js
+const BADGE_ID = "activity-badge";
+
+export default {
+  activate(api) {
+    let httpCount = 0;
+    let wsCount = 0;
+    let badge = null;
+
+    const render = () => {
+      if (!api.settings.get("show-badge")) {
+        badge?.remove();
+        badge = null;
+        return;
+      }
+
+      if (!badge) {
+        badge = document.createElement("div");
+        badge.id = BADGE_ID;
+        badge.setAttribute("role", "status");
+        badge.innerHTML = `<span data-dot></span><span data-count></span>`;
+        document.body.append(badge);
+      }
+
+      badge.style.color = api.settings.get("badge-color") ?? "";
+      badge.querySelector("[data-count]").textContent =
+        `${httpCount} HTTP · ${wsCount} WS`;
+    };
+
+    api.onCleanup(api.http.exchanges.subscribe((exchange) => {
+      httpCount += 1;
+
+      if (api.settings.get("log-http")) {
+        api.log.debug("HTTP", exchange.method, exchange.url, exchange.status);
+      }
+
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.incoming.subscribe((message) => {
+      wsCount += 1;
+
+      if (api.settings.get("log-websocket")) {
+        api.log.debug("WS in", message.url);
+      }
+
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.outgoing.subscribe((message) => {
+      wsCount += 1;
+
+      if (api.settings.get("log-websocket")) {
+        api.log.debug("WS out", message.url);
+      }
+
+      render();
+    }));
+
+    api.onCleanup(api.settings.onChange("show-badge", render));
+    api.onCleanup(api.settings.onChange("badge-color", render));
+    api.onCleanup(() => badge?.remove());
+
+    render();
+  },
+};
+```
+
+## Why it is built this way
+
+- It counts events and does not keep message bodies, headers or URLs in storage.
+- It uses `api.onCleanup()` immediately after each subscription.
+- It creates the badge only when the toggle is on.
+- It updates the colour from the setting rather than relying on CSS `attr()`.
+- It does not intercept or modify traffic; observation is enough for the feature.
+
+## Install and test
+
+1. Save the three files in a folder named `activity-badge`.
+2. In yapmod, open **Settings → Yapmod → Plugins**.
+3. Choose **Import plugin** and select the folder.
+4. Confirm the consent dialog and enable the plugin.
+5. Confirm the badge appears and counts traffic.
+6. Turn the badge off in the plugin settings and confirm the element is removed.
+7. Disable the plugin and confirm no badge returns when new traffic arrives.

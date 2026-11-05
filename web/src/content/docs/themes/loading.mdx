@@ -1,0 +1,101 @@
+---
+title: Loading and modes
+group: Guides
+order: 4
+area: themes
+eyebrow: Themes
+description: How the selected theme reaches the page, how mode is resolved, and when styles are remounted.
+---
+
+import Callout from "../../../components/docs/Callout.astro";
+
+A theme is not loaded by a request from the page. The desktop shell resolves the selected theme at startup and hands the whole bundle to the page's initialization script. That is why the correct colours are present on the first frame instead of flashing after the app renders.
+
+## Startup
+
+1. The shell reads `theme_id` from the stored settings.
+2. If the id is not empty, it reads that folder and builds a bundle. The preview is skipped at this point so startup does not base64-encode a large image.
+3. The bundle is included in the payload passed to the initialization script.
+4. The theme engine runs before the rest of the page setup and calls `render`.
+5. `render` sets the root attributes, builds the token layer, and appends one `<style>` element with the id `yapmod-theme-styles`.
+
+The stylesheet element always contains the generated token layer first, then the theme's own CSS. Both are therefore evaluated in that order, and the theme can override the defaults.
+
+## Stylesheet order
+
+The theme style element is the last stylesheet in the document:
+
+```text
+app styles
+  └── yapmod theme defaults  (@layer yapmod-defaults)
+        └── token mapping    (unlayered)
+              └── your CSS   (last in the head)
+```
+
+The defaults live in a cascade layer. A plain rule in your theme beats a layered default regardless of specificity. The mapping sits outside the layer because it has to win against the app's own stylesheet. Your CSS comes after both, so ordinary selectors can override the app.
+
+After the page finishes loading, yapmod moves the style element to the end of `<head>` again so the theme stays last even if the app appends more styles during boot.
+
+## Mode resolution
+
+The `data-yapmod-mode` attribute is not simply the app's setting. It is resolved per theme:
+
+```text
+theme.mode = "light"  →  light
+theme.mode = "dark"   →  dark
+theme.mode = "both"   →  theme_mode setting
+                          ├── "dark"   → dark
+                          ├── "light"  → light
+                          └── "system" → prefers-color-scheme
+```
+
+`theme_mode` defaults to `system`. A one-mode theme has the last word: picking a dark-only theme does not change the user's mode setting, it simply ignores it while that theme is active.
+
+Unknown `mode` values are normalised to `dark` before this step, so the branch is always one of the three known values.
+
+## The host app's theme
+
+The Yapper page has its own `data-theme` attribute and its own `prefers-color-scheme` handling. yapmod keeps them in step so components that still read the host theme look correct:
+
+- The resolved mode is copied to the root's `data-theme`.
+- The same value is written to the host's `localStorage` key, `yapper-theme`, because the host reads that key while loading.
+- A `MutationObserver` watches `data-theme`. If the host writes a different value, yapmod puts the resolved mode back.
+- When the theme is removed, yapmod restores the value the host had before the theme was applied, or deletes the key if there was none.
+
+This mirroring is why a theme should not try to own the host's theme storage itself. Let `data-yapmod-mode` drive the theme and let yapmod keep the host consistent.
+
+## Live changes
+
+The engine watches three things:
+
+| Change | Result |
+| --- | --- |
+| `theme_mode` setting changes | The theme is re-resolved and re-rendered; the page does not reload. |
+| `theme_id` setting changes | The newly selected bundle is fetched with `list_themes` and rendered, or the host state is restored if none is selected. |
+| System colour scheme changes | A `mode: "both"` theme that follows the system is re-rendered. |
+
+Re-rendering replaces the single style element. There is no accumulation of styles from previous themes, and there is no JavaScript from the theme to start or stop.
+
+## Installing, switching and removing
+
+- **Install** copies the folder into the themes directory. A theme with the same `id` must be removed first.
+- **Switch** selects another installed theme and renders it immediately. The previous theme's style element is replaced, not layered.
+- **Remove** deletes the folder. If the removed theme was selected, the selection is cleared and the host theme is restored.
+
+Installed folders are read on demand by `list_themes`; there is no index file to keep in sync. A folder with an unreadable manifest or an invalid `id` is simply not listed.
+
+## When the theme does not appear
+
+Use this order:
+
+1. Confirm the folder contains `manifest.json` and the stylesheet named by `css` (or `theme.css`).
+2. Confirm the id is valid and the theme appears in the Installed gallery.
+3. Select the theme and check that `<html>` has `data-yapmod-theme` and `data-yapmod-mode`.
+4. Look for the `yapmod-theme-styles` element in the Elements panel.
+5. Check whether a broken rule merely made the result look wrong; the theme is applied even if it renders badly.
+
+More checks are in [Debugging themes](/yapmod/docs/themes/debugging).
+
+<Callout type="note" title="Removing a theme never needs a restart">
+A theme contains only CSS. Picking another theme replaces the stylesheet, and removing one stops it from being read at the next start. There is no background process to stop.
+</Callout>

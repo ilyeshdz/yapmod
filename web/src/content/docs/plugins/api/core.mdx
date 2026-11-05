@@ -1,0 +1,126 @@
+---
+title: Core context
+group: API reference
+order: 2
+area: plugins
+eyebrow: API
+description: Identity, manifest access, logging, cleanup registration and the activation contract.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+## `api.apiVersion`
+
+**Type:** `1`
+
+The plugin format implemented by this client. Compare it when a plugin needs to support both current and future builds:
+
+```js
+if (api.apiVersion !== 1) {
+  api.log.warn("This plugin was written for plugin API 1.");
+}
+```
+
+The manifest must already declare `"api": 1`; a package for another version is refused before activation.
+
+## `api.id`
+
+**Type:** `string`
+
+The plugin id from the manifest. Use it to namespace DOM ids, CSS classes and any data you keep outside the plugin storage API.
+
+```js
+const rootId = `plugin-${api.id}`;
+```
+
+## `api.manifest`
+
+**Type:** `Readonly<PluginManifest>`
+
+A frozen copy of the manifest that was validated at install time. It is read-only, including its top-level object. Use it for package metadata, and use `api.settings` for user-configurable values.
+
+```js
+document.title = `${api.manifest.name} is active`;
+```
+
+Do not use `api.manifest` to read setting values. Settings can change after activation and are stored separately.
+
+## `api.log`
+
+Namespaced console helpers. Every message is prefixed with `[plugin:<id>]` so it can be filtered in the page console.
+
+<ApiType name="YapmodPluginLogger" signature={false} />
+
+```js
+api.log.debug("state", state);
+api.log.info("ready");
+api.log.warn("using the fallback path");
+api.log.error("request failed", error);
+```
+
+Logging does not throw. Prefer these methods over `console.log` in distributed plugins.
+
+## `api.onCleanup()`
+
+Registers a function to run when the plugin is disabled or removed.
+
+```js
+const interval = setInterval(poll, 5000);
+api.onCleanup(() => clearInterval(interval));
+```
+
+**Parameters**
+
+- `cleanup`: a function returning `void` or `Promise<void>`. A non-function throws.
+
+**Returns:** `void`.
+
+Callbacks run in reverse registration order. Registration happens immediately, and callbacks survive an `activate` that throws after the registration, which is why this is the preferred way to register resources as they are created.
+
+```js
+export default {
+  activate(api) {
+    const controller = new AbortController();
+    api.onCleanup(() => controller.abort());
+
+    window.addEventListener("keydown", onKey, { signal: controller.signal });
+
+    function onKey(event) {
+      if (event.key === "?") api.banner("Keyboard shortcut pressed");
+    }
+  },
+};
+```
+
+The cleanup returned from `activate` is also supported:
+
+```js
+export default {
+  activate(api) {
+    const node = document.createElement("div");
+    document.body.append(node);
+
+    return () => node.remove();
+  },
+};
+```
+
+When both are used, the returned cleanup runs before the callbacks registered through `api.onCleanup()`. Avoid doing the same cleanup twice.
+
+## `activate(api)`
+
+The only method yapmod calls on the default export.
+
+<ApiType name="YapmodPluginModule" signature={false} />
+
+Activation may be asynchronous. A rejected promise leaves the plugin disabled and records an activation diagnostic. Return a cleanup function only if you need a single teardown closure; otherwise use `api.onCleanup()`.
+
+<Callout type="tip" title="Activation is repeatable">
+Enable, disable and enable again in every test pass. Do not cache state in module-level variables that only work on the first activation unless you explicitly reset it during cleanup.
+</Callout>
+
+## Related types
+
+<ApiType name="PluginActivation" />
+<ApiType name="PluginCleanup" />

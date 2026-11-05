@@ -10,6 +10,7 @@ const NIGHTLY_RELEASE_API: &str =
 const NIGHTLY_RELEASE_PAGE: &str = "https://github.com/ilyeshdz/yapmod/releases/tag/nightly";
 const NIGHTLY_VERSION_ASSET: &str = "yapmod-version.json";
 const REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+const MAX_RELEASE_SIZE: usize = 512 * 1024;
 const MAX_VERSION_ASSET_SIZE: usize = 4096;
 
 /// The update information the injected UI needs.
@@ -65,21 +66,9 @@ fn parse_nightly_version(bytes: &[u8]) -> Result<String, String> {
 }
 
 async fn latest_stable_release() -> Result<(String, String), String> {
-    let response = http::client()
-        .get(RELEASES_API)
-        .timeout(REQUEST_TIMEOUT)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
+    let release: GithubRelease =
+        http::fetch_json(RELEASES_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT).await?;
 
-    if !response.status().is_success() {
-        return Err(format!(
-            "the release lookup failed with status {}",
-            response.status()
-        ));
-    }
-
-    let release: GithubRelease = response.json().await.map_err(|error| error.to_string())?;
     let version = release.tag_name.trim_start_matches('v').to_owned();
     if semver::Version::parse(&version).is_err() {
         return Err("the published stable version is invalid".to_string());
@@ -93,24 +82,13 @@ async fn latest_stable_release() -> Result<(String, String), String> {
 }
 
 async fn latest_nightly_version() -> Result<Option<String>, String> {
-    let response = http::client()
-        .get(NIGHTLY_RELEASE_API)
-        .timeout(REQUEST_TIMEOUT)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-
-    if response.status() == reqwest::StatusCode::NOT_FOUND {
+    let Some(bytes) = http::fetch(NIGHTLY_RELEASE_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT).await?
+    else {
         return Ok(None);
-    }
-    if !response.status().is_success() {
-        return Err(format!(
-            "the nightly release lookup failed with status {}",
-            response.status()
-        ));
-    }
+    };
+    let release: GithubRelease =
+        serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
 
-    let release: GithubRelease = response.json().await.map_err(|error| error.to_string())?;
     let Some(asset) = release
         .assets
         .iter()
@@ -122,28 +100,15 @@ async fn latest_nightly_version() -> Result<Option<String>, String> {
         return Ok(None);
     };
 
-    let response = http::client()
-        .get(&asset.browser_download_url)
-        .timeout(REQUEST_TIMEOUT)
-        .send()
-        .await
-        .map_err(|error| error.to_string())?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "the nightly version download failed with status {}",
-            response.status()
-        ));
-    }
-    if response
-        .content_length()
-        .is_some_and(|length| length > MAX_VERSION_ASSET_SIZE as u64)
-    {
-        return Err("the nightly version metadata is too large".to_string());
-    }
-    let bytes = response.bytes().await.map_err(|error| error.to_string())?;
-    if bytes.len() > MAX_VERSION_ASSET_SIZE {
-        return Err("the nightly version metadata is too large".to_string());
-    }
+    let Some(bytes) = http::fetch(
+        &asset.browser_download_url,
+        MAX_VERSION_ASSET_SIZE,
+        REQUEST_TIMEOUT,
+    )
+    .await?
+    else {
+        return Err("the nightly version metadata is missing".to_string());
+    };
 
     parse_nightly_version(&bytes).map(Some)
 }

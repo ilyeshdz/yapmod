@@ -1,21 +1,7 @@
 import { JSX, Show } from "solid-js";
 import type { YapmodPluginInfo, CommunityPlugin } from "../../shared/types";
 import { Icon } from "../../components/icon";
-
-const PLUGIN_ICON_PATHS = {
-  verified: [
-    "M20 6 9 17l-5-5",
-  ],
-  settings: [
-    "M4 6h16M4 12h16M4 18h16",
-    "M9 4v4M15 10v4M11 16v4",
-  ],
-  files: [
-    "M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.5Z",
-    "M14 2.5v6h6",
-    "M8 13h8M8 17h6",
-  ],
-} as const;
+import { IconButton } from "../../components/icon-button";
 
 /** Badge shown on plugins the catalog owners reviewed and verified. */
 function VerifiedBadge(): JSX.Element {
@@ -28,7 +14,7 @@ function VerifiedBadge(): JSX.Element {
         class="yapmod-plugin-verified-icon"
         size={13}
         strokeWidth={2.6}
-        paths={[PLUGIN_ICON_PATHS.verified]}
+        name="check"
       />
       Verified
     </span>
@@ -38,6 +24,7 @@ function VerifiedBadge(): JSX.Element {
 export type InstalledPluginCardProps = {
   plugin: YapmodPluginInfo;
   onToggle: () => void;
+  onReload: () => void;
   onRemove: () => void;
   onSettings: () => void;
   onInspect: () => void;
@@ -79,28 +66,48 @@ export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Elemen
       <div class="yapmod-plugin-card-foot">
         <div class="yapmod-plugin-card-actions">
           {manifest.settings.length > 0 && (
-            <button
+            <IconButton
               class="btn small ghost yapmod-plugin-icon-button"
-              type="button"
-              aria-label={`Settings for ${manifest.name}`}
+              iconClass="yapmod-plugin-action-icon"
+              icon="settings"
+              size={22}
+              strokeWidth={1.9}
+              label={`Settings for ${manifest.name}`}
               title="Plugin settings"
               onClick={props.onSettings}
-            >
-              <Icon class="yapmod-plugin-action-icon" size={22} strokeWidth={1.9} paths={[PLUGIN_ICON_PATHS.settings]} />
-            </button>
+            />
           )}
-          <button
+          <IconButton
             class="btn small ghost yapmod-plugin-icon-button"
-            type="button"
-            aria-label={`View files for ${manifest.name}`}
+            iconClass="yapmod-plugin-action-icon"
+            icon="files"
+            size={22}
+            strokeWidth={1.9}
+            label={`View files for ${manifest.name}`}
             title="View plugin files"
             onClick={props.onInspect}
-          >
-            <Icon class="yapmod-plugin-action-icon" size={22} strokeWidth={1.9} paths={[PLUGIN_ICON_PATHS.files]} />
-          </button>
-          <button class="btn small ghost" type="button" onClick={props.onRemove}>
-            Remove
-          </button>
+          />
+          <IconButton
+            class="btn small ghost yapmod-plugin-icon-button"
+            iconClass="yapmod-plugin-action-icon"
+            icon="refresh"
+            size={22}
+            strokeWidth={1.9}
+            label={`Reload ${manifest.name}`}
+            title="Reload the plugin files from disk"
+            disabled={props.plugin.busy}
+            onClick={props.onReload}
+          />
+          <IconButton
+            class="btn small ghost yapmod-plugin-icon-button"
+            iconClass="yapmod-plugin-action-icon"
+            icon="trash"
+            size={22}
+            strokeWidth={1.9}
+            label={`Remove ${manifest.name}`}
+            title="Remove plugin"
+            onClick={props.onRemove}
+          />
         </div>
         <button
           class="btn small ghost"

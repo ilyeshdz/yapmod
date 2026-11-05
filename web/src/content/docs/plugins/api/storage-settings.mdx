@@ -1,0 +1,232 @@
+---
+title: Storage and settings
+group: API reference
+order: 3
+area: plugins
+eyebrow: API
+description: Namespaced key/value storage and manifest-declared user settings.
+---
+
+import ApiType from "../../../../components/docs/ApiType.astro";
+import Callout from "../../../../components/docs/Callout.astro";
+
+## `api.storage`
+
+A small key/value store scoped to the plugin id. Keys are namespaced internally as `plugin:<id>:data_<key>`.
+
+<ApiType name="YapmodPluginStorageApi" signature={false} />
+
+### `storage.get(key, fallback?)`
+
+Reads a JSON value. Returns `fallback` when the key has no value. The fallback is not persisted.
+
+```js
+const launches = api.storage.get("launches", 0);
+const lastView = api.storage.get("last-view", null);
+```
+
+### `storage.set(key, value)`
+
+Stores a JSON-serializable value. Writes are debounced to the config store and persisted in the background.
+
+```js
+api.storage.set("launches", launches + 1);
+```
+
+Keys must be 1–24 characters, start with a letter or digit, and use only letters, digits, `-` and `_`. An invalid key throws.
+
+### `storage.keys()`
+
+Returns the keys with a value in this plugin's namespace, without the storage prefix.
+
+```js
+const keys = api.storage.keys();
+```
+
+### `storage.onChange(key, listener)`
+
+Subscribes to changes for one key. The listener receives the new value, or `undefined` when the key is removed. Returns an unsubscribe function.
+
+```js
+const stop = api.storage.onChange("launches", (value) => {
+  api.log.debug("launches changed", value);
+});
+
+api.onCleanup(stop);
+```
+
+### Storage limits
+
+Values are JSON, not a message store. Normal values are limited to 64 KiB; a string beginning with `data:` may use up to 8 MiB. Do not use storage as an unbounded request log or a copy of messages, headers or bodies.
+
+## `api.settings`
+
+Reads the settings declared in the manifest. Reading an undeclared setting throws.
+
+<ApiType name="YapmodPluginSettingsApi" signature={false} />
+
+### `settings.get(id)`
+
+Returns the current value: `boolean` for a toggle, or `string | null` for text, file and color settings.
+
+```js
+const showBadge = api.settings.get("show-badge");
+const greeting = api.settings.get("custom-greeting");
+```
+
+### `settings.all()`
+
+Returns a frozen snapshot object containing every declared setting. Useful for applying several values at once.
+
+```js
+const values = api.settings.all();
+```
+
+### `settings.onChange(id, listener)`
+
+Subscribes to a declared setting. Returns an unsubscribe function. An unknown id throws at subscription time.
+
+```js
+const stop = api.settings.onChange("show-badge", (value) => {
+  badge.hidden = !value;
+});
+
+api.onCleanup(stop);
+```
+
+The settings dialog saves values to the store. The listener fires when the stored value changes, so a plugin does not need to poll.
+
+## Settings panels
+
+A plugin can add its own panel to the sidebar of the Yapper settings dialog. Panels are grouped with the other plugin panels, and they work like yapmod's own **Yapmod**, **Themes** and **Plugins** sections: the user opens Settings from Yapper and picks the panel from the sidebar.
+
+Panels are UI, not persistent values. Keep the values a panel edits in `api.storage` or in manifest-declared settings.
+
+### `settings.registerPanel(panel)`
+
+Registers a panel and returns a function that removes it again. The panel is also removed automatically when the plugin is disabled, so registering it is usually enough:
+
+```js
+export default {
+  activate(api) {
+    api.settings.registerPanel({
+      id: "activity",
+      label: "Activity",
+      description: "Choose what the activity badge counts.",
+      icon: "puzzle",
+      items: [
+        {
+          type: "toggle",
+          id: "count-http",
+          label: "Count HTTP requests",
+          value: api.storage.get("count-http", true),
+          onChange: (value) => {
+            api.storage.set("count-http", value);
+          },
+        },
+        {
+          type: "text",
+          id: "label",
+          label: "Badge label",
+          value: api.storage.get("label", "Activity"),
+          onChange: (value) => {
+            api.storage.set("label", value);
+          },
+        },
+      ],
+    });
+  },
+};
+```
+
+<ApiType name="PluginSettingsPanel" signature={false} />
+
+The panel `id` is local to the plugin and defaults to `"main"`. yapmod namespaces it with the plugin id, so two plugins can both use a panel called `main`. Registering the same id again replaces the previous panel.
+
+`label` and `description` become the sidebar entry and the heading of the panel. `icon` accepts the same built-in icons as yapmod's own sections: `"monitor"`, `"palette"`, `"history"` and `"puzzle"`. Panels appear in the `"Plugins"` group by default; use `group` to give a plugin its own group and `order` to sort within it.
+
+### Items or custom content
+
+`items` uses the same declarative controls as yapmod's sections: `toggle`, `select`, `text`, `number`, `button` and `custom`. Update the item's `value` in `onChange` and call `settings.refreshPanel()` when a stored value changes elsewhere and the form should reflect it.
+
+For anything the declarative controls cannot express, use `render(host, context)`. The function receives an empty element inside the panel:
+
+```js
+api.settings.registerPanel({
+  label: "Activity",
+  render(host, context) {
+    const status = document.createElement("p");
+    status.textContent = `${api.storage.get("requests", 0)} requests observed`;
+    host.append(status);
+
+    const stop = api.storage.onChange("requests", (value) => {
+      status.textContent = `${value ?? 0} requests observed`;
+    });
+
+    return stop;
+  },
+});
+```
+
+The optional cleanup returned by `render` runs when the panel is destroyed. Register any listeners there, not only with `api.onCleanup()`, so they are released even if the panel is replaced while the plugin stays enabled.
+
+### `settings.openPanel(id?)`
+
+Opens the settings dialog and selects a panel registered by this plugin. The id defaults to `"main"`. It is useful for an action that should send the user straight to its configuration.
+
+```js
+api.settings.openPanel("activity");
+```
+
+### `settings.refreshPanel(id?)`
+
+Re-renders the declarative `items` of one panel, or of every panel registered by the plugin when no id is passed. Values are read again during the new render.
+
+```js
+api.settings.refreshPanel();
+```
+
+<Callout type="note" title="Panels are plugin UI">
+A panel is not a permission boundary and does not add a setting to the manifest. It is rendered by yapmod because it is registered in the settings sidebar; the plugin still runs as trusted page code.
+</Callout>
+
+## Root attributes
+
+yapmod mirrors declared settings onto `<html>`:
+
+```text
+data-yapmod-plugin-<plugin-id>-<setting-id>
+```
+
+| Setting type | Attribute behaviour |
+| --- | --- |
+| `toggle` | `"true"` when enabled, removed when disabled. |
+| `text`, `color`, `file` | The string value, removed when the value is `null`. |
+
+Attributes are applied when the plugin is enabled and updated after the settings dialog is saved. They are removed on disable.
+
+```css
+html[data-yapmod-plugin-activity-badge-show-badge="true"] .activity-badge {
+  display: inline-flex;
+}
+```
+
+Use JavaScript rather than CSS `attr()` when the value needs parsing or when you need to react in more than a simple selector.
+
+## Settings versus storage
+
+| Need | Use |
+| --- | --- |
+| A user-facing choice declared in the manifest | `api.settings` |
+| State the plugin updates on its own | `api.storage` |
+| A value that should survive a restart | Either, depending on whether the user configures it |
+| Request history or message bodies | Neither; keep only what you need, in memory, and release it on cleanup |
+
+<Callout type="note" title="Settings are declared, not created at runtime">
+A plugin cannot add a setting dynamically. Declare it in `manifest.json`; yapmod renders the form and validates the value. If you need a different kind of input, build it as plugin UI and store the result yourself.
+</Callout>
+
+## Related types
+
+<ApiType name="PluginSettingValue" />
+<ApiType name="PluginSetting" />

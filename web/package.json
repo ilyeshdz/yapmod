@@ -4,16 +4,22 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/build-community-plugins.mjs --dev && astro dev",
-    "build": "astro build && node scripts/build-community-plugins.mjs",
+    "dev": "node scripts/build.mjs dev",
+    "build": "node scripts/build.mjs build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "node scripts/build.mjs check",
+    "community": "node scripts/build.mjs community",
+    "docs:generate": "node scripts/build.mjs docs"
   },
   "dependencies": {
-    "astro": "^7.4.1"
+    "@astrojs/preact": "^6.1.1",
+    "astro": "^7.4.1",
+    "preact": "^11.1.0",
+    "preact-router": "^4.1.2"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.11",
+    "@astrojs/mdx": "^8.1.1",
     "@types/node": "^26.6.5",
     "typescript": "~6.0.3"
   }

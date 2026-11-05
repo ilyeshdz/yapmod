@@ -12,8 +12,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use ts_rs::TS;
 
-use base64::Engine as _;
-
 use crate::{config::Config, http};
 
 const MANIFEST_FILE: &str = "manifest.json";
@@ -32,9 +30,6 @@ struct ThemeRules {
     max_manifest_bytes: usize,
     max_css_bytes: usize,
     max_preview_bytes: usize,
-    max_name_length: usize,
-    max_themes: usize,
-    max_tags: usize,
     preview_extensions: Vec<String>,
 }
 
@@ -200,32 +195,10 @@ fn is_valid_community_preview_name(name: &str) -> bool {
 /// Downloads one file from the fixed static theme host with a size limit.
 async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let url = format!("{COMMUNITY_THEMES_BASE}/{path}");
-    let response = http::client()
-        .get(&url)
-        .timeout(Duration::from_secs(20))
-        .send()
+    http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
         .map_err(|error| format!("could not download the community theme: {error}"))?
-        .error_for_status()
-        .map_err(|error| format!("could not download the community theme: {error}"))?;
-
-    if response
-        .content_length()
-        .is_some_and(|length| length > max_bytes as u64)
-    {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("could not read the community theme: {error}"))?;
-
-    if bytes.len() > max_bytes {
-        return Err("a community theme file is larger than the allowed size".to_string());
-    }
-
-    Ok(bytes.to_vec())
+        .ok_or_else(|| "the community theme file was not found".to_string())
 }
 
 /// Loads the static catalog used by the community theme browser.
@@ -242,10 +215,6 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
         ));
     }
 
-    if catalog.themes.len() > THEME_RULES.max_themes {
-        return Err("the community theme catalog contains too many themes".to_string());
-    }
-
     let mut ids = HashSet::new();
     let mut themes = Vec::new();
 
@@ -260,8 +229,7 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             continue;
         }
 
-        if theme.name.trim().is_empty() || theme.name.chars().count() > THEME_RULES.max_name_length
-        {
+        if theme.name.trim().is_empty() {
             return Err(format!(
                 "community theme `{}` has an invalid name",
                 theme.id
@@ -281,7 +249,7 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             version: theme.version,
             license: theme.license,
             mode: normalize_mode(theme.mode.as_deref()),
-            tags: theme.tags.into_iter().take(THEME_RULES.max_tags).collect(),
+            tags: theme.tags,
             preview_url,
         });
     }
@@ -313,9 +281,7 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
         return Err("the downloaded theme id does not match the catalog".to_string());
     }
 
-    if manifest.name.trim().is_empty()
-        || manifest.name.chars().count() > THEME_RULES.max_name_length
-    {
+    if manifest.name.trim().is_empty() {
         return Err("the community theme has an invalid name".to_string());
     }
 
@@ -394,14 +360,7 @@ fn read_preview(folder: &Path, name: Option<&str>) -> Option<String> {
     if !THEME_RULES.preview_extensions.contains(&extension) {
         return None;
     }
-    let mime = match extension.as_str() {
-        "png" => "image/png",
-        "jpg" | "jpeg" => "image/jpeg",
-        "webp" => "image/webp",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        _ => return None,
-    };
+    let mime = crate::mime::image_mime(&extension)?;
 
     let path = folder.join(name);
     if fs::metadata(&path).ok()?.len() > THEME_RULES.max_preview_bytes as u64 {
@@ -409,10 +368,7 @@ fn read_preview(folder: &Path, name: Option<&str>) -> Option<String> {
     }
     let bytes = fs::read(path).ok()?;
 
-    Some(format!(
-        "data:{mime};base64,{}",
-        base64::engine::general_purpose::STANDARD.encode(bytes)
-    ))
+    Some(crate::mime::data_uri(mime, &bytes))
 }
 
 /// Reads a theme folder into a bundle.
@@ -552,6 +508,24 @@ pub fn active_theme(app: &AppHandle, config: &Config) -> Option<ThemeBundle> {
     // Only CSS is needed to apply the selected theme before the first frame.
     // Avoid reading and base64-encoding its preview during webview startup.
     read_bundle(&folder, false)
+}
+
+/// Reads an installed theme again so local edits can be picked up without
+/// reinstalling. The id is validated before it is joined into a path.
+#[tauri::command]
+pub fn reload_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
+    if !is_valid_id(&id) {
+        return Err("that is not a valid theme id".to_string());
+    }
+    let folder = themes_dir(&app)
+        .map_err(|error| error.to_string())?
+        .join(&id);
+    let bundle = read_bundle(&folder, true)
+        .ok_or_else(|| "the theme files could not be read".to_string())?;
+    if bundle.id != id {
+        return Err("the theme folder declares a different id".to_string());
+    }
+    Ok(bundle)
 }
 
 /// Every theme that is installed.

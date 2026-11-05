@@ -173,6 +173,9 @@ export function createWebHost(
       pickFile(accept) {
         return pickPluginFile(accept);
       },
+      reload(id) {
+        return bridge.call("plugins:reload", { id });
+      },
       remove(id) {
         return bridge.call("plugins:remove", { id });
       },
@@ -196,6 +199,9 @@ export function createWebHost(
       },
       installCommunity(id) {
         return bridge.call("themes:installCommunity", { id });
+      },
+      reload(id) {
+        return bridge.call("themes:reload", { id });
       },
       remove(id) {
         return bridge.call("themes:remove", { id });

@@ -189,6 +189,25 @@ export async function listInstalledPlugins(): Promise<PluginBundle[]> {
   );
 }
 
+/**
+ * Re-reads an installed plugin. Extension storage is the source of truth, so
+ * a reload only needs to return the stored package again.
+ */
+export async function reloadPlugin(id: string): Promise<PluginBundle> {
+  if (!isValidId(id)) {
+    throw new Error("that is not a valid plugin id");
+  }
+
+  const installed = await readStoredPlugins();
+  const plugin = installed.find((candidate) => candidate.manifest.id === id);
+
+  if (!plugin) {
+    throw new Error("that plugin is not installed");
+  }
+
+  return plugin;
+}
+
 export async function removePlugin(id: string): Promise<void> {
   if (!isValidId(id)) {
     throw new Error("that is not a valid plugin id");

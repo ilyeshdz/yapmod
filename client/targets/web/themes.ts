@@ -188,6 +188,22 @@ export async function storeImportedTheme(
   return theme;
 }
 
+/** Re-reads an installed theme from extension storage. */
+export async function reloadTheme(id: string): Promise<ThemeBundle> {
+  if (!isValidThemeId(id)) {
+    throw new Error("that is not a valid theme id");
+  }
+
+  const installed = await readStoredThemes();
+  const theme = installed.find((candidate) => candidate.id === id);
+
+  if (!theme) {
+    throw new Error("that theme is not installed");
+  }
+
+  return theme;
+}
+
 export async function removeTheme(id: string): Promise<void> {
   const installed = await readStoredThemes();
 

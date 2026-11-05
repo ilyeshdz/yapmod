@@ -22,6 +22,7 @@ export type YapmodPluginRepositoryApi = {
   pickFolder(): Promise<PluginManifest | null>;
   installPicked(expectedManifest: PluginManifest): Promise<PluginBundle>;
   pickFile(accept: string | null | undefined): Promise<string | null>;
+  reload(id: string): Promise<PluginBundle>;
   remove(id: string): Promise<void>;
   openFolder(): Promise<void>;
 };
@@ -64,6 +65,10 @@ export function createPluginRepository(
 
     pickFile(accept) {
       return port?.pickFile(accept) ?? Promise.resolve(null);
+    },
+
+    reload(id) {
+      return repository().reload(id);
     },
 
     remove(id) {

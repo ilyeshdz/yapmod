@@ -1,6 +1,6 @@
 import { createSignal, For, Show, JSX } from "solid-js";
-import { render } from "solid-js/web";
 
+import { mountView } from "../../shared/solid";
 import type {
   PluginBundle,
   PluginManifest,
@@ -241,8 +241,5 @@ export function PluginSourceViewer(
 export function mountDialogContent(
   content: () => JSX.Element,
 ): { element: HTMLElement; dispose: () => void } {
-  const host = document.createElement("div");
-  const dispose = render(content, host);
-
-  return { element: host, dispose };
+  return mountView(content);
 }

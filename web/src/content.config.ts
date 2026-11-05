@@ -8,15 +8,17 @@ import { glob } from "astro/loaders";
  * - `group`  the sidebar section the page belongs to
  * - `order`  the position inside that group
  * - `title`  the page title, also used for the document title and the nav
+ * - `area`   keeps the developer Plugins and Themes docs in separate sidebars
  */
 const docs = defineCollection({
-  loader: glob({ pattern: "**/*.md", base: "./src/content/docs" }),
+  loader: glob({ pattern: "**/*.{md,mdx}", base: "./src/content/docs" }),
   schema: z.object({
     title: z.string(),
     description: z.string().optional(),
     group: z.string().default("Guide"),
     order: z.number().default(0),
     eyebrow: z.string().optional(),
+    area: z.enum(["plugins", "themes"]).optional(),
   }),
 });
 

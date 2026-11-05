@@ -1,0 +1,174 @@
+---
+title: Building plugin UI
+group: Guides
+order: 2
+area: plugins
+eyebrow: Guide
+description: Add in-page controls, banners, notifications and dialogs that clean up correctly.
+---
+
+import Callout from "../../../../components/docs/Callout.astro";
+
+Use `api.ui` for buttons, icons, inputs, selects, toggles, fields, toolbars and badges so a plugin matches the host interface without rebuilding its controls. For anything else, build UI with the DOM, keep it namespaced with the plugin id, and remove it during cleanup.
+
+## Choose the surface
+
+| Surface | Use it for |
+| --- | --- |
+| Package CSS | Permanent styling of existing page elements. |
+| `api.ui` | Themed controls for panels, popovers and forms. |
+| `api.banner()` | One short, dismissible message below the topbar. |
+| `api.modal` | A real dialog that needs focus management and buttons. |
+| `api.settings.registerPanel()` | A persistent configuration screen in the settings sidebar. |
+| `api.notify` | An operating-system notification for something happening in the background. |
+| DOM nodes | Content that belongs inside the page, such as a badge or a panel. |
+
+## Shared components
+
+`api.ui` creates regular DOM elements that follow the active theme:
+
+```js
+const count = api.ui.badge("0", { tone: "accent" });
+
+const addButton = api.ui.button({
+  icon: "plus",
+  title: "Add an entry",
+  variant: "primary",
+  onClick: () => addEntry(),
+});
+
+const toolbar = api.ui.toolbar(
+  api.ui.icon("history", { size: 16 }),
+  count,
+  addButton,
+);
+```
+
+Use `icon` alone with a `title` for compact actions, and keep `label` for actions that need text. Wrap a control in `api.ui.field()` to get a label and description, and use `api.ui.toggle()` for an on/off row. The [UI components reference](/yapmod/docs/plugins/api/components) lists every factory and option.
+
+The components own their event listeners through the options you pass. Removing the parent node is enough to clean them up.
+
+## A namespaced control
+
+```js
+const ID = `plugin-${api.id}-panel`;
+
+function mount() {
+  document.getElementById(ID)?.remove();
+
+  const panel = document.createElement("div");
+  panel.id = ID;
+  panel.className = "activity-panel";
+  panel.append(
+    api.ui.toolbar(
+      api.ui.icon("history", { size: 16 }),
+      api.ui.badge("0", { tone: "accent" }),
+    ),
+  );
+  document.body.append(panel);
+  return panel;
+}
+```
+
+Use `api.id` in ids and classes so two plugins cannot accidentally claim the same element. Do not replace existing page nodes unless that is the point of the plugin. Avoid styling `.yapmod-ui-*` classes directly; wrap the component or use its variant options instead.
+
+## Banners
+
+```js
+api.banner("Watching network activity");
+```
+
+The banner is dismissible and keyed by the plugin. Calling `api.banner()` again updates the message instead of adding another banner. There is no close handle, tone or action parameter on the plugin helper.
+
+## Modals
+
+```js
+const modal = api.modal.show({
+  title: "Activity filter",
+  description: "Choose which requests the badge should count.",
+  content: form,
+  buttons: [
+    { label: "Cancel", variant: "secondary" },
+    {
+      label: "Apply",
+      variant: "primary",
+      onClick: () => {
+        apply(form);
+      },
+    },
+  ],
+});
+```
+
+Use `content` with a DOM node for interactive forms. Keep the modal short; it is a host dialog, not a second application window.
+
+```js
+const stop = api.settings.onChange("show-badge", () => {
+  // Do not reopen a closed modal on a setting change.
+});
+
+api.onCleanup(stop);
+```
+
+## Notifications
+
+```js
+const notification = api.notify.show({
+  title: "Activity badge",
+  body: "A new request was observed while the window was in the background.",
+  tag: "activity",
+  onClick: () => api.banner("Notification clicked"),
+});
+
+api.onCleanup(() => notification.close());
+```
+
+Notifications are a system feature. The constructor may be unavailable, and the operating system may require permission. Treat the notification as an enhancement, not the only way to see plugin output.
+
+## Runtime styles
+
+```js
+const remove = api.styles.add(`
+  #plugin-activity-badge-panel {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    padding: 8px 12px;
+    border-radius: var(--ym-radius);
+    background: var(--ym-bg-elev);
+    color: var(--ym-text);
+  }
+`);
+
+api.onCleanup(remove);
+```
+
+Runtime CSS is applied as written and shares the 512 KiB limit. If a rule never changes, put it in `plugin.css`.
+
+## Cleanup checklist
+
+- Remove every node your plugin created.
+- Remove every event listener, including listeners on `window` and `document`.
+- Close modals and notifications that outlive the trigger.
+- Remove runtime styles or make sure the returned remover is registered.
+- Revoke blob URLs you created yourself.
+- Stop timers and animation frames.
+
+```js
+export default {
+  activate(api) {
+    const panel = mount();
+    const controller = new AbortController();
+
+    document.addEventListener("keydown", onKey, { signal: controller.signal });
+
+    api.onCleanup(() => controller.abort());
+    api.onCleanup(() => panel.remove());
+  },
+};
+```
+
+<Callout type="warning" title="Avoid global CSS resets">
+A broad rule such as `* { font-family: ... }` or a reset on `body` can break the host interface and other plugins. Scope rules to the elements you own, or use tokens that the theme system understands.
+</Callout>

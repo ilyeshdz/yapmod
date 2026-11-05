@@ -30,4 +30,4 @@ The Yapmod settings section also shows the installed desktop and client versions
 
 ## Themes
 
-Manage installed themes in **Settings → Themes**. See [Themes](themes) for installing and removing them, or [Creating a theme](creating-themes) for the theme format.
+Manage installed themes in **Settings → Themes**. See [Using themes](/yapmod/docs/using-themes) for installing and removing them, or the [Themes developer documentation](/yapmod/docs/themes) for the theme format.

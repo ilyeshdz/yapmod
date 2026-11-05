@@ -1,0 +1,129 @@
+---
+title: Working with network traffic
+group: Guides
+order: 3
+area: plugins
+eyebrow: Guide
+description: Practical patterns for observing and safely modifying fetch and WebSocket traffic.
+---
+
+import Callout from "../../../../components/docs/Callout.astro";
+
+Network access is powerful and global. Start by observing. Add an interceptor only when the plugin genuinely needs to change traffic, and remove every subscription when the plugin is disabled.
+
+## Count without storing
+
+```js
+export default {
+  activate(api) {
+    let http = 0;
+    let ws = 0;
+
+    const render = () => {
+      api.log.debug("activity", { http, ws });
+    };
+
+    api.onCleanup(api.http.exchanges.subscribe(() => {
+      http += 1;
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.incoming.subscribe(() => {
+      ws += 1;
+      render();
+    }));
+
+    api.onCleanup(api.webSocket.outgoing.subscribe(() => {
+      ws += 1;
+      render();
+    }));
+  },
+};
+```
+
+The counters live in memory. They are lost when the plugin is disabled or the app closes, which is usually the right default for an observer.
+
+## Inspect one endpoint
+
+```js
+const stop = api.http.exchanges.subscribe((exchange) => {
+  if (!exchange.url.includes("/rest/v1/messages")) return;
+  if (exchange.status !== 200) return;
+
+  api.log.debug("messages", exchange.url, exchange.duration);
+});
+
+api.onCleanup(stop);
+```
+
+Do not log headers, tokens or message bodies in a distributed plugin. If you need to inspect them while developing, remove the logging before publishing.
+
+## Add a request header
+
+```js
+const stop = api.http.outgoing.use((request) => {
+  if (!request.url.includes("/rest/v1/messages")) return;
+
+  return {
+    headers: [...request.requestHeaders, ["x-activity-badge", "on"]],
+  };
+});
+
+api.onCleanup(stop);
+```
+
+`headers` replaces the full header set. Starting from `request.requestHeaders` preserves existing headers. Interceptors are asynchronous, so a slower interceptor delays the request.
+
+## Rewrite a response
+
+```js
+const stop = api.http.responses.use(async (exchange) => {
+  if (!exchange.url.includes("/rest/v1/messages")) return;
+  if (exchange.status !== 200 || typeof exchange.responseBody !== "string") return;
+
+  const messages = JSON.parse(exchange.responseBody);
+  messages.push({ id: "local-example", content: "Added locally" });
+
+  return new Response(JSON.stringify(messages), {
+    status: exchange.status,
+    headers: Object.fromEntries(exchange.responseHeaders),
+  });
+});
+
+api.onCleanup(stop);
+```
+
+Be conservative. A response rewrite can break the app if the caller expects the original shape, headers or content type.
+
+## Redact incoming WebSocket data
+
+```js
+const stop = api.webSocket.incoming.use((message) => {
+  if (typeof message.data !== "string") return;
+  if (!message.data.includes("private-value")) return;
+
+  return message.data.replaceAll("private-value", "[redacted]");
+});
+
+api.onCleanup(stop);
+```
+
+WebSocket interception is synchronous. Do not perform async work inside the interceptor; return the replacement immediately or return `undefined`.
+
+## Fail safely
+
+Interceptors are all-or-nothing per chain. If one throws or returns an invalid value, the original traffic is used. That protects the app from a partial modification, but it also means a thrown error can silently cancel your intended change. Log failures and test both the success and failure path.
+
+## Test the boundaries
+
+Before shipping:
+
+- Disable the plugin and confirm traffic returns to normal.
+- Test with no network, a slow response, and a `text/event-stream` response.
+- Test a response with a binary body.
+- Confirm the plugin does not capture or retain data after disable.
+- Confirm the plugin only touches the endpoints it documents.
+
+<Callout type="warning" title="Interceptors affect every matching call">
+An interceptor is registered for the whole page, not just your plugin's UI. A broad URL match can rewrite unrelated application traffic. Match narrowly and always return `undefined` for requests you do not intend to change.
+</Callout>

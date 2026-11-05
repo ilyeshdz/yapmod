@@ -184,9 +184,23 @@ function mountNav(): void {
     group.label,
     ...group.entries.map((entry) => entry.button),
   ]);
-  let reference: Element | null = nav.querySelector<HTMLElement>(
-    ":scope > .plus-nav",
+
+  // Pin the "Yapin' Plus" button right after the Shards button so the Yapmod
+  // group renders after it instead of at the very end of the nav.
+  const plusNav = nav.querySelector<HTMLElement>(":scope > .plus-nav");
+  const shardsButton = nav.querySelector<HTMLElement>(
+    ":scope > button:has(.shard-icon)",
   );
+
+  if (plusNav && shardsButton) {
+    const anchor = shardsButton.nextElementSibling;
+
+    if (plusNav !== anchor) {
+      nav.insertBefore(plusNav, anchor);
+    }
+  }
+
+  let reference: Element | null = plusNav?.nextElementSibling ?? null;
 
   // Reinsert only nodes React removed or moved. Avoiding remove/insert churn
   // keeps the observer quiet during normal section registration.
