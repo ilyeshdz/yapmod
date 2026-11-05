@@ -300,11 +300,23 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build and package the web extension
-        run: pnpm client:package:web
+        env:
+          YAPMOD_UPDATE_CHANNEL: ${{ inputs.nightly && 'nightly' || 'stable' }}
+          YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+        run: |
+          pnpm client:package:web
+          pnpm client:package:web:loader
 
       - name: Upload the web extension
         uses: actions/upload-artifact@v4
         with:
           name: yapmod-web-extension
-          path: dist/yapmod-web-*.zip
+          path: dist/yapmod-web-[0-9]*.zip
+          if-no-files-found: error
+
+      - name: Upload the web loader
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-web-loader
+          path: dist/yapmod-web-loader-*.zip
           if-no-files-found: error

@@ -80,6 +80,9 @@ jobs:
               "yapmod-web-extension")
                 new_name="yapmod_web_${WEB_VERSION}.zip"
                 ;;
+              "yapmod-web-loader")
+                new_name="yapmod_web_loader_${WEB_VERSION}.zip"
+                ;;
               *)
                 # Skip unknown artifacts
                 continue
