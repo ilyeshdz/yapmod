@@ -111,8 +111,3 @@ channel: UpdateChannel,
  * Where the user can download the update.
  */
 release_url: string, };
-
-/**
- * The current state of a Yaplay WebSocket connection.
- */
-export type YaplayConnectionState = "disconnected" | "connecting" | "connected" | "error";

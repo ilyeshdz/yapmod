@@ -44,12 +44,7 @@
     "allow-install-community-plugin",
     "allow-reload-plugin",
     "allow-open-plugins-folder",
-    "allow-remove-plugin",
-    "allow-yaplay-connect",
-    "allow-yaplay-disconnect",
-    "allow-yaplay-state",
-    "allow-yaplay-send",
-    "allow-yaplay-set-share-notifications"
+    "allow-remove-plugin"
   ],
   "remote": {
     "urls": ["https://yapin.gg", "https://www.yapin.gg"]
