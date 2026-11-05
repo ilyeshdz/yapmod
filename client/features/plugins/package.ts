@@ -8,6 +8,53 @@ import type { PluginBundle, PluginManifest } from "../../shared/types";
  * before it writes it to its own storage.
  */
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * Adds the defaults the Rust side applies when it reads a manifest, then
+ * validates the result.
+ *
+ * The object is rebuilt field by field because catalog entries also carry a
+ * `verified` flag that is not part of the manifest. Keeping it would make a
+ * verified catalog entry differ from the downloaded manifest.
+ */
+export function normalizePluginManifest(value: unknown): PluginManifest {
+  if (!isRecord(value)) {
+    throw new Error("The plugin manifest must be an object.");
+  }
+
+  const version = optionalString(value.version);
+  const author = optionalString(value.author);
+  const description = optionalString(value.description);
+  const license = optionalString(value.license);
+  const script = optionalString(value.script);
+  const manifest: PluginManifest = {
+    id: value.id as string,
+    name: value.name as string,
+    ...(version === undefined ? {} : { version }),
+    ...(author === undefined ? {} : { author }),
+    ...(description === undefined ? {} : { description }),
+    ...(license === undefined ? {} : { license }),
+    api: value.api as 1,
+    tags: Array.isArray(value.tags) ? (value.tags as string[]) : [],
+    settings: Array.isArray(value.settings)
+      ? (value.settings as PluginManifest["settings"])
+      : [],
+    stylesheet: optionalString(value.stylesheet) ?? "plugin.css",
+    ...(script === undefined ? {} : { script }),
+  };
+
+  validatePluginManifest(manifest);
+
+  return manifest;
+}
+
 export function validatePluginManifest(manifest: PluginManifest): void {
   if (!manifest || typeof manifest !== "object") {
     throw new Error("The plugin manifest must be an object.");

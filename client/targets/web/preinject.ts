@@ -12,17 +12,37 @@ import { installSettingsApi } from "../../features/settings/api";
 import { installThemeApi } from "../../features/themes/api";
 import { installThemeSettings } from "../../features/themes/settings";
 import { installExternalLinks } from "../../core/links";
+import { installHTTPInspector } from "../../core/http";
 import { installNotificationApi } from "../../core/notify";
 import { getYapmod } from "../../core/scope";
 import { installStore } from "../../core/store";
+import { installWebSocketInspector } from "../../core/websocket";
 import { installHost } from "../../platform/host";
 import { createWebHost } from "./host";
+import { createBridgeClient, type WebBootstrap } from "./rpc";
 import minimumCSS from "../../styles/minimum.css";
 
 const STYLE_ELEMENT_ID = "yapmod-injected-styles";
 
+// The client runs in the page realm. Patch the page's network constructors
+// synchronously, before any page script can open a connection.
+const bridge = createBridgeClient();
+
+try {
+  installWebSocketInspector();
+} catch (error) {
+  console.error("[yapmod] failed to install WebSocket inspector", error);
+}
+
+try {
+  installHTTPInspector();
+} catch (error) {
+  console.error("[yapmod] failed to install HTTP inspector", error);
+}
+
 async function start(): Promise<void> {
-  const { host, settings, theme } = await createWebHost();
+  const bootstrap = await bridge.call<WebBootstrap>("bootstrap");
+  const { host, settings, theme } = createWebHost(bridge, bootstrap);
 
   installHost(host);
 

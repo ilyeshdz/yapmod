@@ -27,6 +27,7 @@ const targets = {
   },
   web: {
     entryPoints: [
+      join(sourceDir, "targets", "web", "bridge.ts"),
       join(sourceDir, "targets", "web", "preinject.ts"),
       join(sourceDir, "targets", "web", "background.ts"),
     ],

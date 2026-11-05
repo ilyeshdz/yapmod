@@ -5,29 +5,36 @@ import { createManifest } from "../client/targets/web/manifest.mjs";
 
 test("the web manifest only runs on the exact Yapper origins", () => {
   const manifest = createManifest("1.2.3");
-  const script = manifest.content_scripts[0];
 
-  assert.deepEqual(script.matches, [
-    "https://yapin.gg/*",
-    "https://www.yapin.gg/*",
-  ]);
-  assert.equal(script.run_at, "document_start");
-  assert.equal(script.world, "ISOLATED");
-  assert.equal(script.all_frames, false);
+  for (const script of manifest.content_scripts) {
+    assert.deepEqual(script.matches, [
+      "https://yapin.gg/*",
+      "https://www.yapin.gg/*",
+    ]);
+    assert.equal(script.run_at, "document_start");
+    assert.equal(script.all_frames, false);
+  }
+
   assert.equal(manifest.host_permissions[0], "https://yapin.gg/*");
   assert.equal(manifest.host_permissions[1], "https://www.yapin.gg/*");
 });
 
-test("the web manifest carries the extension version and background worker", () => {
+test("the web manifest runs the client in the page and the bridge in isolation", () => {
   const manifest = createManifest("1.2.3");
 
   assert.equal(manifest.manifest_version, 3);
   assert.equal(manifest.version, "1.2.3");
   assert.equal(manifest.background.service_worker, "background.js");
-  assert.deepEqual(manifest.content_scripts[0].js, ["preinject.js"]);
+  assert.deepEqual(
+    manifest.content_scripts.map((script) => [script.world, script.js]),
+    [
+      ["ISOLATED", ["bridge.js"]],
+      ["MAIN", ["preinject.js"]],
+    ],
+  );
 });
 
-test("the web manifest keeps plugins inside the extension world", () => {
+test("the web manifest keeps privileged APIs inside the extension world", () => {
   const manifest = createManifest("1.2.3");
 
   assert.deepEqual(manifest.permissions, ["storage", "unlimitedStorage"]);

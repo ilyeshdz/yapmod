@@ -7,7 +7,7 @@ plus a distribution format; it is not a runtime plugin system.
 client/
   platform/host.ts      the ports feature code depends on
   targets/desktop/      Tauri composition roots and host adapter
-  targets/web/          isolated-world extension entry, adapter and manifest
+  targets/web/          page-realm extension entry, isolated bridge and manifest
   core/, features/      shared client code
 ```
 
@@ -30,22 +30,27 @@ client/
 ## Web target
 
 `pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`. It runs
-at `document_start` in an isolated world on the two Yapper origins.
+at `document_start` on the two Yapper origins:
+
+- `preinject.js` runs in `MAIN`, so the client, plugins and network inspectors
+  share the page's JavaScript realm.
+- `bridge.js` runs in `ISOLATED` and owns extension storage and catalog fetches.
+- `background.js` proxies catalog requests with extension host permissions.
 
 | Capability | Desktop | Web |
 | --- | --- | --- |
-| Settings | Tauri config | extension storage |
+| Settings | Tauri config | extension storage via the bridge |
 | Themes | filesystem folders | community catalog in extension storage |
 | Notifications | system notification center | Web Notifications |
 | Window controls | native | none |
 | Unread badge | dock/taskbar | none |
-| Plugins | page realm, trusted JS | extension world, trusted JS |
+| Plugins | page realm, trusted JS | page realm, trusted JS |
 | Plugin packages | filesystem folders | community catalog and folder imports in extension storage |
+| WebSocket / HTTP inspectors | page realm | page realm |
 | Plugin `api.invoke` | native commands | unavailable |
 | Updates | app and signed client bundle | browser extension update |
 
-Plugins in the Web target run in the extension's isolated world. They can
-change the page DOM, use the shared plugin API, and store settings in extension
-storage, but they cannot patch page JavaScript objects, inspect the page's
-network traffic, or call host commands. Page-realm hooks and remote client
-updates stay desktop-only.
+The Web target mirrors the desktop injection model: client and plugin code run
+in the page realm, while a narrow isolated bridge supplies the extension-only
+capabilities. Plugins still cannot call native host commands or receive signed
+remote client updates.

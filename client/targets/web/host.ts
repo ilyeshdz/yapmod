@@ -4,23 +4,8 @@ import type {
   NotificationPermission,
   YapmodHost,
 } from "../../platform/host";
-import { extensionVersion } from "./extension";
-import { readStoredSettings, saveStoredSettings, readStoredThemes } from "./storage";
-import {
-  installCommunityPlugin,
-  installPickedPlugin,
-  listCommunityPlugins,
-  listInstalledPlugins,
-  pickLocalPlugin,
-  pickPluginFile,
-  previewCommunityPlugin,
-  removePlugin,
-} from "./plugins";
-import {
-  installCommunityTheme,
-  listCommunityThemes,
-  removeTheme,
-} from "./themes";
+import { pickPluginFile, pickLocalPlugin, installPickedPlugin } from "./plugin-import";
+import type { BridgeClient, WebBootstrap } from "./rpc";
 
 const INTERNAL_HOST = "yapin.gg";
 
@@ -28,6 +13,7 @@ export type WebHost = {
   host: YapmodHost;
   settings: Record<string, unknown>;
   theme: ThemeBundle | null;
+  version: string;
 };
 
 function notificationPermission(): NotificationPermission {
@@ -41,24 +27,19 @@ function notificationPermission(): NotificationPermission {
 /**
  * The host services of the browser extension.
  *
- * The extension runs in an isolated world: it can change the page DOM, but it
- * cannot replace the page's JavaScript objects. Plugin scripts therefore run
- * in the extension world, without page-realm hooks or host commands. Window
- * controls, badges and remote client updates are still desktop-only.
+ * The client runs in the page realm, so plugins and inspectors see the same
+ * JavaScript objects as the desktop client. Storage and catalog access are the
+ * only privileged operations; they go through the isolated bridge.
  */
-export async function createWebHost(): Promise<WebHost> {
-  const settings = await readStoredSettings();
-  const version = extensionVersion();
+export function createWebHost(
+  bridge: BridgeClient,
+  bootstrap: WebBootstrap,
+): WebHost {
   const clickListeners = new Set<(tag: string) => void>();
-
-  const themes = await readStoredThemes();
-  const selectedId =
-    typeof settings.theme_id === "string" ? settings.theme_id : "";
-  const theme = themes.find((candidate) => candidate.id === selectedId) ?? null;
 
   const host: YapmodHost = {
     id: "web",
-    version,
+    version: bootstrap.version,
     platform: "web",
     internalHost: INTERNAL_HOST,
     capabilities: {
@@ -68,12 +49,12 @@ export async function createWebHost(): Promise<WebHost> {
       packages: "extension-storage",
       updates: "extension",
       releaseNotes: false,
-      pageRealm: false,
+      pageRealm: true,
     },
 
     settings: {
-      save(values) {
-        return saveStoredSettings(values);
+      async save(values) {
+        await bridge.call("settings:save", values);
       },
     },
 
@@ -148,28 +129,28 @@ export async function createWebHost(): Promise<WebHost> {
 
     plugins: {
       list() {
-        return listInstalledPlugins();
+        return bridge.call("plugins:list");
       },
       listCommunity() {
-        return listCommunityPlugins();
+        return bridge.call("plugins:listCommunity");
       },
       previewCommunity(id) {
-        return previewCommunityPlugin(id);
+        return bridge.call("plugins:previewCommunity", { id });
       },
       installCommunity(id, expectedManifest) {
-        return installCommunityPlugin(id, expectedManifest);
+        return bridge.call("plugins:installCommunity", { id, expectedManifest });
       },
       pickFolder() {
         return pickLocalPlugin();
       },
       installPicked(expectedManifest) {
-        return installPickedPlugin(expectedManifest);
+        return installPickedPlugin(bridge, expectedManifest);
       },
       pickFile(accept) {
         return pickPluginFile(accept);
       },
       remove(id) {
-        return removePlugin(id);
+        return bridge.call("plugins:remove", { id });
       },
       async openFolder() {
         // Extension storage has no folder to open.
@@ -178,10 +159,10 @@ export async function createWebHost(): Promise<WebHost> {
 
     themes: {
       list() {
-        return readStoredThemes();
+        return bridge.call("themes:list");
       },
       listCommunity() {
-        return listCommunityThemes();
+        return bridge.call("themes:listCommunity");
       },
       async pickFolder() {
         return null;
@@ -192,10 +173,10 @@ export async function createWebHost(): Promise<WebHost> {
         );
       },
       installCommunity(id) {
-        return installCommunityTheme(id);
+        return bridge.call("themes:installCommunity", { id });
       },
       remove(id) {
-        return removeTheme(id);
+        return bridge.call("themes:remove", { id });
       },
       async folder() {
         throw new Error("The browser extension has no theme folder.");
@@ -206,5 +187,10 @@ export async function createWebHost(): Promise<WebHost> {
     },
   };
 
-  return { host, settings, theme };
+  return {
+    host,
+    settings: bootstrap.settings,
+    theme: bootstrap.theme,
+    version: bootstrap.version,
+  };
 }

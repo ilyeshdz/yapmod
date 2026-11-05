@@ -13,15 +13,25 @@ const manifest = JSON.parse(
   await readFile(join(outdir, "manifest.json"), "utf8"),
 );
 const preinject = await readFile(join(outdir, "preinject.js"), "utf8");
+const bridge = await readFile(join(outdir, "bridge.js"), "utf8");
 const background = await readFile(join(outdir, "background.js"), "utf8");
 
 assert.equal(manifest.version, version, "the manifest version must match client/version.json");
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.content_scripts[0].world, "ISOLATED");
-assert.equal(manifest.content_scripts[0].all_frames, false);
+assert.deepEqual(
+  manifest.content_scripts.map((script) => [script.world, script.js]),
+  [
+    ["ISOLATED", ["bridge.js"]],
+    ["MAIN", ["preinject.js"]],
+  ],
+  "the privileged bridge must be isolated and the client must run in the page realm",
+);
+for (const script of manifest.content_scripts) {
+  assert.equal(script.all_frames, false);
+}
 assert.equal(manifest.background.service_worker, "background.js");
 
-// The web bundle must not reach the Tauri bridge that only the desktop target
+// The web bundles must not reach the Tauri bridge that only the desktop target
 // provides.
 const forbidden = [
   "__TAURI_INTERNALS__",
@@ -33,12 +43,17 @@ const forbidden = [
   "restart_app",
 ];
 
-for (const marker of forbidden) {
-  assert.equal(
-    preinject.includes(marker),
-    false,
-    `the web bundle must not contain ${marker}`,
-  );
+for (const [name, source] of [
+  ["preinject", preinject],
+  ["bridge", bridge],
+]) {
+  for (const marker of forbidden) {
+    assert.equal(
+      source.includes(marker),
+      false,
+      `the ${name} bundle must not contain ${marker}`,
+    );
+  }
 }
 
 assert.equal(
@@ -47,9 +62,14 @@ assert.equal(
   "the background worker must expose the catalog fetch bridge",
 );
 assert.equal(
-  preinject.includes("yapmod:fetch-catalog-text"),
+  bridge.includes("yapmod:fetch-catalog-text"),
   true,
-  "the content script must use the catalog fetch bridge",
+  "the isolated bridge must use the catalog fetch bridge",
+);
+assert.equal(
+  preinject.includes("yapmod:fetch-catalog-text"),
+  false,
+  "the page realm must not fetch catalogs directly",
 );
 assert.equal(
   background.includes("community-plugins"),
@@ -57,14 +77,19 @@ assert.equal(
   "the background worker must allow the plugin catalog",
 );
 assert.equal(
-  preinject.includes("community-plugins"),
+  bridge.includes("community-plugins"),
   true,
-  "the content script must know the plugin catalog",
+  "the isolated bridge must know the plugin catalog",
 );
 assert.equal(
-  preinject.includes("yapmod:plugins"),
+  bridge.includes("yapmod:plugins"),
   true,
-  "the content script must store plugin packages",
+  "the isolated bridge must store plugin packages",
+);
+assert.equal(
+  preinject.includes("yapmod:bridge-connect"),
+  true,
+  "the page realm must connect to the isolated bridge",
 );
 
 console.log("web bundle checks passed");

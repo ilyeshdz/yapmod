@@ -27,9 +27,16 @@ export function createManifest(version) {
     content_scripts: [
       {
         matches,
-        js: ["preinject.js"],
+        js: ["bridge.js"],
         run_at: "document_start",
         world: "ISOLATED",
+        all_frames: false,
+      },
+      {
+        matches,
+        js: ["preinject.js"],
+        run_at: "document_start",
+        world: "MAIN",
         all_frames: false,
       },
     ],
