@@ -39,8 +39,13 @@ at `document_start` in an isolated world on the two Yapper origins.
 | Notifications | system notification center | Web Notifications |
 | Window controls | native | none |
 | Unread badge | dock/taskbar | none |
-| Plugins | page realm, trusted JS | not installed |
+| Plugins | page realm, trusted JS | extension world, trusted JS |
+| Plugin packages | filesystem folders | community catalog and folder imports in extension storage |
+| Plugin `api.invoke` | native commands | unavailable |
 | Updates | app and signed client bundle | browser extension update |
 
-Plugins, page-realm hooks and remote client updates stay out of scope for the
-Web target until their execution and policy questions are settled.
+Plugins in the Web target run in the extension's isolated world. They can
+change the page DOM, use the shared plugin API, and store settings in extension
+storage, but they cannot patch page JavaScript objects, inspect the page's
+network traffic, or call host commands. Page-realm hooks and remote client
+updates stay desktop-only.

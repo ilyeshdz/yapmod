@@ -8,7 +8,7 @@ import { extensionRuntime } from "./extension";
 
 async function fetchText(url: string, maxBytes: number): Promise<string> {
   if (!isCatalogUrl(url)) {
-    throw new Error("the background worker only reads the theme catalog");
+    throw new Error("the background worker only reads the community catalogs");
   }
 
   const limit = Math.min(maxBytes, MAX_CATALOG_BYTES);

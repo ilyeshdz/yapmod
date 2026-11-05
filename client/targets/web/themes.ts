@@ -5,16 +5,14 @@ import type {
   ThemeMode,
 } from "../../features/themes/types";
 import {
-  CATALOG_BASE,
+  THEME_CATALOG_BASE,
   DEFAULT_CSS_FILE,
-  FETCH_MESSAGE,
   MAX_CATALOG_BYTES,
   MAX_CSS_BYTES,
   MAX_MANIFEST_BYTES,
   THEME_API,
-  type FetchResponse,
 } from "./catalog";
-import { sendRuntimeMessage } from "./extension";
+import { fetchCatalogJson, fetchCatalogText } from "./fetch";
 import { readStoredThemes, writeStoredThemes } from "./storage";
 
 /**
@@ -66,64 +64,6 @@ function normalizeMode(mode: string | null | undefined): ThemeMode {
   return "both";
 }
 
-async function directFetchText(
-  url: string,
-  maxBytes: number,
-): Promise<string> {
-  const response = await fetch(url, { credentials: "omit" });
-
-  if (!response.ok) {
-    throw new Error(`the request failed with status ${response.status}`);
-  }
-
-  const length = Number(response.headers.get("content-length") ?? "0");
-
-  if (length > maxBytes) {
-    throw new Error("the downloaded file is larger than the allowed size");
-  }
-
-  const text = await response.text();
-
-  if (new TextEncoder().encode(text).byteLength > maxBytes) {
-    throw new Error("the downloaded file is larger than the allowed size");
-  }
-
-  return text;
-}
-
-/**
- * Catalog requests go through the background worker, which has the extension's
- * host permissions. A direct request is kept for running the bundle outside an
- * extension during development.
- */
-async function fetchText(url: string, maxBytes: number): Promise<string> {
-  let proxied: FetchResponse | null = null;
-
-  try {
-    proxied = await sendRuntimeMessage<FetchResponse>({
-      type: FETCH_MESSAGE,
-      url,
-      maxBytes,
-    });
-  } catch {
-    proxied = null;
-  }
-
-  if (proxied) {
-    if (!proxied.ok) {
-      throw new Error(proxied.error);
-    }
-
-    return proxied.text;
-  }
-
-  return directFetchText(url, maxBytes);
-}
-
-async function fetchJson<T>(url: string, maxBytes: number): Promise<T> {
-  return JSON.parse(await fetchText(url, maxBytes)) as T;
-}
-
 function previewUrl(entry: CatalogEntry): string | null {
   const preview = entry.preview;
 
@@ -131,13 +71,13 @@ function previewUrl(entry: CatalogEntry): string | null {
     return null;
   }
 
-  return `${CATALOG_BASE}/themes/${entry.id}/${preview}`;
+  return `${THEME_CATALOG_BASE}/themes/${entry.id}/${preview}`;
 }
 
 /** The community catalog, filtered to themes this client understands. */
 export async function listCommunityThemes(): Promise<CommunityTheme[]> {
-  const catalog = await fetchJson<Catalog>(
-    `${CATALOG_BASE}/index.json`,
+  const catalog = await fetchCatalogJson<Catalog>(
+    `${THEME_CATALOG_BASE}/index.json`,
     MAX_CATALOG_BYTES,
   );
 
@@ -180,8 +120,8 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
     throw new Error("that is not a valid theme id");
   }
 
-  const manifest = await fetchJson<ThemeManifest>(
-    `${CATALOG_BASE}/themes/${id}/manifest.json`,
+  const manifest = await fetchCatalogJson<ThemeManifest>(
+    `${THEME_CATALOG_BASE}/themes/${id}/manifest.json`,
     MAX_MANIFEST_BYTES,
   );
 
@@ -205,8 +145,8 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
     throw new Error("the theme manifest points at an unusable stylesheet");
   }
 
-  const css = await fetchText(
-    `${CATALOG_BASE}/themes/${id}/${cssFile}`,
+  const css = await fetchCatalogText(
+    `${THEME_CATALOG_BASE}/themes/${id}/${cssFile}`,
     MAX_CSS_BYTES,
   );
 

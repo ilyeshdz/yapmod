@@ -1,17 +1,25 @@
 /**
- * The static community theme catalog.
+ * The static community catalogs.
  *
  * Both the content script and the background worker use these limits. The
- * worker only fetches URLs below the catalog base, so the page cannot turn it
+ * worker only fetches URLs below a catalog base, so the page cannot turn it
  * into a general-purpose proxy.
  */
-export const CATALOG_BASE =
+export const THEME_CATALOG_BASE =
   "https://ilyeshdz.github.io/yapmod/community-themes";
+export const PLUGIN_CATALOG_BASE =
+  "https://ilyeshdz.github.io/yapmod/community-plugins";
+const CATALOG_BASES = [THEME_CATALOG_BASE, PLUGIN_CATALOG_BASE];
+
 export const THEME_API = 1;
+export const PLUGIN_API = 1;
 export const MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 export const MAX_MANIFEST_BYTES = 64 * 1024;
 export const MAX_CSS_BYTES = 1024 * 1024;
+export const MAX_PLUGIN_CSS_BYTES = 512 * 1024;
+export const MAX_PLUGIN_SCRIPT_BYTES = 512 * 1024;
 export const DEFAULT_CSS_FILE = "theme.css";
+export const PLUGIN_CSS_FILE = "plugin.css";
 
 export const FETCH_MESSAGE = "yapmod:fetch-catalog-text";
 
@@ -43,12 +51,17 @@ export function isFetchMessage(value: unknown): value is FetchMessage {
 export function isCatalogUrl(value: string): boolean {
   try {
     const url = new URL(value);
+    const origin = url.origin;
 
-    return (
-      url.protocol === "https:" &&
-      url.origin === new URL(CATALOG_BASE).origin &&
-      url.href.startsWith(`${CATALOG_BASE}/`)
-    );
+    return CATALOG_BASES.some((base) => {
+      const baseUrl = new URL(base);
+
+      return (
+        url.protocol === "https:" &&
+        origin === baseUrl.origin &&
+        url.href.startsWith(`${base}/`)
+      );
+    });
   } catch {
     return false;
   }

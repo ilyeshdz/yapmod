@@ -14,6 +14,7 @@ import type {
   YapmodPluginsApi,
 } from "../../shared/types";
 import { getYapmod } from "../../core/scope";
+import { getHost } from "../../platform/host";
 import {
   CommunityPluginCard,
   InstalledPluginCard,
@@ -34,6 +35,7 @@ export type PluginGalleryProps = {
  * notifies this component when plugins change from somewhere else.
  */
 export function PluginGallery(props: PluginGalleryProps): JSX.Element {
+  const filesystem = getHost().capabilities.packages === "filesystem";
   const [installed, setInstalled] = createSignal<YapmodPluginInfo[]>(
     props.plugins.list(),
   );
@@ -157,7 +159,7 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     } else {
       const modal = modalApi.show({
         title: `Remove ${plugin.manifest.name}?`,
-        description: "Its package files will be deleted from the plugins folder.",
+        description: "Its package and stored settings will be removed from this device.",
         buttons: [
           { label: "Cancel", variant: "secondary" },
           {
@@ -242,17 +244,19 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
           >
             Refresh
           </button>
-          <button
-            class="btn small ghost"
-            type="button"
-            onClick={() =>
-              void props.plugins
-                .openFolder()
-                .catch((error: unknown) => setMessage(String(error), true))
-            }
-          >
-            Open folder
-          </button>
+          <Show when={filesystem}>
+            <button
+              class="btn small ghost"
+              type="button"
+              onClick={() =>
+                void props.plugins
+                  .openFolder()
+                  .catch((error: unknown) => setMessage(String(error), true))
+              }
+            >
+              Open folder
+            </button>
+          </Show>
         </div>
       </Show>
 

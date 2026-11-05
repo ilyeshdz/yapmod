@@ -51,5 +51,20 @@ assert.equal(
   true,
   "the content script must use the catalog fetch bridge",
 );
+assert.equal(
+  background.includes("community-plugins"),
+  true,
+  "the background worker must allow the plugin catalog",
+);
+assert.equal(
+  preinject.includes("community-plugins"),
+  true,
+  "the content script must know the plugin catalog",
+);
+assert.equal(
+  preinject.includes("yapmod:plugins"),
+  true,
+  "the content script must store plugin packages",
+);
 
 console.log("web bundle checks passed");

@@ -27,10 +27,16 @@ test("the web manifest carries the extension version and background worker", () 
   assert.deepEqual(manifest.content_scripts[0].js, ["preinject.js"]);
 });
 
-test("the web manifest grants no page-realm or plugin access", () => {
+test("the web manifest keeps plugins inside the extension world", () => {
   const manifest = createManifest("1.2.3");
 
   assert.deepEqual(manifest.permissions, ["storage"]);
   assert.equal("web_accessible_resources" in manifest, false);
   assert.equal("scripting" in manifest.permissions, false);
+  assert.equal(
+    manifest.host_permissions.includes(
+      "https://ilyeshdz.github.io/yapmod/community-plugins/*",
+    ),
+    true,
+  );
 });

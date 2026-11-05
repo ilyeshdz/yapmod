@@ -12,12 +12,13 @@ export function createManifest(version) {
     name: "yapmod",
     version,
     description:
-      "Themes, settings and notifications for Yapper in the browser.",
+      "Themes, plugins, settings and notifications for Yapper in the browser.",
     homepage_url: "https://github.com/ilyeshdz/yapmod",
     permissions: ["storage"],
     host_permissions: [
       ...matches,
       "https://ilyeshdz.github.io/yapmod/community-themes/*",
+      "https://ilyeshdz.github.io/yapmod/community-plugins/*",
     ],
     background: {
       service_worker: "background.js",

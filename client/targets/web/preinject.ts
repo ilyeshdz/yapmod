@@ -2,6 +2,11 @@ import type { Config } from "../../shared/types";
 import { ensureStyle } from "../../shared/ui";
 import { installBannerApi } from "../../features/banners/api";
 import { installModalApi } from "../../features/modal/api";
+import {
+  initializePluginManager,
+  installPluginApi,
+  installPluginSettings,
+} from "../../features/plugins/api";
 import { installDefaultSettings } from "../../features/settings/defaults";
 import { installSettingsApi } from "../../features/settings/api";
 import { installThemeApi } from "../../features/themes/api";
@@ -45,6 +50,12 @@ async function start(): Promise<void> {
   }
 
   try {
+    installPluginApi();
+  } catch (error) {
+    console.error("[yapmod] failed to install plugin API", error);
+  }
+
+  try {
     installBannerApi();
   } catch (error) {
     console.error("[yapmod] failed to install banner API", error);
@@ -60,6 +71,18 @@ async function start(): Promise<void> {
     installSettingsApi();
   } catch (error) {
     console.error("[yapmod] failed to install settings API", error);
+  }
+
+  try {
+    initializePluginManager();
+  } catch (error) {
+    console.error("[yapmod] failed to initialize plugins", error);
+  }
+
+  try {
+    installPluginSettings();
+  } catch (error) {
+    console.error("[yapmod] failed to install plugin settings", error);
   }
 
   try {

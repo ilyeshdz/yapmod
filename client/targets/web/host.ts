@@ -7,6 +7,16 @@ import type {
 import { extensionVersion } from "./extension";
 import { readStoredSettings, saveStoredSettings, readStoredThemes } from "./storage";
 import {
+  installCommunityPlugin,
+  installPickedPlugin,
+  listCommunityPlugins,
+  listInstalledPlugins,
+  pickLocalPlugin,
+  pickPluginFile,
+  previewCommunityPlugin,
+  removePlugin,
+} from "./plugins";
+import {
   installCommunityTheme,
   listCommunityThemes,
   removeTheme,
@@ -32,8 +42,9 @@ function notificationPermission(): NotificationPermission {
  * The host services of the browser extension.
  *
  * The extension runs in an isolated world: it can change the page DOM, but it
- * cannot replace the page's JavaScript objects. That is why there are no
- * plugins, window controls, badges or remote client updates here.
+ * cannot replace the page's JavaScript objects. Plugin scripts therefore run
+ * in the extension world, without page-realm hooks or host commands. Window
+ * controls, badges and remote client updates are still desktop-only.
  */
 export async function createWebHost(): Promise<WebHost> {
   const settings = await readStoredSettings();
@@ -132,6 +143,36 @@ export async function createWebHost(): Promise<WebHost> {
         return () => {
           clickListeners.delete(listener);
         };
+      },
+    },
+
+    plugins: {
+      list() {
+        return listInstalledPlugins();
+      },
+      listCommunity() {
+        return listCommunityPlugins();
+      },
+      previewCommunity(id) {
+        return previewCommunityPlugin(id);
+      },
+      installCommunity(id, expectedManifest) {
+        return installCommunityPlugin(id, expectedManifest);
+      },
+      pickFolder() {
+        return pickLocalPlugin();
+      },
+      installPicked(expectedManifest) {
+        return installPickedPlugin(expectedManifest);
+      },
+      pickFile(accept) {
+        return pickPluginFile(accept);
+      },
+      remove(id) {
+        return removePlugin(id);
+      },
+      async openFolder() {
+        // Extension storage has no folder to open.
       },
     },
 
