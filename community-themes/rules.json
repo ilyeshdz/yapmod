@@ -2,7 +2,5 @@
   "themeApi": 1,
   "maxCatalogBytes": 2097152,
   "maxManifestBytes": 65536,
-  "maxCssBytes": 1048576,
-  "maxPreviewBytes": 4194304,
-  "previewExtensions": ["png", "jpg", "jpeg", "webp", "gif", "svg"]
+  "maxCssBytes": 1048576
 }

@@ -26,7 +26,6 @@ A theme is a folder. yapmod looks for `manifest.json` in that folder, reads the 
   "mode": "both",
   "tags": ["dark", "blue"],
   "api": 1,
-  "preview": "preview.png",
   "css": "theme.css"
 }
 ```
@@ -34,8 +33,7 @@ A theme is a folder. yapmod looks for `manifest.json` in that folder, reads the 
 ```text
 midnight-blurple/
 ├── manifest.json
-├── theme.css
-└── preview.png
+└── theme.css
 ```
 
 ## Top-level fields
@@ -51,7 +49,6 @@ midnight-blurple/
 | `mode` | No | `"dark"` \| `"light"` \| `"both"` | Defaults to `dark`. Unknown values are also treated as `dark`. |
 | `tags` | No | string[] | Search words used by the Community gallery. |
 | `api` | No | number | The theme format the theme was written against. The current value is `1`. |
-| `preview` | No | string | File name of a preview image inside the theme folder. |
 | `css` | No | string | File name of the stylesheet. Defaults to `theme.css`. |
 
 The generated type mirrors what the app deserializes:
@@ -62,9 +59,8 @@ The generated type mirrors what the app deserializes:
 
 - The manifest must be valid JSON.
 - `id` must be non-empty, must not start with `.`, and may use letters, digits, `-`, `_` and `.`. Because it becomes a folder name, keep it short and stable.
-- `css` and `preview` must name a file directly inside the theme folder. The name cannot start with `.`, cannot contain `/` or `\`, and cannot contain `..`.
+- `css` must name a file directly inside the theme folder. The name cannot start with `.`, cannot contain `/` or `\`, and cannot contain `..`.
 - The stylesheet must exist. If `css` is omitted, yapmod looks for `theme.css`.
-- `preview` is optional. It is read only from the extension allowlist below; an unsupported format is ignored rather than breaking the install.
 - Importing copies the whole folder, including extra files. Symbolic links are rejected, so a theme cannot point outside itself.
 - A theme with an `api` newer than the app understands is refused instead of being applied halfway.
 
@@ -106,7 +102,7 @@ After installation the app builds a bundle from the manifest. Only these values 
 
 <ApiType name="ThemeBundle" source="theme" members={false} />
 
-The stylesheet text and preview data URI are included. Fields the manifest does not use are not passed on, and the bundle has no script, module or executable entry point.
+The stylesheet text is included. Fields the manifest does not use are not passed on, and the bundle has no script, module or executable entry point.
 
 ## Next steps
 

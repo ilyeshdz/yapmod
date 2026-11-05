@@ -123,7 +123,6 @@ const THEME_FIELDS = new Set([
   "mode",
   "tags",
   "api",
-  "preview",
   "css",
 ]);
 const THEME_MODES = ["dark", "light", "both"];
@@ -283,22 +282,6 @@ export function buildThemes({ dev = false, webRoot = process.cwd() } = {}) {
       fail(`${folder}: mode must be one of ${THEME_MODES.join(", ")}`);
     }
 
-    let previewPath = null;
-    if (manifest.preview) {
-      const extension = manifest.preview.split(".").pop().toLowerCase();
-      if (!rules.previewExtensions.includes(extension)) {
-        fail(
-          `${folder}: preview extension must be one of ${rules.previewExtensions.join(", ")}`,
-        );
-      }
-      previewPath = requireFile(
-        folder,
-        manifest.preview,
-        rules.maxPreviewBytes,
-        "preview",
-      );
-    }
-
     const cssName = manifest.css ?? "theme.css";
     const cssPath = requireFile(folder, cssName, rules.maxCssBytes, "stylesheet");
 
@@ -312,9 +295,8 @@ export function buildThemes({ dev = false, webRoot = process.cwd() } = {}) {
       mode: manifest.mode,
       tags: manifest.tags,
       api: manifest.api,
-      preview: manifest.preview,
     });
-    files.push({ folder, manifestPath, cssPath, cssName, previewPath });
+    files.push({ folder, manifestPath, cssPath, cssName });
   }
 
   themes.sort(
@@ -335,12 +317,6 @@ export function buildThemes({ dev = false, webRoot = process.cwd() } = {}) {
     mkdirSync(target, { recursive: true });
     copyFileSync(theme.manifestPath, join(target, "manifest.json"));
     copyFileSync(theme.cssPath, join(target, theme.cssName));
-    if (theme.previewPath) {
-      copyFileSync(
-        theme.previewPath,
-        join(target, theme.previewPath.split("/").pop()),
-      );
-    }
   }
   writeFileSync(join(output, "index.json"), catalog);
   console.log(`[community themes] published ${themes.length} theme(s)`);

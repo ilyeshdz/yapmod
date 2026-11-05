@@ -49,11 +49,7 @@ export type ReleaseNotesSection = { heading: string | null, items: Array<string>
 /**
  * A theme, ready to be applied.
  */
-export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, 
-/**
- * A picture of the theme, as a data address.
- */
-preview: string | null, };
+export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, };
 
 /**
  * The `manifest.json` of a theme.
@@ -69,7 +65,7 @@ mode: string | null, tags: Array<string>,
 /**
  * The theme format the theme was written against.
  */
-api: number | null, preview: string | null, 
+api: number | null, 
 /**
  * The stylesheet of the theme, relative to the theme folder.
  */

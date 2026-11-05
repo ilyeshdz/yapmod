@@ -66,7 +66,6 @@ export function normalizeThemeManifest(value: unknown): ThemeManifest {
       ? value.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
     api: typeof value.api === "number" ? value.api : null,
-    preview: optionalString(value.preview),
     css: optionalString(value.css),
   };
 
@@ -105,26 +104,12 @@ export function validateThemeManifest(manifest: ThemeManifest): void {
   if (manifest.css !== null && !isValidThemeFileName(manifest.css)) {
     throw new Error("The theme manifest points at an unusable stylesheet.");
   }
-
-  if (manifest.preview !== null && !isValidThemeFileName(manifest.preview)) {
-    throw new Error("The theme manifest points at an unusable preview.");
-  }
 }
 
 /** A bundle is valid when its manifest is valid and its CSS is text. */
 export function validateThemeBundle(bundle: ThemeBundle): void {
   if (typeof bundle.css !== "string") {
     throw new Error("The theme has no stylesheet.");
-  }
-
-  if (
-    bundle.preview !== null &&
-    (typeof bundle.preview !== "string" ||
-      !/^data:image\/(?:png|jpeg|webp|gif|svg\+xml);base64,/.test(
-        bundle.preview,
-      ))
-  ) {
-    throw new Error("The theme preview is not a valid image.");
   }
 
   validateThemeManifest({
@@ -137,7 +122,6 @@ export function validateThemeBundle(bundle: ThemeBundle): void {
     mode: bundle.mode,
     tags: bundle.tags,
     api: THEME_API,
-    preview: null,
     css: null,
   });
 }

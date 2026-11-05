@@ -8,6 +8,5 @@
   "mode": "dark",
   "tags": ["dark", "black", "mono", "monospace", "jetbrains-mono", "minimal"],
   "api": 1,
-  "preview": "preview.svg",
   "css": "theme.css"
 }

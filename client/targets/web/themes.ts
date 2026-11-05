@@ -37,23 +37,12 @@ type CatalogEntry = {
   mode?: string | null;
   tags?: string[];
   api?: number;
-  preview?: string | null;
 };
 
 type Catalog = {
   api: number;
   themes: CatalogEntry[];
 };
-
-function previewUrl(entry: CatalogEntry): string | null {
-  const preview = entry.preview;
-
-  if (!preview || !isValidThemeFileName(preview)) {
-    return null;
-  }
-
-  return `${THEME_CATALOG_BASE}/themes/${entry.id}/${preview}`;
-}
 
 /** The community catalog, filtered to themes this client understands. */
 export async function listCommunityThemes(): Promise<CommunityTheme[]> {
@@ -88,7 +77,6 @@ export async function listCommunityThemes(): Promise<CommunityTheme[]> {
       license: entry.license ?? null,
       mode: normalizeThemeMode(entry.mode),
       tags: Array.isArray(entry.tags) ? entry.tags.slice(0, 20) : [],
-      previewUrl: previewUrl(entry),
     }))
     .sort((left, right) =>
       left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
@@ -133,7 +121,6 @@ export async function installCommunityTheme(id: string): Promise<ThemeBundle> {
     mode: normalizeThemeMode(manifest.mode),
     tags: manifest.tags.slice(0, 20),
     css,
-    preview: null,
   };
 
   const installed = await readStoredThemes();
@@ -172,7 +159,6 @@ export async function storeImportedTheme(
           .slice(0, MAX_THEME_TAGS)
       : [],
     css: bundle.css,
-    preview: typeof bundle.preview === "string" ? bundle.preview : null,
   };
 
   validateThemeBundle(theme);

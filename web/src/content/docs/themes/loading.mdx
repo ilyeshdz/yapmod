@@ -14,7 +14,7 @@ A theme is not loaded by a request from the page. The desktop shell resolves the
 ## Startup
 
 1. The shell reads `theme_id` from the stored settings.
-2. If the id is not empty, it reads that folder and builds a bundle. The preview is skipped at this point so startup does not base64-encode a large image.
+2. If the id is not empty, it reads that folder and builds a bundle.
 3. The bundle is included in the payload passed to the initialization script.
 4. The theme engine runs before the rest of the page setup and calls `render`.
 5. `render` sets the root attributes, builds the token layer, and appends one `<style>` element with the id `yapmod-theme-styles`.

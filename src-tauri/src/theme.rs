@@ -29,8 +29,6 @@ struct ThemeRules {
     max_catalog_bytes: usize,
     max_manifest_bytes: usize,
     max_css_bytes: usize,
-    max_preview_bytes: usize,
-    preview_extensions: Vec<String>,
 }
 
 static THEME_RULES: LazyLock<ThemeRules> = LazyLock::new(|| {
@@ -66,8 +64,6 @@ pub struct ThemeManifest {
     /// The theme format the theme was written against.
     #[serde(default)]
     pub api: Option<u32>,
-    #[serde(default)]
-    pub preview: Option<String>,
     /// The stylesheet of the theme, relative to the theme folder.
     #[serde(default)]
     pub css: Option<String>,
@@ -97,8 +93,6 @@ pub struct ThemeBundle {
     pub mode: ThemeMode,
     pub tags: Vec<String>,
     pub css: String,
-    /// A picture of the theme, as a data address.
-    pub preview: Option<String>,
 }
 
 /// A theme listed in the static community catalog.
@@ -113,7 +107,6 @@ pub struct CommunityTheme {
     pub license: Option<String>,
     pub mode: ThemeMode,
     pub tags: Vec<String>,
-    pub preview_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -141,7 +134,6 @@ struct ThemeCatalogEntry {
     #[serde(default)]
     tags: Vec<String>,
     api: u32,
-    preview: Option<String>,
 }
 
 /// The folder the themes live in.
@@ -178,18 +170,6 @@ fn is_valid_community_file_name(name: &str) -> bool {
         && name
             .chars()
             .all(|character| character.is_ascii_alphanumeric() || "-_.".contains(character))
-}
-
-fn is_valid_community_preview_name(name: &str) -> bool {
-    is_valid_community_file_name(name)
-        && Path::new(name)
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .is_some_and(|extension| {
-                THEME_RULES
-                    .preview_extensions
-                    .contains(&extension.to_ascii_lowercase())
-            })
 }
 
 /// Downloads one file from the fixed static theme host with a size limit.
@@ -236,11 +216,6 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             ));
         }
 
-        let preview_url = theme.preview.as_deref().and_then(|preview| {
-            is_valid_community_preview_name(preview)
-                .then(|| format!("{COMMUNITY_THEMES_BASE}/themes/{}/{preview}", theme.id))
-        });
-
         themes.push(CommunityTheme {
             id: theme.id,
             name: theme.name,
@@ -250,7 +225,6 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
             license: theme.license,
             mode: normalize_mode(theme.mode.as_deref()),
             tags: theme.tags,
-            preview_url,
         });
     }
 
@@ -304,17 +278,6 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
     let css = String::from_utf8(fetch_community_asset(&css_path, THEME_RULES.max_css_bytes).await?)
         .map_err(|_| "the community theme stylesheet is not valid UTF-8".to_string())?;
 
-    let preview = if let Some(preview_file) = manifest.preview.as_deref() {
-        if !is_valid_community_preview_name(preview_file) {
-            return Err("the theme manifest points at an unusable preview".to_string());
-        }
-
-        let preview_path = format!("themes/{id}/{preview_file}");
-        Some(fetch_community_asset(&preview_path, THEME_RULES.max_preview_bytes).await?)
-    } else {
-        None
-    };
-
     let target = themes_dir(&app)
         .map_err(|error| error.to_string())?
         .join(&id);
@@ -326,10 +289,6 @@ pub async fn install_community_theme(app: AppHandle, id: String) -> Result<Theme
     install_theme_folder(&target, |target| {
         fs::write(target.join(MANIFEST_FILE), &manifest_bytes)?;
         fs::write(target.join(css_file), css)?;
-
-        if let (Some(preview_file), Some(preview)) = (manifest.preview.as_deref(), preview) {
-            fs::write(target.join(preview_file), preview)?;
-        }
 
         Ok(())
     })
@@ -345,37 +304,11 @@ fn normalize_mode(mode: Option<&str>) -> ThemeMode {
     }
 }
 
-/// Reads the picture of a theme, if it has one.
-fn read_preview(folder: &Path, name: Option<&str>) -> Option<String> {
-    let name = name?;
-
-    if !is_valid_file_name(name) {
-        return None;
-    }
-
-    let extension = Path::new(name)
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .map(str::to_ascii_lowercase)?;
-    if !THEME_RULES.preview_extensions.contains(&extension) {
-        return None;
-    }
-    let mime = crate::mime::image_mime(&extension)?;
-
-    let path = folder.join(name);
-    if fs::metadata(&path).ok()?.len() > THEME_RULES.max_preview_bytes as u64 {
-        return None;
-    }
-    let bytes = fs::read(path).ok()?;
-
-    Some(crate::mime::data_uri(mime, &bytes))
-}
-
 /// Reads a theme folder into a bundle.
 ///
 /// A folder that cannot be read is not a theme, so this returns nothing
 /// instead of failing.
-fn read_bundle(folder: &Path, include_preview: bool) -> Option<ThemeBundle> {
+fn read_bundle(folder: &Path) -> Option<ThemeBundle> {
     let contents = fs::read_to_string(folder.join(MANIFEST_FILE)).ok()?;
     let manifest: ThemeManifest = serde_json::from_str(&contents).ok()?;
 
@@ -401,11 +334,6 @@ fn read_bundle(folder: &Path, include_preview: bool) -> Option<ThemeBundle> {
         mode: normalize_mode(manifest.mode.as_deref()),
         tags: manifest.tags,
         css,
-        preview: if include_preview {
-            read_preview(folder, manifest.preview.as_deref())
-        } else {
-            None
-        },
     })
 }
 
@@ -448,7 +376,7 @@ fn install_theme_folder(
 
     let install_result = (|| {
         populate(target)?;
-        read_bundle(target, true).ok_or_else(|| {
+        read_bundle(target).ok_or_else(|| {
             Box::<dyn std::error::Error>::from(std::io::Error::other(
                 "the theme could not be read back",
             ))
@@ -506,8 +434,7 @@ pub fn active_theme(app: &AppHandle, config: &Config) -> Option<ThemeBundle> {
     let folder = themes_dir(app).ok()?.join(id);
 
     // Only CSS is needed to apply the selected theme before the first frame.
-    // Avoid reading and base64-encoding its preview during webview startup.
-    read_bundle(&folder, false)
+    read_bundle(&folder)
 }
 
 /// Reads an installed theme again so local edits can be picked up without
@@ -520,8 +447,8 @@ pub fn reload_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
     let folder = themes_dir(&app)
         .map_err(|error| error.to_string())?
         .join(&id);
-    let bundle = read_bundle(&folder, true)
-        .ok_or_else(|| "the theme files could not be read".to_string())?;
+    let bundle =
+        read_bundle(&folder).ok_or_else(|| "the theme files could not be read".to_string())?;
     if bundle.id != id {
         return Err("the theme folder declares a different id".to_string());
     }
@@ -546,7 +473,7 @@ pub fn list_themes(app: AppHandle) -> Result<Vec<ThemeBundle>, String> {
             continue;
         }
 
-        if let Some(bundle) = read_bundle(&path, true) {
+        if let Some(bundle) = read_bundle(&path) {
             themes.push(bundle);
         }
     }
@@ -734,7 +661,7 @@ mod tests {
             Some(":root { --ym-accent: #123456; }"),
         );
 
-        let bundle = read_bundle(&folder, true).unwrap();
+        let bundle = read_bundle(&folder).unwrap();
 
         assert_eq!(bundle.id, "midnight");
         assert_eq!(bundle.name, "Midnight");
@@ -749,7 +676,7 @@ mod tests {
     fn ignores_a_folder_without_a_manifest() {
         let folder = theme_folder("broken", "not json", Some(""));
 
-        assert!(read_bundle(&folder, true).is_none());
+        assert!(read_bundle(&folder).is_none());
 
         let _ = fs::remove_dir_all(&folder);
     }
@@ -758,7 +685,7 @@ mod tests {
     fn ignores_a_manifest_without_a_name() {
         let folder = theme_folder("nameless", r#"{"id":"nameless"}"#, Some(""));
 
-        assert!(read_bundle(&folder, true).is_none());
+        assert!(read_bundle(&folder).is_none());
 
         let _ = fs::remove_dir_all(&folder);
     }

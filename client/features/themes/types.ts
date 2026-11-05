@@ -17,7 +17,6 @@ export type CommunityTheme = {
   license: string | null;
   mode: ThemeMode;
   tags: string[];
-  previewUrl: string | null;
 };
 
 /**

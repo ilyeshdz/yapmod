@@ -4,13 +4,13 @@
     "client/features/themes/tokens.ts",
     "community-themes/rules.json"
   ],
-  "sourceHash": "b3845a92dd1a1c9c",
+  "sourceHash": "81d4925ef644fd14",
   "types": {
     "ThemeManifest": {
       "name": "ThemeManifest",
       "kind": "type",
       "description": "The `manifest.json` of a theme. Only `id` and `name` are required, everything else is optional and only used to describe the theme.",
-      "declaration": "export type ThemeManifest = { id: string, name: string, version: string | null, author: string | null, description: string | null, license: string | null, mode: string | null, tags: Array<string>, api: number | null, preview: string | null, css: string | null, };",
+      "declaration": "export type ThemeManifest = { id: string, name: string, version: string | null, author: string | null, description: string | null, license: string | null, mode: string | null, tags: Array<string>, api: number | null, css: string | null, };",
       "members": [
         {
           "name": "id",
@@ -76,13 +76,6 @@
           "description": "The theme format the theme was written against."
         },
         {
-          "name": "preview",
-          "type": "string | null",
-          "optional": false,
-          "readonly": false,
-          "description": null
-        },
-        {
           "name": "css",
           "type": "string | null",
           "optional": false,
@@ -95,7 +88,7 @@
       "name": "ThemeBundle",
       "kind": "type",
       "description": "A theme, ready to be applied.",
-      "declaration": "export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, preview: string | null, };",
+      "declaration": "export type ThemeBundle = { id: string, name: string, description: string | null, author: string | null, version: string | null, license: string | null, mode: ThemeMode, tags: Array<string>, css: string, };",
       "members": [
         {
           "name": "id",
@@ -159,13 +152,6 @@
           "optional": false,
           "readonly": false,
           "description": null
-        },
-        {
-          "name": "preview",
-          "type": "string | null",
-          "optional": false,
-          "readonly": false,
-          "description": "A picture of the theme, as a data address."
         }
       ]
     },
@@ -339,15 +325,6 @@
     "themeApi": 1,
     "maxCatalogBytes": 2097152,
     "maxManifestBytes": 65536,
-    "maxCssBytes": 1048576,
-    "maxPreviewBytes": 4194304,
-    "previewExtensions": [
-      "png",
-      "jpg",
-      "jpeg",
-      "webp",
-      "gif",
-      "svg"
-    ]
+    "maxCssBytes": 1048576
   }
 }

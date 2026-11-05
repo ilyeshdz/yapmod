@@ -19,16 +19,6 @@ import type { BridgeClient } from "./rpc";
  */
 
 const MANIFEST_FILE = "manifest.json";
-const MAX_PREVIEW_BYTES = 4 * 1024 * 1024;
-
-const PREVIEW_MIME: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  webp: "image/webp",
-  gif: "image/gif",
-  svg: "image/svg+xml",
-};
 
 let pickedTheme: ThemeBundle | null = null;
 
@@ -42,42 +32,6 @@ async function readTextFile(
   }
 
   return file.text();
-}
-
-function readAsDataUrl(file: File, mime: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.addEventListener("load", () => {
-      const result = reader.result;
-
-      if (typeof result !== "string") {
-        reject(new Error("The selected preview could not be read."));
-        return;
-      }
-
-      resolve(result.replace(/^data:[^;,]*/, `data:${mime}`));
-    });
-    reader.addEventListener("error", () => {
-      reject(new Error("The selected preview could not be read."));
-    });
-    reader.readAsDataURL(file);
-  });
-}
-
-async function readPreview(file: File | undefined): Promise<string | null> {
-  if (!file) {
-    return null;
-  }
-
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
-  const mime = PREVIEW_MIME[extension];
-
-  if (!mime || file.size > MAX_PREVIEW_BYTES) {
-    return null;
-  }
-
-  return readAsDataUrl(file, mime);
 }
 
 /**
@@ -133,9 +87,6 @@ export async function pickLocalTheme(): Promise<string | null> {
     mode: normalizeThemeMode(manifest.mode),
     tags: manifest.tags.slice(0, MAX_THEME_TAGS),
     css: await readTextFile(stylesheet, MAX_CSS_BYTES, "stylesheet"),
-    preview: await readPreview(
-      manifest.preview ? directory.files.get(manifest.preview) : undefined,
-    ),
   };
 
   validateThemeBundle(theme);
