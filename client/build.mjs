@@ -9,6 +9,9 @@ import { createManifest } from "./targets/web/manifest.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceDir = join(root, "client");
+const clientVersion = JSON.parse(
+  await readFile(join(sourceDir, "version.json"), "utf8"),
+).version;
 
 /**
  * The bundles the client can build.
@@ -33,6 +36,9 @@ const targets = {
     ],
     outdir: join(root, "dist", "web"),
     manifest: createManifest,
+    // The extension shell has its own version; the client version is reported
+    // at runtime and may move independently.
+    versionFile: join(sourceDir, "targets", "web", "version.json"),
     // Static files the manifest references; copied next to the bundles.
     assets: [
       {
@@ -66,7 +72,7 @@ if (target.assets) {
 
 if (target.manifest) {
   const versionFile = JSON.parse(
-    await readFile(join(sourceDir, "version.json"), "utf8"),
+    await readFile(target.versionFile ?? join(sourceDir, "version.json"), "utf8"),
   );
 
   await writeFile(
@@ -88,6 +94,9 @@ const options = {
   loader: { ".svg": "text", ".css": "text" },
   // Solid compiles JSX to DOM templates, so it needs its own transform.
   plugins: [solidPlugin()],
+  define: {
+    __YAPMOD_CLIENT_VERSION__: JSON.stringify(clientVersion),
+  },
   logLevel: "info",
 };
 

@@ -42,7 +42,8 @@ try {
 
 async function start(): Promise<void> {
   const bootstrap = await bridge.call<WebBootstrap>("bootstrap");
-  const { host, settings, theme } = createWebHost(bridge, bootstrap);
+  const { host, settings, theme, clientVersion, shellVersion } =
+    createWebHost(bridge, bootstrap);
 
   installHost(host);
 
@@ -53,9 +54,9 @@ async function start(): Promise<void> {
     settings: settings as Config["settings"],
   };
   yapmod.internalHost = host.internalHost;
-  yapmod.clientVersion = host.version;
+  yapmod.clientVersion = clientVersion;
   yapmod.release = {
-    version: host.version,
+    version: shellVersion,
     previousVersion: null,
     firstRun: false,
     notes: null,

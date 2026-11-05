@@ -228,7 +228,7 @@ export function installDefaultSettings(): void {
           <p class="hint yapmod-version">
             {desktop
               ? `Desktop v${appVersion} · Client v${clientVersion}`
-              : `Extension v${clientVersion}`}
+              : `Extension v${appVersion} · Client v${clientVersion}`}
           </p>
         ),
         host,

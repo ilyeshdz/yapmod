@@ -10,6 +10,7 @@ import {
   type WebBootstrap,
 } from "./rpc";
 import { extensionVersion } from "./extension";
+import { CLIENT_VERSION } from "./version";
 import {
   installCommunityPlugin,
   listCommunityPlugins,
@@ -63,7 +64,8 @@ async function bootstrap(): Promise<WebBootstrap> {
     typeof settings.theme_id === "string" ? settings.theme_id : "";
 
   return {
-    version: extensionVersion(),
+    clientVersion: CLIENT_VERSION,
+    shellVersion: extensionVersion(),
     settings,
     theme: themes.find((theme) => theme.id === selectedId) ?? null,
   };

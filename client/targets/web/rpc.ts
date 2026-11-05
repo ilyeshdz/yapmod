@@ -14,7 +14,10 @@ const MAX_ATTEMPTS = 100;
 
 /** The state the page needs before it can compose the client. */
 export type WebBootstrap = {
-  version: string;
+  /** The injected client version, from `client/version.json`. */
+  clientVersion: string;
+  /** The extension package version, from the extension manifest. */
+  shellVersion: string;
   settings: Record<string, unknown>;
   theme: ThemeBundle | null;
 };

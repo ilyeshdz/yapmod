@@ -5,8 +5,11 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outdir = join(root, "dist", "web");
-const version = JSON.parse(
+const clientVersion = JSON.parse(
   await readFile(join(root, "client", "version.json"), "utf8"),
+).version;
+const shellVersion = JSON.parse(
+  await readFile(join(root, "client", "targets", "web", "version.json"), "utf8"),
 ).version;
 
 const manifest = JSON.parse(
@@ -23,8 +26,13 @@ assert.equal(
   true,
   "the manifest description must fit the browser limit",
 );
-assert.equal(manifest.version, version, "the manifest version must match client/version.json");
+assert.equal(manifest.version, shellVersion, "the manifest version must match the web shell version");
 assert.equal(manifest.manifest_version, 3);
+assert.equal(
+  bridge.includes(clientVersion),
+  true,
+  "the bridge must report the injected client version",
+);
 
 // Every icon the manifest points at must be a real PNG in the build output.
 for (const [size, path] of Object.entries(manifest.icons)) {

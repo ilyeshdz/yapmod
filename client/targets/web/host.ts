@@ -14,7 +14,8 @@ export type WebHost = {
   host: YapmodHost;
   settings: Record<string, unknown>;
   theme: ThemeBundle | null;
-  version: string;
+  clientVersion: string;
+  shellVersion: string;
 };
 
 function notificationPermission(): NotificationPermission {
@@ -40,7 +41,7 @@ export function createWebHost(
 
   const host: YapmodHost = {
     id: "web",
-    version: bootstrap.version,
+    version: bootstrap.clientVersion,
     platform: "web",
     internalHost: INTERNAL_HOST,
     capabilities: {
@@ -190,6 +191,7 @@ export function createWebHost(
     host,
     settings: bootstrap.settings,
     theme: bootstrap.theme,
-    version: bootstrap.version,
+    clientVersion: bootstrap.clientVersion,
+    shellVersion: bootstrap.shellVersion,
   };
 }
