@@ -14,12 +14,19 @@ const MAX_ATTEMPTS = 100;
 
 /** The state the page needs before it can compose the client. */
 export type WebBootstrap = {
-  /** The injected client version, from `client/version.json`. */
+  /** The injected client version the page is running. */
   clientVersion: string;
   /** The extension package version, from the extension manifest. */
   shellVersion: string;
+  /** The extension can stage signed client bundles at runtime. */
+  runtimeUpdates: boolean;
   settings: Record<string, unknown>;
   theme: ThemeBundle | null;
+};
+
+export type BootstrapParams = {
+  /** The version of the client code the page actually executed. */
+  clientVersion: string;
 };
 
 export type BridgeRequest = {

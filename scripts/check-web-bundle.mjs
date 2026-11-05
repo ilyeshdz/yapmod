@@ -4,58 +4,12 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const outdir = join(root, "dist", "web");
 const clientVersion = JSON.parse(
   await readFile(join(root, "client", "version.json"), "utf8"),
 ).version;
 const shellVersion = JSON.parse(
   await readFile(join(root, "client", "targets", "web", "version.json"), "utf8"),
 ).version;
-
-const manifest = JSON.parse(
-  await readFile(join(outdir, "manifest.json"), "utf8"),
-);
-const preinject = await readFile(join(outdir, "preinject.js"), "utf8");
-const bridge = await readFile(join(outdir, "bridge.js"), "utf8");
-const background = await readFile(join(outdir, "background.js"), "utf8");
-
-assert.equal(manifest.name, "Yapmod Web");
-assert.equal(manifest.short_name, "Yapmod");
-assert.equal(
-  manifest.description.length <= 132,
-  true,
-  "the manifest description must fit the browser limit",
-);
-assert.equal(manifest.version, shellVersion, "the manifest version must match the web shell version");
-assert.equal(manifest.manifest_version, 3);
-assert.equal(
-  bridge.includes(clientVersion),
-  true,
-  "the bridge must report the injected client version",
-);
-
-// Every icon the manifest points at must be a real PNG in the build output.
-for (const [size, path] of Object.entries(manifest.icons)) {
-  const bytes = await readFile(join(outdir, path));
-
-  assert.equal(
-    bytes.subarray(0, 8).toString("hex"),
-    "89504e470d0a1a0a",
-    `the ${size}px icon must be a PNG`,
-  );
-}
-assert.deepEqual(
-  manifest.content_scripts.map((script) => [script.world, script.js]),
-  [
-    ["ISOLATED", ["bridge.js"]],
-    ["MAIN", ["preinject.js"]],
-  ],
-  "the privileged bridge must be isolated and the client must run in the page realm",
-);
-for (const script of manifest.content_scripts) {
-  assert.equal(script.all_frames, false);
-}
-assert.equal(manifest.background.service_worker, "background.js");
 
 // The web bundles must not reach the Tauri bridge that only the desktop target
 // provides.
@@ -69,68 +23,186 @@ const forbidden = [
   "restart_app",
 ];
 
-for (const [name, source] of [
-  ["preinject", preinject],
-  ["bridge", bridge],
-]) {
-  for (const marker of forbidden) {
-    assert.equal(
-      source.includes(marker),
-      false,
-      `the ${name} bundle must not contain ${marker}`,
-    );
-  }
+async function readBuild(directory, pageFile) {
+  const outdir = join(root, "dist", directory);
+  const manifest = JSON.parse(
+    await readFile(join(outdir, "manifest.json"), "utf8"),
+  );
+  const bridge = await readFile(join(outdir, "bridge.js"), "utf8");
+  const background = await readFile(join(outdir, "background.js"), "utf8");
+  const preinject = await readFile(join(outdir, pageFile), "utf8");
+
+  return { outdir, manifest, bridge, background, preinject };
 }
 
+async function checkCommon(name, build, pageScript) {
+  const { outdir, manifest, bridge, background } = build;
+
+  assert.equal(manifest.name, "Yapmod Web", `${name}: name`);
+  assert.equal(manifest.short_name, "Yapmod", `${name}: short name`);
+  assert.equal(
+    manifest.description.length <= 132,
+    true,
+    `${name}: the manifest description must fit the browser limit`,
+  );
+  assert.equal(
+    manifest.version,
+    shellVersion,
+    `${name}: the manifest version must match the web shell version`,
+  );
+  assert.equal(manifest.manifest_version, 3, `${name}: manifest version`);
+  assert.equal(
+    bridge.includes(clientVersion),
+    true,
+    `${name}: the bridge must report the injected client version`,
+  );
+
+  // Every icon the manifest points at must be a real PNG in the build output.
+  for (const [size, path] of Object.entries(manifest.icons)) {
+    const bytes = await readFile(join(outdir, path));
+
+    assert.equal(
+      bytes.subarray(0, 8).toString("hex"),
+      "89504e470d0a1a0a",
+      `${name}: the ${size}px icon must be a PNG`,
+    );
+  }
+
+  assert.deepEqual(
+    manifest.content_scripts.map((script) => [script.world, script.js]),
+    [
+      ["ISOLATED", ["bridge.js"]],
+      ["MAIN", [pageScript]],
+    ],
+    `${name}: the privileged bridge must be isolated and the client must run in the page realm`,
+  );
+
+  for (const script of manifest.content_scripts) {
+    assert.equal(script.all_frames, false, `${name}: all_frames`);
+  }
+
+  assert.equal(
+    manifest.background.service_worker,
+    "background.js",
+    `${name}: background worker`,
+  );
+
+  return { manifest, bridge, background };
+}
+
+function checkCatalogWiring(name, { bridge, background, preinject }) {
+  for (const [file, source] of [
+    ["bridge", bridge],
+    ["background", background],
+    ...(preinject ? [["preinject", preinject]] : []),
+  ]) {
+    for (const marker of forbidden) {
+      assert.equal(
+        source.includes(marker),
+        false,
+        `${name}: the ${file} bundle must not contain ${marker}`,
+      );
+    }
+  }
+
+  assert.equal(
+    background.includes("yapmod:fetch-catalog-text"),
+    true,
+    `${name}: the background worker must expose the fetch bridge`,
+  );
+  assert.equal(
+    bridge.includes("yapmod:fetch-catalog-text"),
+    true,
+    `${name}: the isolated bridge must use the fetch bridge`,
+  );
+  assert.equal(
+    background.includes("community-plugins"),
+    true,
+    `${name}: the background worker must allow the plugin catalog`,
+  );
+  assert.equal(
+    bridge.includes("community-plugins"),
+    true,
+    `${name}: the isolated bridge must know the plugin catalog`,
+  );
+  assert.equal(
+    bridge.includes("yapmod:plugins"),
+    true,
+    `${name}: the isolated bridge must store plugin packages`,
+  );
+  assert.equal(
+    bridge.includes("yapmod:themes"),
+    true,
+    `${name}: the isolated bridge must store theme packages`,
+  );
+  assert.equal(
+    bridge.includes("themes:storeBundle"),
+    true,
+    `${name}: the isolated bridge must accept imported themes`,
+  );
+}
+
+const store = await readBuild("web", "preinject.js");
+await checkCommon("store", store, "preinject.js");
+checkCatalogWiring("store", store);
+
 assert.equal(
-  background.includes("yapmod:fetch-catalog-text"),
+  store.preinject.includes("themes:storeBundle"),
   true,
-  "the background worker must expose the catalog fetch bridge",
+  "store: the page realm must send imported themes to the bridge",
 );
 assert.equal(
-  bridge.includes("yapmod:fetch-catalog-text"),
+  store.preinject.includes("yapmod:bridge-connect"),
   true,
-  "the isolated bridge must use the catalog fetch bridge",
+  "store: the page realm must connect to the isolated bridge",
 );
 assert.equal(
-  preinject.includes("yapmod:fetch-catalog-text"),
+  store.preinject.includes("yapmod:fetch-catalog-text"),
   false,
-  "the page realm must not fetch catalogs directly",
+  "store: the page realm must not fetch catalogs directly",
 );
 assert.equal(
-  background.includes("community-plugins"),
+  store.manifest.host_permissions.some((url) => url.includes("client-updates")),
+  false,
+  "store: the store build must not request the update feed",
+);
+
+const loader = await readBuild("web-loader", "loader.js");
+const { manifest: loaderManifest } = await checkCommon(
+  "loader",
+  loader,
+  "loader.js",
+);
+checkCatalogWiring("loader", loader);
+
+assert.equal(
+  loaderManifest.host_permissions.includes(
+    "https://ilyeshdz.github.io/yapmod/client-updates-web/*",
+  ),
   true,
-  "the background worker must allow the plugin catalog",
+  "loader: the loader build must request the web update feed",
 );
 assert.equal(
-  bridge.includes("community-plugins"),
+  loader.bridge.includes("client-updates-web"),
   true,
-  "the isolated bridge must know the plugin catalog",
+  "loader: the bridge must read the web update feed",
 );
 assert.equal(
-  bridge.includes("yapmod:plugins"),
+  loader.background.includes("client-updates-web"),
   true,
-  "the isolated bridge must store plugin packages",
+  "loader: the background worker must allow the web update feed",
+);
+
+const loaderScript = loader.preinject;
+assert.equal(
+  loaderScript.includes(clientVersion),
+  true,
+  "loader: the embedded client must report the injected client version",
 );
 assert.equal(
-  bridge.includes("yapmod:themes"),
+  loaderScript.includes("yapmod:client-bundle"),
   true,
-  "the isolated bridge must store theme packages",
-);
-assert.equal(
-  bridge.includes("themes:storeBundle"),
-  true,
-  "the isolated bridge must accept imported themes",
-);
-assert.equal(
-  preinject.includes("themes:storeBundle"),
-  true,
-  "the page realm must send imported themes to the bridge",
-);
-assert.equal(
-  preinject.includes("yapmod:bridge-connect"),
-  true,
-  "the page realm must connect to the isolated bridge",
+  "loader: the loader must read the staged client cache",
 );
 
 console.log("web bundle checks passed");

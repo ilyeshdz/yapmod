@@ -94,17 +94,21 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
 
 /** Shows a nonblocking restart banner once the signed client bundle is staged. */
 export function showClientUpdateBanner(info: ClientUpdateInfo): void {
+  const web = getHost().id === "web";
+
   showBanner({
     id: CLIENT_UPDATE_BANNER_ID,
-    message: `yapmod client v${info.latestVersion} is ready. Restart to apply; active calls will disconnect.`,
+    message: web
+      ? `yapmod client v${info.latestVersion} is ready. Reload to apply.`
+      : `yapmod client v${info.latestVersion} is ready. Restart to apply; active calls will disconnect.`,
     action: {
-      label: "Restart",
+      label: web ? "Reload" : "Restart",
       onClick: async (banner) => {
         try {
           const updates = getHost().updates;
 
           if (!updates) {
-            throw new Error("This target does not support restarting.");
+            throw new Error("This target does not support applying updates.");
           }
 
           await updates.restart();
@@ -114,7 +118,9 @@ export function showClientUpdateBanner(info: ClientUpdateInfo): void {
             error,
           );
           banner.setMessage(
-            "yapmod could not restart. Quit from the menu bar or system tray to apply the update.",
+            web
+              ? "yapmod could not reload. Reload the page to apply the update."
+              : "yapmod could not restart. Quit from the menu bar or system tray to apply the update.",
             "warning",
           );
         }

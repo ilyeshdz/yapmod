@@ -3,6 +3,9 @@ import type {
   PluginManifest,
 } from "../../shared/types";
 import type { ThemeBundle } from "../../features/themes/types";
+import type { FetchResponse } from "./catalog";
+import { FETCH_MESSAGE } from "./catalog";
+import { sendRuntimeMessage } from "./extension";
 import {
   BRIDGE_CONNECT,
   type BridgeRequest,
@@ -30,6 +33,19 @@ import {
   readStoredThemes,
   saveStoredSettings,
 } from "./storage";
+import { confirmCachedBundle, readCachedBundle, writeCachedBundle } from "./update-cache";
+import {
+  isNewer,
+  isUpdateUrl,
+  MAX_BUNDLE_BYTES,
+  MAX_MANIFEST_BYTES,
+  MAX_SIGNATURE_BYTES,
+  parseAndVerifyManifest,
+  runtimeUpdatesAvailable,
+  updateUrl,
+  verifyBundle,
+  type ClientUpdateCheck,
+} from "./update-feed";
 
 /**
  * The isolated half of the web target.
@@ -57,15 +73,78 @@ function stringField(params: Record<string, unknown>, field: string): string {
   return value;
 }
 
-async function bootstrap(): Promise<WebBootstrap> {
+/** Reads one file from this channel's signed web feed. */
+async function fetchFeedText(file: string, maxBytes: number): Promise<string> {
+  const url = updateUrl(file);
+
+  if (!isUpdateUrl(url)) {
+    throw new Error("the client update URL is invalid");
+  }
+
+  const response = await sendRuntimeMessage<FetchResponse>({
+    type: FETCH_MESSAGE,
+    url,
+    maxBytes,
+  });
+
+  if (!response) {
+    throw new Error("the background worker is not available");
+  }
+  if (!response.ok) {
+    throw new Error(response.error);
+  }
+
+  return response.text;
+}
+
+async function checkForClientUpdate(
+  currentVersion: string,
+): Promise<ClientUpdateCheck | null> {
+  if (!runtimeUpdatesAvailable()) {
+    return null;
+  }
+
+  const manifest = await parseAndVerifyManifest(
+    await fetchFeedText("manifest.json", MAX_MANIFEST_BYTES),
+    (await fetchFeedText("manifest.sig", MAX_SIGNATURE_BYTES)).trim(),
+    extensionVersion(),
+  );
+
+  if (!isNewer(manifest.clientVersion, currentVersion)) {
+    return null;
+  }
+
+  return {
+    currentVersion,
+    latestVersion: manifest.clientVersion,
+  };
+}
+
+async function bootstrap(params?: unknown): Promise<WebBootstrap> {
+  const input =
+    typeof params === "object" && params !== null
+      ? (params as Record<string, unknown>)
+      : {};
+  const pageVersion =
+    typeof input.clientVersion === "string" &&
+    /^\d+\.\d+\.\d+/.test(input.clientVersion)
+      ? input.clientVersion
+      : CLIENT_VERSION;
   const settings = await readStoredSettings();
   const themes = await readStoredThemes();
   const selectedId =
     typeof settings.theme_id === "string" ? settings.theme_id : "";
 
+  // Reaching this point means the client code the loader started actually
+  // booted, so a staged bundle is safe to keep.
+  if (runtimeUpdatesAvailable()) {
+    confirmCachedBundle(pageVersion);
+  }
+
   return {
-    clientVersion: CLIENT_VERSION,
+    clientVersion: pageVersion,
     shellVersion: extensionVersion(),
+    runtimeUpdates: runtimeUpdatesAvailable(),
     settings,
     theme: themes.find((theme) => theme.id === selectedId) ?? null,
   };
@@ -112,6 +191,52 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
     await removePlugin(stringField(record(params), "id"));
 
     return null;
+  },
+
+  "updates:check": (params) =>
+    checkForClientUpdate(
+      stringField(record(params), "currentVersion"),
+    ),
+
+  "updates:stage": async (params) => {
+    const currentVersion = stringField(record(params), "currentVersion");
+
+    if (!runtimeUpdatesAvailable()) {
+      throw new Error("this extension cannot stage client updates");
+    }
+
+    const manifest = await parseAndVerifyManifest(
+      await fetchFeedText("manifest.json", MAX_MANIFEST_BYTES),
+      (await fetchFeedText("manifest.sig", MAX_SIGNATURE_BYTES)).trim(),
+      extensionVersion(),
+    );
+    const cached = readCachedBundle();
+
+    if (
+      !isNewer(manifest.clientVersion, currentVersion) ||
+      (cached && cached.releaseSequence >= manifest.releaseSequence)
+    ) {
+      return null;
+    }
+
+    const bundle = await verifyBundle(
+      await fetchFeedText("bundle.json", MAX_BUNDLE_BYTES),
+      manifest,
+    );
+
+    writeCachedBundle({
+      clientVersion: manifest.clientVersion,
+      releaseSequence: manifest.releaseSequence,
+      expiresAt: manifest.expiresAt,
+      preinject: bundle.preinject,
+      confirmed: false,
+      attempts: 0,
+    });
+
+    return {
+      currentVersion,
+      latestVersion: manifest.clientVersion,
+    };
   },
 };
 

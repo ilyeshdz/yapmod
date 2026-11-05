@@ -4,14 +4,40 @@ import {
   MAX_CATALOG_BYTES,
   type FetchResponse,
 } from "./catalog";
+import {
+  isUpdateUrl,
+  MAX_BUNDLE_BYTES,
+  MAX_MANIFEST_BYTES,
+  MAX_SIGNATURE_BYTES,
+} from "./update-feed";
 import { extensionRuntime } from "./extension";
 
-async function fetchText(url: string, maxBytes: number): Promise<string> {
-  if (!isCatalogUrl(url)) {
-    throw new Error("the background worker only reads the community catalogs");
+function isAllowedUrl(url: string): boolean {
+  return isCatalogUrl(url) || isUpdateUrl(url);
+}
+
+function limitFor(url: string): number {
+  if (isUpdateUrl(url)) {
+    if (url.endsWith("/bundle.json")) {
+      return MAX_BUNDLE_BYTES;
+    }
+
+    return url.endsWith("/manifest.sig")
+      ? MAX_SIGNATURE_BYTES
+      : MAX_MANIFEST_BYTES;
   }
 
-  const limit = Math.min(maxBytes, MAX_CATALOG_BYTES);
+  return MAX_CATALOG_BYTES;
+}
+
+async function fetchText(url: string, maxBytes: number): Promise<string> {
+  if (!isAllowedUrl(url)) {
+    throw new Error(
+      "the background worker only reads the community catalogs and the client update feed",
+    );
+  }
+
+  const limit = Math.min(maxBytes, limitFor(url));
   const response = await fetch(url, { credentials: "omit" });
 
   if (!response.ok) {

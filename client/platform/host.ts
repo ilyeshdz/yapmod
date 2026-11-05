@@ -41,7 +41,7 @@ export type HostCapabilities = {
    */
   packages: "filesystem" | "extension-storage" | "none";
   /** How the host updates itself and the client. */
-  updates: "app-and-client" | "extension" | "none";
+  updates: "app-and-client" | "client" | "extension" | "none";
   /** The host can provide release notes. */
   releaseNotes: boolean;
   /** The client runs in the page's JavaScript realm. */

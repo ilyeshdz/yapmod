@@ -150,13 +150,14 @@ export function installDefaultSettings(): void {
     );
   }
 
-  if (capabilities.updates === "app-and-client") {
+  if (capabilities.updates === "app-and-client" || capabilities.updates === "client") {
     items.push(
       createToggle({
         id: "auto_update",
         label: "Check for updates automatically",
-        description:
-          "Look for yapmod app and client updates when the app starts and show update prompts.",
+        description: desktop
+          ? "Look for yapmod app and client updates when the app starts and show update prompts."
+          : "Look for signed client updates when the page loads and show update prompts.",
         fallback: true,
       }),
     );

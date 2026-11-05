@@ -2,6 +2,7 @@ import type { ThemeBundle } from "../../features/themes/types";
 import type {
   NotificationOptions,
   NotificationPermission,
+  UpdatePort,
   YapmodHost,
 } from "../../platform/host";
 import { pickPluginFile, pickLocalPlugin, installPickedPlugin } from "./plugin-import";
@@ -38,6 +39,27 @@ export function createWebHost(
   bootstrap: WebBootstrap,
 ): WebHost {
   const clickListeners = new Set<(tag: string) => void>();
+  const updates: UpdatePort | undefined = bootstrap.runtimeUpdates
+    ? {
+        async launchStatus() {
+          return { trial: false, rolledBack: false };
+        },
+        async confirmClientUpdate() {
+          // The bridge confirms a staged bundle during bootstrap.
+        },
+        async prepareClientUpdate(currentVersion) {
+          return bridge.call("updates:stage", { currentVersion });
+        },
+        async check() {
+          // The extension package has no app release; a store build is updated
+          // by the browser and the loader build only updates the client.
+          return null;
+        },
+        async restart() {
+          window.location.reload();
+        },
+      }
+    : undefined;
 
   const host: YapmodHost = {
     id: "web",
@@ -49,7 +71,7 @@ export function createWebHost(
       notifications: true,
       badge: false,
       packages: "extension-storage",
-      updates: "extension",
+      updates: bootstrap.runtimeUpdates ? "client" : "extension",
       releaseNotes: false,
       pageRealm: true,
     },
@@ -185,6 +207,8 @@ export function createWebHost(
         // There is no folder to open.
       },
     },
+
+    updates,
   };
 
   return {

@@ -61,3 +61,26 @@ test("the web manifest keeps privileged APIs inside the extension world", () => 
     true,
   );
 });
+
+test("the loader manifest reads the signed web feed", () => {
+  const store = createManifest("1.2.3");
+  const loader = createManifest("1.2.3", { loader: true });
+
+  assert.equal(
+    store.host_permissions.some((url) => url.includes("client-updates")),
+    false,
+  );
+  assert.equal(
+    loader.host_permissions.includes(
+      "https://ilyeshdz.github.io/yapmod/client-updates-web/*",
+    ),
+    true,
+  );
+  assert.deepEqual(
+    loader.content_scripts.map((script) => [script.world, script.js]),
+    [
+      ["ISOLATED", ["bridge.js"]],
+      ["MAIN", ["loader.js"]],
+    ],
+  );
+});

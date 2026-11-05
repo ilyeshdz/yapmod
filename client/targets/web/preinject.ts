@@ -17,9 +17,14 @@ import { installNotificationApi } from "../../core/notify";
 import { getYapmod } from "../../core/scope";
 import { installStore } from "../../core/store";
 import { installWebSocketInspector } from "../../core/websocket";
+import {
+  prepareClientUpdate,
+  showClientUpdateBanner,
+} from "../../features/updates/api";
 import { installHost } from "../../platform/host";
 import { createWebHost } from "./host";
 import { createBridgeClient, type WebBootstrap } from "./rpc";
+import { CLIENT_VERSION } from "./version";
 import minimumCSS from "../../styles/minimum.css";
 
 const STYLE_ELEMENT_ID = "yapmod-injected-styles";
@@ -41,7 +46,9 @@ try {
 }
 
 async function start(): Promise<void> {
-  const bootstrap = await bridge.call<WebBootstrap>("bootstrap");
+  const bootstrap = await bridge.call<WebBootstrap>("bootstrap", {
+    clientVersion: CLIENT_VERSION,
+  });
   const { host, settings, theme, clientVersion, shellVersion } =
     createWebHost(bridge, bootstrap);
 
@@ -134,6 +141,34 @@ async function start(): Promise<void> {
     installExternalLinks();
   } catch (error) {
     console.error("[yapmod] failed to install external links", error);
+  }
+
+  if (host.capabilities.updates === "client") {
+    void scheduleClientUpdatePrompt();
+  }
+}
+
+/**
+ * Stages a newer signed client in the background. The loader applies it on the
+ * next page load, so this never interrupts the running page.
+ */
+async function scheduleClientUpdatePrompt(): Promise<void> {
+  const yapmod = getYapmod();
+
+  try {
+    if (yapmod.store?.get<boolean>("auto_update", true) === false) {
+      return;
+    }
+
+    const update = await prepareClientUpdate(
+      yapmod.clientVersion ?? CLIENT_VERSION,
+    );
+
+    if (update) {
+      showClientUpdateBanner(update);
+    }
+  } catch (error) {
+    console.error("[yapmod] the client update check failed", error);
   }
 }
 
