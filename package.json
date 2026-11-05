@@ -6,6 +6,7 @@
     "tauri": "tauri",
     "client:build": "node client/build.mjs",
     "client:build:web": "node client/build.mjs --target=web",
+    "client:package:web": "pnpm client:build:web && node scripts/package-web-extension.mjs",
     "client:dev": "node client/build.mjs --watch",
     "client:check": "tsc -p client/tsconfig.json",
     "test:scripts": "node --test scripts/*.test.mjs",

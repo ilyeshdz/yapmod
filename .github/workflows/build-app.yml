@@ -20,6 +20,9 @@ on:
       wix_version:
         description: Numeric version used by the Windows MSI installer
         value: ${{ jobs.prepare.outputs.wix_version }}
+      web_version:
+        description: Version of the web extension shell
+        value: ${{ jobs.prepare.outputs.web_version }}
 
 env:
   CARGO_INCREMENTAL: 0
@@ -30,6 +33,7 @@ jobs:
     outputs:
       app_version: ${{ steps.version.outputs.app_version }}
       wix_version: ${{ steps.version.outputs.wix_version }}
+      web_version: ${{ steps.version.outputs.web_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,9 +83,12 @@ jobs:
             wix_version="${major}.${minor}.${patch}.65535"
           fi
 
+          web_version=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/targets/web/version.json", "utf8")).version)')
+
           echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
           echo "wix_version=$wix_version" >> "$GITHUB_OUTPUT"
-          echo "Building yapmod v$app_version"
+          echo "web_version=$web_version" >> "$GITHUB_OUTPUT"
+          echo "Building yapmod v$app_version (web v$web_version)"
 
   build:
     needs: prepare
@@ -268,4 +275,36 @@ jobs:
         with:
           name: yapmod-${{ matrix.target }}-nsis
           path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install modules
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and package the web extension
+        run: pnpm client:package:web
+
+      - name: Upload the web extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-web-extension
+          path: dist/yapmod-web-*.zip
           if-no-files-found: error

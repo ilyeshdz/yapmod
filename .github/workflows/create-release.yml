@@ -21,6 +21,12 @@ jobs:
           app_version=$(cargo metadata --manifest-path src-tauri/Cargo.toml --no-deps --format-version 1 | jq -er '.packages[] | select(.name == "yapmod") | .version')
           echo "version=$app_version" >> "$GITHUB_OUTPUT"
 
+      - name: Read web extension version
+        id: web_version
+        run: |
+          web_version=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/targets/web/version.json", "utf8")).version)')
+          echo "version=$web_version" >> "$GITHUB_OUTPUT"
+
       # https://github.com/actions/upload-artifact/issues/21#issuecomment-2393490651
       - name: Download latest successful build artifacts
         run: |
@@ -35,6 +41,7 @@ jobs:
       - name: Rename artifacts
         env:
           APP_VERSION: ${{ steps.app_version.outputs.version }}
+          WEB_VERSION: ${{ steps.web_version.outputs.version }}
         run: |
           mkdir -p renamed_artifacts
 
@@ -69,6 +76,9 @@ jobs:
                 ;;
               "yapmod-x86_64-unknown-linux-gnu-portable")
                 new_name="yapmod_${APP_VERSION}_amd64_portable.tar.gz"
+                ;;
+              "yapmod-web-extension")
+                new_name="yapmod_web_${WEB_VERSION}.zip"
                 ;;
               *)
                 # Skip unknown artifacts
