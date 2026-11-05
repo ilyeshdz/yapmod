@@ -105,6 +105,7 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm client:build
+          pnpm client:build:web
           pnpm --dir site/web install --frozen-lockfile --ignore-workspace
           pnpm --dir site/web build
 
@@ -114,7 +115,7 @@ jobs:
           SKIP_CHANNEL: ${{ inputs.channel }}
           CLIENT_ROOT: ${{ github.workspace }}
           OUTPUT_DIR: site/web/dist
-        run: node site/scripts/client-updates.mjs preserve
+        run: node scripts/client-updates.mjs preserve
 
       - name: Package and sign the client release
         id: manifest
@@ -135,7 +136,7 @@ jobs:
           test -n "$CLIENT_UPDATE_SIGNING_KEY" || { echo "CLIENT_UPDATE_SIGNING_KEY secret is required"; exit 1; }
           test -n "$CLIENT_UPDATE_PUBLIC_KEY" || { echo "CLIENT_UPDATE_PUBLIC_KEY repository variable is required"; exit 1; }
 
-          prepare_output=$(node site/scripts/client-updates.mjs prepare)
+          prepare_output=$(node scripts/client-updates.mjs prepare)
           echo "$prepare_output"
           eval "$prepare_output"
 
@@ -166,6 +167,62 @@ jobs:
           echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
           echo "client_version=$client_version" >> "$GITHUB_OUTPUT"
 
+      - name: Preserve the other web channel
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          SKIP_CHANNEL: ${{ inputs.channel }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
+          CLIENT_UPDATES_DIR: client-updates-web
+          CLIENT_UPDATES_URL: https://ilyeshdz.github.io/yapmod/client-updates-web
+        run: node scripts/client-updates.mjs preserve
+
+      - name: Package and sign the web client release
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          EXPIRES_AT: ${{ inputs.expires_at }}
+          CLIENT_ROOT: ${{ github.workspace }}
+          OUTPUT_DIR: site/web/dist
+          CLIENT_UPDATES_DIR: client-updates-web
+          CLIENT_UPDATES_URL: https://ilyeshdz.github.io/yapmod/client-updates-web
+          PREINJECT_PATH: dist/web/preinject.js
+          CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
+          CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+
+          WEB_VERSION=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/targets/web/version.json", "utf8")).version)')
+          CLIENT_VERSION=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/version.json", "utf8")).version)')
+          export CLIENT_VERSION
+          # The web manifest describes the minimum extension shell, not the
+          # desktop app version.
+          export MIN_APP_VERSION="$WEB_VERSION"
+
+          test -n "$CLIENT_UPDATE_SIGNING_KEY" || { echo "CLIENT_UPDATE_SIGNING_KEY secret is required"; exit 1; }
+          test -f dist/web/preinject.js || { echo "The web client bundle was not built"; exit 1; }
+
+          prepare_output=$(node scripts/client-updates.mjs prepare)
+          echo "$prepare_output"
+          eval "$prepare_output"
+
+          manifest_dir="$OUTPUT_DIR/client-updates-web/$CHANNEL"
+          test -f "$manifest_dir/manifest.json" || { echo "The web manifest was not generated"; exit 1; }
+
+          umask 077
+          printf '%s' "$CLIENT_UPDATE_SIGNING_KEY" > "$RUNNER_TEMP/client-update-key.pem"
+          trap 'rm -f "$RUNNER_TEMP/client-update-key.pem" "$RUNNER_TEMP/web-manifest.sig.raw" "$RUNNER_TEMP/client-update-public.pem"' EXIT
+
+          openssl pkeyutl -sign -rawin -inkey "$RUNNER_TEMP/client-update-key.pem" \
+            -in "$manifest_dir/manifest.json" \
+            -out "$RUNNER_TEMP/web-manifest.sig.raw"
+          base64 -w0 "$RUNNER_TEMP/web-manifest.sig.raw" > "$manifest_dir/manifest.sig"
+
+          openssl pkey -in "$RUNNER_TEMP/client-update-key.pem" -pubout \
+            -out "$RUNNER_TEMP/client-update-public.pem"
+          openssl pkeyutl -verify -pubin -inkey "$RUNNER_TEMP/client-update-public.pem" -rawin \
+            -in "$manifest_dir/manifest.json" \
+            -sigfile "$RUNNER_TEMP/web-manifest.sig.raw" > /dev/null
+
       - name: Update the legacy stable aliases
         if: inputs.channel == 'stable'
         run: |
@@ -177,7 +234,7 @@ jobs:
 
       - name: Show the staged update
         run: |
-          find site/web/dist/client-updates -maxdepth 2 -type f -print | sort
+          find site/web/dist/client-updates site/web/dist/client-updates-web -maxdepth 2 -type f -print | sort
 
       - name: Upload Pages artifact
         if: inputs.dry_run != true
