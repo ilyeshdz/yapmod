@@ -12,13 +12,12 @@ import type { CommunityTheme, ThemeBundle } from "./types";
 import type { YapmodThemeApi } from "./api";
 import type { YapmodStoreApi } from "../../shared/types";
 import { Dropdown } from "../../components/dropdown";
-import { IconButton } from "../../components/icon-button";
 import { openExternally } from "../../core/links";
 import { getHost } from "../../platform/host";
 import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
-import { ThemePreview } from "./theme-preview";
+import { CommunityThemeCard, InstalledThemeCard } from "./theme-card";
 
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
 
@@ -26,19 +25,6 @@ export type ThemePickerProps = {
   themeApi: YapmodThemeApi;
   store: YapmodStoreApi;
 };
-
-type ThemeMeta = {
-  mode?: string | null;
-  author?: string | null;
-  version?: string | null;
-  license?: string | null;
-};
-
-function describe(theme: ThemeMeta): string {
-  return [theme.mode, theme.author, theme.version, theme.license]
-    .filter(Boolean)
-    .join(" · ");
-}
 
 /**
  * The theme gallery, rendered inside the host settings panel.
@@ -310,79 +296,29 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
       </Show>
 
       <Show when={activeTab() === "installed"}>
-        <div class="yapmod-theme-grid">
-          <div
-            classList={{
-              "yapmod-theme-card": true,
-              "yapmod-theme-active": activeId() === "",
-            }}
-          >
-            <button
-              class="yapmod-theme-card-pick"
-              type="button"
-              aria-pressed={activeId() === ""}
-              onClick={() => select(null)}
-            >
-              <ThemePreview theme={null} />
-              <span class="yapmod-theme-card-name">Yapper's theme</span>
-            </button>
-            <div class="yapmod-theme-card-foot">
-              <span class="yapmod-theme-card-meta">
-                the look the app ships with
-              </span>
-            </div>
-          </div>
+        <div class="yapmod-plugin-grid">
+          <InstalledThemeCard
+            theme={null}
+            active={activeId() === ""}
+            onUse={() => select(null)}
+          />
 
           <For each={installedThemes()}>
             {(theme) => (
-              <div
-                classList={{
-                  "yapmod-theme-card": true,
-                  "yapmod-theme-active": activeId() === theme.id,
-                }}
-              >
-                <button
-                  class="yapmod-theme-card-pick"
-                  type="button"
-                  aria-pressed={activeId() === theme.id}
-                  onClick={() => select(theme)}
-                >
-                  <ThemePreview theme={theme} />
-                  <span class="yapmod-theme-card-name">{theme.name}</span>
-                </button>
-                <div class="yapmod-theme-card-foot">
-                  <span class="yapmod-theme-card-meta">{describe(theme)}</span>
-                  <IconButton
-                    class="yapmod-theme-reload"
-                    icon="refresh"
-                    size={14}
-                    label={`Reload the theme ${theme.name}`}
-                    title={`Reload ${theme.name} from disk`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void reloadTheme(theme);
-                    }}
-                  />
-                  <IconButton
-                    class="yapmod-theme-remove"
-                    icon="trash"
-                    size={14}
-                    label={`Remove the theme ${theme.name}`}
-                    title={`Remove ${theme.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void removeTheme(theme);
-                    }}
-                  />
-                </div>
-              </div>
+              <InstalledThemeCard
+                theme={theme}
+                active={activeId() === theme.id}
+                onUse={() => select(theme)}
+                onReload={() => void reloadTheme(theme)}
+                onRemove={() => void removeTheme(theme)}
+              />
             )}
           </For>
         </div>
       </Show>
 
       <Show when={activeTab() === "community"}>
-        <div class="yapmod-theme-grid">
+        <div class="yapmod-plugin-grid">
           <Show
             when={filteredCommunity().length > 0}
             fallback={
@@ -395,37 +331,11 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
           >
             <For each={filteredCommunity()}>
               {(theme) => (
-                <div class="yapmod-theme-card">
-                  <div class="yapmod-theme-card-info">
-                    <span class="yapmod-theme-preview">
-                      <Show when={theme.previewUrl}>
-                        <img
-                          src={theme.previewUrl!}
-                          alt={`${theme.name} preview`}
-                        />
-                      </Show>
-                    </span>
-                    <span class="yapmod-theme-card-name">{theme.name}</span>
-                    <Show when={theme.description}>
-                      <span class="yapmod-theme-card-description">
-                        {theme.description}
-                      </span>
-                    </Show>
-                  </div>
-                  <div class="yapmod-theme-card-foot">
-                    <span class="yapmod-theme-card-meta">
-                      {describe(theme)}
-                    </span>
-                    <button
-                      class="btn small yapmod-theme-install"
-                      type="button"
-                      disabled={installedIds().has(theme.id)}
-                      onClick={() => void installCommunityTheme(theme)}
-                    >
-                      {installedIds().has(theme.id) ? "Installed" : "Install"}
-                    </button>
-                  </div>
-                </div>
+                <CommunityThemeCard
+                  theme={theme}
+                  installed={installedIds().has(theme.id)}
+                  onInstall={() => void installCommunityTheme(theme)}
+                />
               )}
             </For>
           </Show>
