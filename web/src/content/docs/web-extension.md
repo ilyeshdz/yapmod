@@ -31,6 +31,7 @@ The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
 
 - **Settings** are stored in extension storage and survive updates.
 - **Themes** can be browsed and installed from the community catalog. Installed themes are kept in extension storage and applied to the page.
+- **Plugins** can be installed from the community catalog or imported from a folder. Packages, plugin settings and consent records live in extension storage, so they survive updates.
 - **Notifications** use the browser notification API. The browser asks for permission the first time notifications are enabled.
 - **External links** open in a normal browser tab.
 
@@ -40,10 +41,18 @@ The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
 | --- | --- | --- |
 | Window controls | Native window | Browser tab |
 | Unread badge | Dock or taskbar | Not available |
-| Plugins | Trusted page JavaScript | Not installed |
 | Local theme folders | Yes | Community catalog only |
+| Plugin `api.invoke` | Native commands | Unavailable |
+| Plugin network inspectors | Page traffic | No page-realm access |
 | Client updates | Signed client bundle | Browser extension update |
 
-Plugins are deliberately absent. The extension runs in an isolated world, where a plugin could not use the same page-realm APIs as the desktop client. Theme packages are CSS only, so installing them does not execute code.
+### How plugins run in the browser
+
+The extension runs in an isolated world. A plugin can change the page DOM and
+use the shared plugin API, but it cannot patch the page's JavaScript objects or
+observe the page's own HTTP and WebSocket traffic. Plugin scripts run in the
+extension world, and `api.invoke` rejects because no host commands are exposed.
+Keep plugins self-contained: relative imports and page-realm hooks will not
+work.
 
 Settings are shared with the same Yapper account, but the extension keeps its own copy. The desktop app and the extension do not sync settings with each other.

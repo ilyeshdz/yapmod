@@ -25,6 +25,8 @@ my-plugin/
 
 JavaScript plugins run directly inside the Yapper page. They are not sandboxed or isolated, and may access the page DOM, visible data, and functionality available from that page. Installing a JavaScript plugin means trusting its author.
 
+In the [web extension](web-extension), plugin scripts run in the extension's isolated world. They still have full DOM access, but they cannot patch page JavaScript objects, inspect the page's network traffic, or use `api.invoke`.
+
 CSS plugins can also change, hide, or imitate interface elements. Only install packages whose source you trust.
 
 Yapmod validates the package files and shows a warning before installation. This validation makes imports predictable; it does not make a plugin safe.
