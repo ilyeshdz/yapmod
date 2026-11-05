@@ -29,7 +29,9 @@ client/
 
 ## Web target
 
-`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`. The
+`pnpm client:build:web` writes an unpacked MV3 extension to `dist/web`.
+`pnpm client:package:web` also writes `dist/yapmod-web-<version>.zip` with the
+manifest at the archive root, ready for a browser store or a release asset. The
 browser lists it as **Yapmod Web**. It runs at `document_start` on the two
 Yapper origins:
 
@@ -37,6 +39,17 @@ Yapper origins:
   share the page's JavaScript realm.
 - `bridge.js` runs in `ISOLATED` and owns extension storage and catalog fetches.
 - `background.js` proxies catalog requests with extension host permissions.
+
+The target has two versions:
+
+- `client/targets/web/version.json` is the extension shell version placed in
+  `manifest.json`.
+- `client/version.json` is the injected client version, compiled into the bundle
+  as `CLIENT_VERSION` and reported to the client at runtime.
+
+A client change therefore needs a new package, even when the shell is unchanged,
+because a store build must contain the client code. Runtime client updates are
+not implemented; see `RELEASING.md`.
 
 | Capability | Desktop | Web |
 | --- | --- | --- |
@@ -54,4 +67,5 @@ Yapper origins:
 The Web target mirrors the desktop injection model: client and plugin code run
 in the page realm, while a narrow isolated bridge supplies the extension-only
 capabilities. Plugins still cannot call native host commands or receive signed
-remote client updates.
+remote client updates. Settings show the extension shell version and the client
+version separately, because the shell and the client move independently.

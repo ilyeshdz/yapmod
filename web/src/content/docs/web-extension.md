@@ -18,6 +18,14 @@ pnpm install
 pnpm client:build:web
 ```
 
+To also produce an installable zip:
+
+```bash
+pnpm client:package:web
+```
+
+This writes `dist/yapmod-web-<version>.zip` with the manifest at the archive root.
+
 Load `dist/web` as an unpacked extension:
 
 1. Open `chrome://extensions` in Chrome, Edge or another Chromium browser.
@@ -27,6 +35,17 @@ Load `dist/web` as an unpacked extension:
 5. Open [Yapper](https://www.yapin.gg) and use **Settings → Yapmod**.
 
 The extension matches only `https://yapin.gg/*` and `https://www.yapin.gg/*`.
+
+## Versions
+
+The extension has its own shell version and embeds the shared client version:
+
+| Version | Source | Meaning |
+| --- | --- | --- |
+| Extension version | `client/targets/web/version.json` | The installed package; shown in the browser's extension page |
+| Client version | `client/version.json` | The injected Yapmod client inside the package |
+
+**Settings → Yapmod** shows both, for example `Extension v1.0.0 · Client v1.0.3`. A client-only change still ships as a new extension package, because a store build has to contain the client code. Desktop receives the same client version through the signed client feed; the browser receives it through the extension update.
 
 ## What works
 

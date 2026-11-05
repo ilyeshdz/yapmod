@@ -11,6 +11,31 @@ channel it was built for and never switches channels through an update.
 `main` is the stable branch. New development belongs on `nightly`. Nightly
 automation never writes stable metadata or stable artifacts.
 
+## Version model
+
+yapmod has three version numbers. They move independently, but every release is
+built from one commit, so a released client version is the same code on every
+surface that ships it.
+
+| Version | Source | Describes |
+| --- | --- | --- |
+| App version | `src-tauri/Cargo.toml` | Tauri desktop shell |
+| Client version | `client/version.json` | Injected client (`preinject`, `postinject`, CSS) |
+| Web version | `client/targets/web/version.json` | Extension package: manifest, bridge, background |
+
+A release is built from a single ref. The desktop app embeds the client, the web
+extension embeds the client, and the signed client feed publishes the client.
+Because the hosts are compiled per target, the desktop and web client bundles are
+built from the same source and version but are not byte-identical.
+
+Bump the client version when the injected code changes. Bump the web version when
+the extension shell changes: a new permission, a new bridge method, or a change
+to `manifest.json`. A client-only change does not require a new web version.
+
+Web versions must be a numeric dotted version (`1.0.0`, `1.0.1.2`). Browser
+stores reject semver prerelease and build metadata, so `+nightly` cannot appear
+in `manifest.json`.
+
 ## How the channels are isolated
 
 The desktop app resolves its channel at build time from
@@ -49,6 +74,11 @@ The `Nightly release` workflow runs daily and can be dispatched manually. It:
 4. builds the client from `nightly` and publishes it under
    `client-updates/nightly/`.
 
+Nightly artifacts also include an unpacked web extension zip,
+`yapmod_web_nightly_<web_version>.zip`. It is not a store build: it bundles the
+nightly client and is attached to the rolling prerelease only. Do not upload a
+nightly package to a browser store.
+
 The website files are always built from `main`, so nightly documentation or
 website changes are not deployed by the nightly job. Only the nightly client
 update feed changes.
@@ -64,11 +94,12 @@ Stable releases still use the existing explicit release steps:
 1. Make the stable changes on `main`.
 2. Update the app version in `src-tauri/Cargo.toml`.
 3. If the injected client changed, update `client/version.json`.
-4. Push `main` and let the `Build` workflow produce artifacts.
-5. Run the `Draft release` workflow from `main`. It downloads the latest
+4. If the extension shell changed, update `client/targets/web/version.json`.
+5. Push `main` and let the `Build` workflow produce artifacts.
+6. Run the `Draft release` workflow from `main`. It downloads the latest
    successful stable build and creates a draft release for the version in
    `Cargo.toml`.
-6. Review and publish the draft release.
+7. Review and publish the draft release.
 
 Publishing the draft triggers `Publish client update` for the stable channel.
 It checks out the release tag, builds the client, increments the stable
@@ -88,27 +119,42 @@ aliases) and uses the next sequence.
 
 ## Releasing the web extension
 
-The browser extension is a separate distribution. It shares
-`client/version.json` with the injected desktop client, but it is not part of
-the desktop app artifacts, the `stable`/`nightly` app releases, or the signed
-client-update feed. Browser stores deliver its updates, and a build never
-switches channel through an extension update.
+The browser extension is a distribution of the same client. It is not part of
+the desktop installers or the signed client-update feed, because a browser store
+delivers extension updates and a store package may not execute remotely hosted
+code. What it does share is the release train: the extension is built from the
+same ref and embeds the same client version as the desktop app and the signed
+feed.
 
-To produce a package:
+The `Build` workflow produces the `yapmod-web-extension` artifact. Both release
+workflows attach it:
 
-1. Update `client/version.json` when the client changes. The manifest version
-   comes from that file.
-2. Run `pnpm client:build:web`. This writes `dist/web` with the bundles, the
-   `manifest.json` and the extension icons.
-3. Zip the contents of `dist/web` (not the folder itself) and upload that zip
-   to a browser store or attach it to a GitHub release.
+- `Draft release` renames it to `yapmod_web_<web_version>.zip`.
+- `Nightly release` attaches `yapmod_web_nightly_<web_version>.zip`.
 
-The extension is not published by `Nightly release` or `Publish client update`.
-Those workflows only build `pnpm client:build` for the signed desktop client.
-Adding the extension to a release would require a separate build/upload step,
-because its update path is the browser store rather than the signed manifest
-feed. Test a package by loading `dist/web` as an unpacked extension in a fresh
-browser profile before publishing.
+To produce a package locally:
+
+1. Update `client/version.json` when the client changes.
+2. Update `client/targets/web/version.json` when the shell changes.
+3. Run `pnpm client:package:web`. This builds `dist/web` and writes
+   `dist/yapmod-web-<web_version>.zip` with the manifest at the archive root.
+4. Test the package by loading `dist/web` as an unpacked extension in a fresh
+   browser profile.
+5. Upload to the browser store manually. No workflow publishes to a store.
+
+`node scripts/check-web-bundle.mjs` verifies that the manifest matches the web
+version and that the page bundle reports the client version. `pnpm check` runs it.
+
+### What the extension can and cannot update
+
+A client-only change still needs a new extension package, because a store build
+must contain the client code. Updating the extension is what delivers the new
+client on web, so the browser update is the web equivalent of the signed feed.
+
+Runtime client updates for the web are not implemented. They are only viable for
+self-hosted or unpacked builds, since they require executing downloaded code and
+depend on the page's CSP. That model remains a possible future target; it is not
+part of the current release process.
 
 ## Promoting nightly to stable
 
@@ -117,7 +163,8 @@ browser profile before publishing.
    builds it contains. Nightly uses `patch + 1` with `+nightly.*` metadata, and
    a stable release with the same core version is ordered after those nightlies.
 3. Update `client/version.json` if the client changed.
-4. Follow the stable release steps above.
+4. Update `client/targets/web/version.json` if the extension shell changed.
+5. Follow the stable release steps above.
 
 Merging alone does not publish anything. The draft release is the explicit
 promotion approval step. Changes on `main` do not flow back into `nightly`
@@ -134,8 +181,9 @@ part of development.
 - Locally, build with
   `YAPMOD_UPDATE_CHANNEL=nightly pnpm tauri build` to exercise the nightly
   update path. Local builds without the variable use stable.
-- `pnpm test:scripts` tests the channel manifest tooling. `cargo test
-  --manifest-version src-tauri/Cargo.toml` tests the Rust validation logic.
+- `pnpm test:scripts` tests the channel manifest tooling and the web packaging.
+  `cargo test --manifest-path src-tauri/Cargo.toml` tests the Rust validation
+  logic.
 
 Never run a non-dry-run publication against a branch that does not belong to the
 selected channel. The `Publish client update` workflow enforces this: stable
