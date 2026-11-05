@@ -111,7 +111,7 @@ For a flat theme, reduce the shadow rather than removing it entirely; floating s
 }
 ```
 
-## Custom font stack
+## Custom fonts
 
 A font is not a token, so use a plain rule. Scope it to the theme id so it disappears when another theme is picked.
 
@@ -121,7 +121,24 @@ A font is not a token, so use a plain rule. Scope it to the theme id so it disap
 }
 ```
 
-If the font is remote, load it with `url()` or `@import`, or ship a `data:` URI. A separate request delays first paint, so a system font stack is often the more portable choice.
+To load a remote font, declare it with `@font-face`. A direct `woff2` URL is more predictable than importing a stylesheet: the Yapper page allows `https://fonts.gstatic.com` for fonts and `data:` URIs, but its style policy does not allow the Google Fonts stylesheet origin. This is how the **Mono Dark** community theme loads JetBrains Mono.
+
+```css
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbV2o-flEEny0FZhsfKu5WU4xD7OwGtT0rU.woff2")
+    format("woff2");
+}
+
+:root[data-yapmod-theme="my-theme"] body {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+```
+
+`@import` also works: the client lifts the leading imports above the generated token layer before mounting the stylesheet. Keep a system fallback and use `font-display: swap`, because a network request delays first paint. For an offline theme, embed the font as a `data:` URI instead.
 
 ## Text selection and scrollbars
 

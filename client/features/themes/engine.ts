@@ -166,6 +166,81 @@ function applyToHost(mode: ResolvedMode): void {
 }
 
 /**
+ * Splits the `@import` rules that open a stylesheet from the rest.
+ *
+ * The engine mounts the generated token layer before the theme, and CSS only
+ * honours `@import` before every other rule. Lifting the leading imports out
+ * lets a theme use `@import` even though its rules no longer come first.
+ */
+function splitLeadingImports(css: string): { imports: string; sheet: string } {
+  let index = 0;
+  const imports: string[] = [];
+
+  while (index < css.length) {
+    while (index < css.length && /\s/.test(css[index])) {
+      index += 1;
+    }
+
+    if (css.startsWith("/*", index)) {
+      const end = css.indexOf("*/", index + 2);
+
+      if (end === -1) {
+        break;
+      }
+
+      index = end + 2;
+      continue;
+    }
+
+    if (!/^@import\b/i.test(css.slice(index))) {
+      break;
+    }
+
+    let end = index;
+    let quote: string | null = null;
+    let depth = 0;
+
+    while (end < css.length) {
+      const character = css[end];
+
+      if (quote) {
+        if (character === "\\") {
+          end += 2;
+          continue;
+        }
+
+        if (character === quote) {
+          quote = null;
+        }
+      } else if (character === '"' || character === "'") {
+        quote = character;
+      } else if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth = Math.max(0, depth - 1);
+      } else if (character === ";" && depth === 0) {
+        end += 1;
+        break;
+      }
+
+      end += 1;
+    }
+
+    imports.push(css.slice(index, end));
+    index = end;
+  }
+
+  if (imports.length === 0) {
+    return { imports: "", sheet: css };
+  }
+
+  return {
+    imports: imports.join("\n"),
+    sheet: css.slice(index).trimStart(),
+  };
+}
+
+/**
  * Puts the stylesheet of a theme on the page.
  *
  * The stylesheet is always the last one in the head, so a theme can style
@@ -203,11 +278,14 @@ function render(theme: ThemeBundle | null): void {
   }
 
   const mode = resolveMode(theme);
+  const { imports, sheet } = splitLeadingImports(theme.css);
 
   root.dataset.yapmodTheme = theme.id;
   root.dataset.yapmodMode = mode;
 
-  mount(`${buildTokenLayer(theme.id, theme.css)}\n${theme.css}`);
+  mount(
+    `${imports ? `${imports}\n` : ""}${buildTokenLayer(theme.id, theme.css)}\n${sheet}`,
+  );
 
   applyToHost(mode);
 }
