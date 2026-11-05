@@ -69,6 +69,10 @@ const TOKEN_NAMES = new Set(TOKENS.map((token) => token.name));
 const EXTRA_VARIABLES: { variable: string; token: string }[] = [
   { variable: "--bg-side-solid", token: "bg-side" },
   { variable: "--bg-floating", token: "bg-float" },
+  { variable: "--accent-fill", token: "accent" },
+  { variable: "--accent-fill-hover", token: "accent-hover" },
+  { variable: "--tint-a", token: "accent" },
+  { variable: "--fx-accent", token: "accent" },
 ];
 
 function declarations(tokens: TokenDefinition[], mode: "dark" | "light"): string {
