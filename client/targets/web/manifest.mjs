@@ -19,7 +19,7 @@ export function createManifest(version) {
     short_name: "Yapmod",
     version,
     description:
-      "Themes, plugins, settings and network inspectors for Yapper, kept in extension storage.",
+      "A free, open-source, lightweight browser extension for Yapper.",
     homepage_url: "https://github.com/ilyeshdz/yapmod",
     icons,
     // Packages and file-setting data URIs can grow past the default quota.
