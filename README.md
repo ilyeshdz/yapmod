@@ -20,8 +20,7 @@ A lightweight desktop client for Yapin that you can shape to fit how you use it.
 
 Change how Yapin looks. Browse the [community catalog](https://ilyeshdz.github.io/yapmod/docs/) for ready-made themes or write your own with CSS.
 
-<!-- TODO: Add a screenshot showing two side-by-side themes (e.g., default vs. Mono Dark) -->
-<!-- ![Theme comparison](images/themes.png) -->
+![Theme comparison](images/themes.png)
 
 Themes are CSS-only and installed locally. Your settings never leave your computer.
 
@@ -31,8 +30,7 @@ Plugins let you extend the app with new features, remove things you don't need, 
 
 The plugin system supports things like auto-dismissing popups, custom backgrounds, keyboard shortcuts, and UI tweaks. Browse or submit plugins on the [community catalog](https://ilyeshdz.github.io/yapmod/docs/).
 
-<!-- TODO: Add a screenshot showing the plugin settings UI -->
-<!-- ![Plugin settings](images/plugins.png) -->
+![Plugin settings](images/plugins.png)
 
 ## A smaller footprint
 
