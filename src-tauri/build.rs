@@ -27,6 +27,7 @@ fn main() {
             "minimize_main_window",
             "toggle_main_window_maximize",
             "close_main_window",
+            "set_transparency",
             "get_changelog",
             "list_themes",
             "themes_folder",

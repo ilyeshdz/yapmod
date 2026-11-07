@@ -18,6 +18,7 @@ mod mime;
 mod notify;
 mod plugin;
 mod theme;
+mod transparency;
 mod tray;
 mod update;
 mod version;
@@ -41,6 +42,7 @@ fn main() {
             window::minimize_main_window,
             window::toggle_main_window_maximize,
             window::close_main_window,
+            transparency::set_transparency,
             injection::release::get_changelog,
             theme::list_themes,
             theme::list_community_themes,
@@ -73,6 +75,7 @@ fn main() {
             let url = WebviewUrl::External("https://www.yapin.gg/?auth=in".parse()?);
             let title = format!("Yapmod - v{}", app.package_info().version);
             let active_theme = theme::active_theme(app.handle(), &config);
+            let transparency_dark = transparency::dark_mode(&config, active_theme.as_ref());
             let launch_selection = client_update::for_launch(app.handle(), &version);
             app.manage(launch_selection.status.clone());
             let client_bundle = launch_selection.bundle;
@@ -94,6 +97,8 @@ fn main() {
                 .zoom_hotkeys_enabled(true)
                 .decorations(true)
                 .shadow(true)
+                .transparent(true)
+                .visible(false)
                 .initialization_script(&preinject)
                 .on_new_window({
                     let app_handle = app.handle().clone();
@@ -160,6 +165,14 @@ fn main() {
             let win = win.build()?;
             window::install_close_handler(&win);
             tray::install(app.handle(), &config);
+
+            // Apply the effect before showing the window, so the first frame is
+            // already transparent instead of flashing an opaque background.
+            if config.setting_bool("enable_transparency").unwrap_or(false) {
+                transparency::apply_default_effect(app.handle(), transparency_dark);
+            }
+
+            win.show()?;
 
             Ok(())
         })

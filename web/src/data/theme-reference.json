@@ -4,7 +4,7 @@
     "client/features/themes/tokens.ts",
     "community-themes/rules.json"
   ],
-  "sourceHash": "5b0ac133703b9c42",
+  "sourceHash": "e60d776353cb709d",
   "types": {
     "ThemeManifest": {
       "name": "ThemeManifest",
@@ -210,6 +210,12 @@
       "name": "bg-float",
       "variable": "--bg-float",
       "dark": "#1b1c21",
+      "light": "#ffffff"
+    },
+    {
+      "name": "bg-solid",
+      "variable": null,
+      "dark": "#222329",
       "light": "#ffffff"
     },
     {

@@ -175,6 +175,18 @@ export type SettingsItem =
       onClick: () => void;
     }
   | {
+      type: "slider";
+      id: string;
+      label: string;
+      description?: string;
+      value: number;
+      min: number;
+      max: number;
+      step?: number;
+      disabled?: boolean;
+      onChange: (value: number) => void;
+    }
+  | {
       type: "custom";
       id: string;
       label?: string;

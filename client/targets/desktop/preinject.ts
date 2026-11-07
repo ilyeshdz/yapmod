@@ -10,6 +10,10 @@ import { installPluginUiApi } from "../../features/plugins/ui";
 import { installStore } from "../../core/store";
 import { installDefaultSettings } from "../../features/settings/defaults";
 import { installThemeApi } from "../../features/themes/api";
+import {
+  applyStoredTransparencyCss,
+  installTransparency,
+} from "../../features/appearance/transparency";
 import { installThemeSettings } from "../../features/themes/settings";
 import { installDesktopBridge } from "../../core/desktop";
 import { installNotificationApi } from "../../core/notify";
@@ -18,8 +22,10 @@ import { installWebSocketInspector } from "../../core/websocket";
 import { installHTTPInspector } from "../../core/http";
 import { getChangelog } from "../../features/settings/release";
 import { getScope, getYapmod } from "../../core/scope";
+import { ensureStyle } from "../../shared/ui";
 import { installHost } from "../../platform/host";
 import { createDesktopHost } from "./host";
+import minimumCSS from "../../styles/minimum.css";
 
 const scope = getScope();
 const yapmod = getYapmod();
@@ -33,6 +39,14 @@ yapmod.internalHost = payload.internalHost;
 yapmod.clientVersion = payload.clientVersion;
 yapmod.release = payload.release;
 yapmod.changelog = getChangelog;
+
+// Inject the minimum stylesheet first so elevated surfaces (modals,
+// dropdowns, settings) keep an opaque background when transparency is on.
+try {
+  ensureStyle("yapmod-minimum-styles", minimumCSS);
+} catch (error) {
+  console.error("[yapmod] failed to inject minimum styles", error);
+}
 
 // Install the WebSocket and HTTP inspectors first, before any other code
 // creates connections or makes requests, so they can capture all traffic.
@@ -78,6 +92,14 @@ try {
   console.error("[yapmod] failed to install store", error);
 }
 
+// The transparency stylesheet is applied before the theme so the first frame
+// already has a transparent background instead of flashing an opaque one.
+try {
+  applyStoredTransparencyCss();
+} catch (error) {
+  console.error("[yapmod] failed to apply transparency styles", error);
+}
+
 try {
   installSettingsApi();
 } catch (error) {
@@ -102,6 +124,12 @@ try {
   installThemeApi(payload.theme ?? null);
 } catch (error) {
   console.error("[yapmod] failed to install theme engine", error);
+}
+
+try {
+  installTransparency();
+} catch (error) {
+  console.error("[yapmod] failed to install transparency sync", error);
 }
 
 try {

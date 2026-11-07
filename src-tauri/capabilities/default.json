@@ -25,6 +25,7 @@
     "allow-minimize-main-window",
     "allow-toggle-main-window-maximize",
     "allow-close-main-window",
+    "allow-set-transparency",
     "allow-get-changelog",
     "allow-list-themes",
     "allow-list-community-themes",

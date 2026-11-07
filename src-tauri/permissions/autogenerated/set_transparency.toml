@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-transparency"
+description = "Enables the set_transparency command without any pre-configured scope."
+commands.allow = ["set_transparency"]
+
+[[permission]]
+identifier = "deny-set-transparency"
+description = "Denies the set_transparency command without any pre-configured scope."
+commands.deny = ["set_transparency"]

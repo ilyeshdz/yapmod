@@ -1,5 +1,5 @@
-import { For, Show } from "solid-js";
-import { onCleanup, onMount, JSX } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
+import { onCleanup, onMount, createEffect, JSX } from "solid-js";
 import { render } from "solid-js/web";
 
 import { Dropdown } from "../../components/dropdown";
@@ -154,6 +154,47 @@ function ButtonItem(
   );
 }
 
+function SliderItem(
+  props: {
+    item: Extract<SettingsItem, { type: "slider" }>;
+    context: SettingsContext;
+  },
+): JSX.Element {
+  const id = controlId(props.context, props.item.id);
+  const [value, setValue] = createSignal(props.item.value);
+
+  createEffect(() => {
+    setValue(props.item.value);
+  });
+
+  return (
+    <div class="field">
+      <label for={id}>{props.item.label}</label>
+      <div class="dens-slider">
+        <input
+          id={id}
+          type="range"
+          min={props.item.min}
+          max={props.item.max}
+          step={props.item.step ?? 1}
+          value={value()}
+          disabled={props.item.disabled}
+          aria-label={props.item.label}
+          onInput={(event) => {
+            const next = Number(event.currentTarget.value);
+            setValue(next);
+            props.item.onChange(next);
+          }}
+        />
+        <b>{value()}</b>
+      </div>
+      <Show when={props.item.description}>
+        <Hint text={props.item.description!} />
+      </Show>
+    </div>
+  );
+}
+
 function CustomItem(
   props: {
     item: Extract<SettingsItem, { type: "custom" }>;
@@ -197,6 +238,8 @@ function SettingsItemView(
       return <NumberItem item={props.item} context={props.context} />;
     case "button":
       return <ButtonItem item={props.item} />;
+    case "slider":
+      return <SliderItem item={props.item} context={props.context} />;
     case "custom":
       return <CustomItem item={props.item} context={props.context} />;
     default:

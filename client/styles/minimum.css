@@ -425,3 +425,68 @@
   font-size: 0.88em;
   opacity: 0.6;
 }
+
+/* Settings slider */
+
+.yapmod-settings-panel .dens-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.yapmod-settings-panel .dens-slider input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ym-accent, var(--accent, #ff6b4a));
+  cursor: pointer;
+}
+
+.yapmod-settings-panel .dens-slider b {
+  min-width: 2.5ch;
+  text-align: right;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* Transparency mode — keep elevated surfaces opaque and readable */
+
+/*
+ * A solid colour for overlays that must stay opaque. Themes expose
+ * `--ym-bg-solid`; this fallback keeps dialogs readable when no theme is
+ * active and `--bg-*` is translucent.
+ */
+html[data-yapmod-transparency="true"] {
+  --yapmod-solid: #222329;
+}
+
+html[data-yapmod-transparency="true"][data-theme="light"] {
+  --yapmod-solid: #ffffff;
+}
+
+/*
+ * The host paints a tinted gradient on the app shell when the user enabled a
+ * server tint. It covers the whole window, so it has to step aside for the
+ * native effect; otherwise the window stays opaque even when every panel is
+ * translucent.
+ */
+html[data-yapmod-transparency="true"][data-tint] body,
+html[data-yapmod-transparency="true"][data-tint] .app,
+html[data-yapmod-transparency="true"][data-tint] .topbar.app-titlebar {
+  background: transparent !important;
+}
+
+html[data-yapmod-transparency="true"] .settings,
+html[data-yapmod-transparency="true"] .yapmod-settings-panel .yapmod-settings,
+html[data-yapmod-transparency="true"] .dd-menu,
+html[data-yapmod-transparency="true"] .modal,
+html[data-yapmod-transparency="true"] .popover,
+html[data-yapmod-transparency="true"] [role="dialog"],
+html[data-yapmod-transparency="true"] [role="menu"],
+html[data-yapmod-transparency="true"] [role="listbox"],
+html[data-yapmod-transparency="true"] [role="tooltip"] {
+  background-color: var(
+    --ym-bg-solid,
+    var(--yapmod-solid, #1a1a1a)
+  ) !important;
+}
