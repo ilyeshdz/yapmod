@@ -1,54 +1,70 @@
-<p align="center">
-  <img src="client/assets/icon.svg" alt="yapmod logo" width="180" />
-</p>
+<div align="center">
+  <img src="images/banner.png" alt="yapmod banner" />
+  <p>A free and open-source desktop app for <a href="https://www.yapin.gg">Yapin</a> that lets you customize the way it looks and works.</p>
 
-<h1 align="center">yapmod</h1>
+  <p>
+    <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=version&color=f67567" alt="Version" /></a>
+    <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License" /></a>
+  </p>
+</div>
 
-<p align="center">
-  A free, open-source, lightweight desktop client for <a href="https://www.yapin.gg">Yapper</a>.
-</p>
+---
 
-<p align="center">
-  <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=app%20version" alt="App version" /></a>
-  <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License: GPL v3" /></a>
-</p>
+A lightweight desktop client for Yapin that you can shape to fit how you use it. Add themes, install plugins, keep things running in the background. Everything stays on your machine.
 
-yapmod gives Yapper a real home on your computer: its own window, native
-integration with your operating system, and small builds that use the webview
-your system already ships instead of bundling a browser. It aims to be more
-than a website in a window, and in time to be a platform you can extend with
-themes.
+> An independent community project, not affiliated with Yapin.
 
-It is an independent, community project, not affiliated with Yapper. The
-official team has built a good desktop app of its own; yapmod focuses on being
-lightweight, on supporting macOS, and on customization.
+## Themes
 
-## Documentation
+Change how Yapin looks. Browse the [community catalog](https://ilyeshdz.github.io/yapmod/docs/) for ready-made themes or write your own with CSS.
 
-Installation, themes, troubleshooting and contribution guides live at
-**[ilyeshdz.github.io/yapmod/docs](https://ilyeshdz.github.io/yapmod/docs/)**.
+![Theme comparison](images/themes.png)
+
+Themes are CSS-only and installed locally. Your settings never leave your computer.
+
+## Plugins
+
+Plugins let you extend the app with new features, remove things you don't need, or change how certain parts work. They're easy to toggle on and off.
+
+The plugin system supports things like auto-dismissing popups, custom backgrounds, keyboard shortcuts, and UI tweaks. Browse or submit plugins on the [community catalog](https://ilyeshdz.github.io/yapmod/docs/).
+
+![Plugin settings](images/plugins.png)
+
+## A smaller footprint
+
+yapmod uses the webview your system already has instead of bundling a full browser, so the download is small and it uses less memory.
 
 ## Installation
 
-Grab the latest build from the [Releases](https://github.com/ilyeshdz/yapmod/releases) page:
+Download the latest build from the [Releases](https://github.com/ilyeshdz/yapmod/releases) page:
 
-- **Windows**: `.msi` installer or NSIS `.exe`
-- **macOS**: `.dmg` (Intel and Apple Silicon)
-- **Linux**: `.deb`, `.rpm`, or `.AppImage`
+| Platform | Format |
+|----------|--------|
+| **Windows** | `.exe` installer, `.msi`, or portable `.zip` |
+| **macOS** | `.dmg` (Apple Silicon and Intel) |
+| **Linux** | `.AppImage`, `.deb`, `.rpm`, or portable `.tar.gz` |
 
-These builds follow the **stable** channel. To try changes before they ship,
-install the [nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly)
-instead. Nightly builds update from the nightly feed only and are replaced each
-day. An installation stays on the channel it was built for; switching requires
-installing a build from the other channel.
+Want to try changes before they ship? Grab the [nightly build](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). It updates daily and might be unstable.
 
-macOS builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+> **macOS:** builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+
+## Documentation
+
+Installation guides, theme and plugin tutorials, and troubleshooting live at [ilyeshdz.github.io/yapmod/docs](https://ilyeshdz.github.io/yapmod/docs/).
 
 ## Community
 
-Join the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
+Join the official Yapin server: [yapin.gg/invite/yapmod](https://www.yapin.gg/invite/yapmod)
 
 ## Contributing
 
-Contributions are welcome. Since the project is early in development, please open an issue to discuss larger changes before starting work, and keep pull requests focused and consistent with the existing code.
+Contributions are welcome. For bigger changes, open an issue first so we can talk about the approach. Keep pull requests focused.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+---
+
+<div align="center">
+  <p style="color: #888; font-size: 0.9em;">Unofficial project · Not affiliated with Yapin</p>
+</div>
