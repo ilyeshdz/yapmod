@@ -77,6 +77,25 @@ export type BadgePort = {
   set(count: number | null): Promise<void>;
 };
 
+export type TransparencyStatus = {
+  /** The host can apply a native window effect. */
+  supported: boolean;
+  /** The effect that is active, for example `mica` or `vibrancy`. */
+  effect: string | null;
+  /** Whether an effect is currently applied. */
+  applied: boolean;
+};
+
+export type AppearancePort = {
+  /**
+   * Apply or clear the native window transparency effect.
+   *
+   * `dark` selects the system tint where the platform supports it. `undefined`
+   * follows the operating system preference.
+   */
+  setTransparency(enabled: boolean, dark?: boolean): Promise<TransparencyStatus>;
+};
+
 export type ThemeRepository = {
   list(): Promise<ThemeBundle[]>;
   listCommunity(): Promise<CommunityTheme[]>;
@@ -131,6 +150,7 @@ export type YapmodHost = {
   readonly notifications?: NotificationPort;
   readonly window?: WindowPort;
   readonly badge?: BadgePort;
+  readonly appearance?: AppearancePort;
   readonly themes?: ThemeRepository;
   readonly plugins?: PluginRepository;
   readonly updates?: UpdatePort;

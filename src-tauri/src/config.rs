@@ -22,11 +22,16 @@ pub struct Config {
 }
 
 /// The settings that are always present.
-const DEFAULT_SETTINGS: [(&str, bool); 3] = [
-    ("use_native_titlebar", false),
-    ("start_maximized", false),
-    ("keep_in_tray", true),
+const DEFAULT_SETTINGS: [(&str, Value); 5] = [
+    ("use_native_titlebar", Value::Bool(false)),
+    ("start_maximized", Value::Bool(false)),
+    ("keep_in_tray", Value::Bool(true)),
+    ("enable_transparency", Value::Bool(false)),
+    ("transparency_force_themes", Value::Bool(false)),
 ];
+
+/// The default for numeric settings, which cannot be built in a `const`.
+const DEFAULT_TRANSPARENCY_LEVEL: u8 = 30;
 
 /// The settings that used to live at the top level of the config file.
 const LEGACY_SETTINGS: [&str; 2] = ["use_native_titlebar", "start_maximized"];
@@ -57,10 +62,15 @@ fn migrate(mut raw: Value) -> Value {
 
 impl Default for Config {
     fn default() -> Self {
-        let settings = DEFAULT_SETTINGS
+        let mut settings: BTreeMap<String, Value> = DEFAULT_SETTINGS
             .iter()
-            .map(|(key, value)| ((*key).to_string(), Value::Bool(*value)))
+            .map(|(key, value)| ((*key).to_string(), value.clone()))
             .collect();
+
+        settings.insert(
+            "transparency_level".to_string(),
+            Value::from(DEFAULT_TRANSPARENCY_LEVEL),
+        );
 
         Self {
             last_seen_version: None,
@@ -233,6 +243,8 @@ fn valid_setting(key: &str, value: &Value) -> bool {
         "use_native_titlebar"
         | "start_maximized"
         | "keep_in_tray"
+        | "enable_transparency"
+        | "transparency_force_themes"
         | "auto_update"
         | "notifications"
         | "unread_badge" => value.is_boolean(),
@@ -246,6 +258,9 @@ fn valid_setting(key: &str, value: &Value) -> bool {
         "theme_mode" => value
             .as_str()
             .is_some_and(|mode| matches!(mode, "system" | "dark" | "light")),
+        "transparency_level" => value
+            .as_f64()
+            .is_some_and(|level| (5.0..=80.0).contains(&level)),
         _ => false,
     }
 }
@@ -342,6 +357,14 @@ mod tests {
     #[test]
     fn setting_updates_are_allowlisted_and_type_checked() {
         assert!(valid_setting("notifications", &json!(false)));
+        assert!(valid_setting("enable_transparency", &json!(true)));
+        assert!(!valid_setting("enable_transparency", &json!("yes")));
+        assert!(valid_setting("transparency_force_themes", &json!(true)));
+        assert!(!valid_setting("transparency_force_themes", &json!("yes")));
+        assert!(valid_setting("transparency_level", &json!(30)));
+        assert!(!valid_setting("transparency_level", &json!(0)));
+        assert!(!valid_setting("transparency_level", &json!(81)));
+        assert!(!valid_setting("transparency_level", &json!("30")));
         assert!(valid_setting("theme_id", &json!("my-theme_1")));
         assert!(valid_setting("plugin_enabled", &json!({"sample": true})));
         assert!(valid_setting(

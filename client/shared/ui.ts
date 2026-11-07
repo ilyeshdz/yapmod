@@ -53,6 +53,12 @@ export function upsertStyle(
   return style;
 }
 
+/** Removes a stylesheet created by `upsertStyle`, including a queued one. */
+export function removeStyle(id: string): void {
+  pendingStyles.delete(id);
+  document.getElementById(id)?.remove();
+}
+
 /** Adds the stylesheet only if it is not in the document already. */
 export function ensureStyle(id: string, css: string): void {
   const style = document.getElementById(id);

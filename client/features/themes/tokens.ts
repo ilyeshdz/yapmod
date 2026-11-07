@@ -27,6 +27,9 @@ const COLOR_TOKENS: TokenDefinition[] = [
   { name: "bg-active", variable: "--bg-active", dark: "#383944", light: "#d7d9de" },
   { name: "bg-input", variable: "--bg-input", dark: "#2d2e36", light: "#ebedef" },
   { name: "bg-float", variable: "--bg-float", dark: "#1b1c21", light: "#ffffff" },
+  // An opaque surface stays readable when the window background is
+  // translucent. Themes with a translucent palette can tune it.
+  { name: "bg-solid", variable: null, dark: "#222329", light: "#ffffff" },
   { name: "text", variable: "--text", dark: "#ececf1", light: "#1d1f23" },
   { name: "text-muted", variable: "--text-muted", dark: "#9c9daa", light: "#5b5d66" },
   { name: "text-faint", variable: "--text-faint", dark: "#6e6f7b", light: "#8b8d96" },

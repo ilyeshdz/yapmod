@@ -82,6 +82,15 @@ export function createDesktopHost(payload: Partial<Payload>): YapmodHost {
       },
     },
 
+    appearance: {
+      setTransparency(enabled, dark) {
+        return invokeCommand("set_transparency", {
+          enabled,
+          dark: dark ?? null,
+        });
+      },
+    },
+
     themes: {
       list: () => invokeCommand("list_themes"),
       listCommunity: () => invokeCommand("list_community_themes"),
