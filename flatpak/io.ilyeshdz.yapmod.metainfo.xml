@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.ilyeshdz.yapmod</id>
+  <name>yapmod</name>
+  <summary>Modded desktop client for Yapper</summary>
+  <developer_name>ilyeshdz</developer_name>
+  <url type="homepage">https://ilyeshdz.github.io/yapmod</url>
+  <url type="bugtracker">https://github.com/ilyeshdz/yapmod/issues</url>
+  <url type="donation">https://github.com/sponsors/ilyeshdz</url>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0</project_license>
+  <content_rating type="oars-1.1"/>
+  <description>
+    <p>yapmod gives Yapper a real home on your computer: its own window, native integration with your operating system, and small builds that use the webview your system already ships.</p>
+    <p>It aims to be more than a website in a window, and in time to be a platform you can extend with themes and plugins.</p>
+    <p>Key features:</p>
+    <ul>
+      <li>Native desktop window with system tray integration</li>
+      <li>Lightweight — uses your system's webview instead of bundling a browser</li>
+      <li>Customizable with community themes and plugins</li>
+      <li>macOS, Windows, and Linux support</li>
+      <li>Automatic updates via stable or nightly channels</li>
+    </ul>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://ilyeshdz.github.io/yapmod/screenshots/screenshot-1.png</image>
+      <caption>yapmod desktop client</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.7.0" date="2025-01-01"/>
+  </releases>
+  <categories>
+    <category>Network</category>
+    <category>InstantMessaging</category>
+  </categories>
+  <keywords>
+    <keyword>Yapper</keyword>
+    <keyword>messaging</keyword>
+    <keyword>chat</keyword>
+  </keywords>
+  <launchable type="desktop-id">io.ilyeshdz.yapmod.desktop</launchable>
+  <provides>
+    <id>io.ilyeshdz.yapmod.desktop</id>
+  </provides>
+</component>

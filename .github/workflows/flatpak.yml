@@ -1,0 +1,128 @@
+name: Flatpak
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and validate without publishing
+        required: false
+        type: boolean
+        default: false
+  release:
+    types:
+      - published
+
+concurrency:
+  group: yapmod-flatpak
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get release version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION=$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "App version: $VERSION"
+
+      - name: Download .deb from release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DEB_NAME="yapmod_${VERSION}_amd64.deb"
+          echo "Downloading $DEB_NAME..."
+          gh release download "v${VERSION}" --pattern "$DEB_NAME" --dir dist
+          if [ ! -f "dist/$DEB_NAME" ]; then
+            echo "Failed to find $DEB_NAME in release v${VERSION}" >&2
+            exit 1
+          fi
+
+      - name: Prepare build directory
+        run: |
+          set -euo pipefail
+          mkdir -p build/flatpak
+          cp flatpak/io.ilyeshdz.yapmod.yml build/flatpak/
+          cp flatpak/io.ilyeshdz.yapmod.metainfo.xml build/flatpak/
+
+      - name: Update Flatpak manifest
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          SHA256=$(sha256sum "dist/yapmod_${VERSION}_amd64.deb" | awk '{print $1}')
+          MANIFEST="build/flatpak/io.ilyeshdz.yapmod.yml"
+          
+          # Update the .deb URL
+          sed -i "s|url:.*|url: \"https://github.com/ilyeshdz/yapmod/releases/download/v${VERSION}/yapmod_${VERSION}_amd64.deb\"|" "$MANIFEST"
+          
+          # Update the SHA256
+          sed -i "s|sha256:.*|sha256: \"${SHA256}\"|" "$MANIFEST"
+          
+          echo "Updated manifest with version $VERSION and SHA256 $SHA256"
+
+      - name: Update metainfo version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          METAINFO="build/flatpak/io.ilyeshdz.yapmod.metainfo.xml"
+          DATE=$(date -u +%Y-%m-%d)
+          
+          # Update the release version and date
+          sed -i "s|<release version=\"[^\"]*\" date=\"[^\"]*\"/>|<release version=\"${VERSION}\" date=\"${DATE}\"/>|" "$METAINFO"
+          
+          echo "Updated metainfo with version $VERSION and date $DATE"
+
+      - name: Install Flatpak dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.gnome.Platform//47 org.gnome.Sdk//47
+
+      - name: Build Flatpak repository
+        run: |
+          flatpak-builder --force-clean --user --repo=repo build/flatpak/io.ilyeshdz.yapmod.yml
+
+      - name: Create Flatpak bundle
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          flatpak build-bundle repo "yapmod_${VERSION}_flatpak.x86_64.flatpak" io.ilyeshdz.yapmod --runtime-repo=flathub
+
+      - name: Upload Flatpak to release
+        if: github.event_name == 'release' && inputs.dry_run != true
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          FLATPAK_FILE="yapmod_${VERSION}_flatpak.x86_64.flatpak"
+          echo "Uploading $FLATPAK_FILE to release v${VERSION}..."
+          gh release upload "v${VERSION}" "$FLATPAK_FILE" --clobber
+
+      - name: Upload Flatpak as artifact (dry run or manual dispatch)
+        if: github.event_name != 'release' || inputs.dry_run == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: yapmod-flatpak
+          path: yapmod_*_flatpak.x86_64.flatpak
+          if-no-files-found: error
