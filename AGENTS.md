@@ -38,6 +38,7 @@ client/              SolidJS/TypeScript injected into the Yapin page
 src-tauri/           Rust Tauri 2 desktop shell and native commands
 web/                 Astro website and documentation (own package)
 scripts/             Node tooling for generated types and client updates
+flatpak/             Flatpak manifest and metadata for Flathub distribution
 community-plugins/   Source packages published to the plugin catalog
 community-themes/    Source packages published to the theme catalog
 .github/workflows/   CI, release (stable + nightly), and website deployment
