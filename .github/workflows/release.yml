@@ -221,6 +221,12 @@ jobs:
         env:
           YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
           YAPMOD_UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          # Allows the Tauri DMG bundler to run macOS Automation scripts (via create-dmg)
+          # to set the custom background, icon positions, and window size on macOS.
+          # Without this, the bundler passes --skip-jenkins to create-dmg in CI,
+          # which skips all Automation-based styling, resulting in a plain DMG.
+          # See: https://github.com/tauri-apps/tauri/issues/1731
+          TAURI_BUNDLER_DMG_IGNORE_CI: ${{ runner.os == 'macOS' && 'true' || '' }}
         run: pnpm tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
       - name: (Linux) Create portable archive
