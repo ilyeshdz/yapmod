@@ -1,7 +1,7 @@
 <div align="center">
   <img src="client/assets/icon.svg" alt="yapmod logo" width="128" />
   <h1>yapmod</h1>
-  <p>A free, open-source desktop app for <a href="https://www.yapin.gg">Yapper</a> that you can shape to fit the way you use it.</p>
+  <p>A free and open-source desktop app for <a href="https://www.yapin.gg">Yapin</a> that lets you customize the way it looks and works.</p>
 
   <p>
     <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=version&color=f67567" alt="Version" /></a>
@@ -12,13 +12,13 @@
 
 ---
 
-yapmod gives Yapper a real home on your desktop — a small, fast app you can extend with themes and plugins. Everything stays on your machine.
+A lightweight desktop client for Yapin that you can shape to fit how you use it. Add themes, install plugins, keep things running in the background. Everything stays on your machine.
 
-> An independent community project, not affiliated with Yapper.
+> An independent community project, not affiliated with Yapin.
 
 ## Themes
 
-Change how Yapper looks without touching code. Browse the [community catalog](https://ilyeshdz.github.io/yapmod/docs/) or write your own CSS theme in minutes.
+Change how Yapin looks. Browse the [community catalog](https://ilyeshdz.github.io/yapmod/docs/) for ready-made themes or write your own with CSS.
 
 <!-- TODO: Add a screenshot showing two side-by-side themes (e.g., default vs. Mono Dark) -->
 <!-- ![Theme comparison](images/themes.png) -->
@@ -27,21 +27,16 @@ Themes are CSS-only and installed locally. Your settings never leave your comput
 
 ## Plugins
 
-Extend what the app does. Community plugins can add new features, remove distractions, or tweak behavior — all with a toggle.
+Plugins let you extend the app with new features, remove things you don't need, or change how certain parts work. They're easy to toggle on and off.
 
-Some examples:
-
-- **Popup Remover** — automatically dismisses promotional dialogs so they stop interrupting you.
-- **Custom Background** — set a background image with blur, opacity, and accent color controls.
-
-Plugins run trusted JavaScript in the page. Browse or submit plugins on the [community catalog](https://ilyeshdz.github.io/yapmod/docs/).
+The plugin system supports things like auto-dismissing popups, custom backgrounds, keyboard shortcuts, and UI tweaks. Browse or submit plugins on the [community catalog](https://ilyeshdz.github.io/yapmod/docs/).
 
 <!-- TODO: Add a screenshot showing the plugin settings UI -->
 <!-- ![Plugin settings](images/plugins.png) -->
 
 ## A smaller footprint
 
-yapmod uses the webview your operating system already includes instead of bundling a full browser. The download is small, the app starts fast, and it uses less memory.
+yapmod uses the webview your system already has instead of bundling a full browser, so the download is small and it uses less memory.
 
 ## Installation
 
@@ -53,7 +48,7 @@ Download the latest build from the [Releases](https://github.com/ilyeshdz/yapmod
 | **macOS** | `.dmg` (Apple Silicon and Intel) |
 | **Linux** | `.AppImage`, `.deb`, `.rpm`, or portable `.tar.gz` |
 
-Want to try in-progress changes before they ship? Grab the [nightly build](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). Nightly updates daily and may be unstable.
+Want to try changes before they ship? Grab the [nightly build](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). It updates daily and might be unstable.
 
 > **macOS:** builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
 
@@ -63,16 +58,16 @@ Installation guides, theme and plugin tutorials, and troubleshooting live at [il
 
 ## Community
 
-Join the conversation on the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
+Join the official Yapin server: [yapin.gg/invite/yapmod](https://www.yapin.gg/invite/yapmod)
 
 ## Contributing
 
-Contributions are welcome. For larger changes, open an issue first so we can discuss the approach. Keep pull requests focused and consistent with the existing code.
+Contributions are welcome. For bigger changes, open an issue first so we can talk about the approach. Keep pull requests focused.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ---
 
 <div align="center">
-  <p style="color: #888; font-size: 0.9em;">Unofficial project · Not affiliated with Yapper</p>
+  <p style="color: #888; font-size: 0.9em;">Unofficial project · Not affiliated with Yapin</p>
 </div>
