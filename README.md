@@ -1,53 +1,73 @@
 <div align="center">
-  <img src="client/assets/icon.svg" alt="yapmod logo" width="160" />
+  <img src="client/assets/icon.svg" alt="yapmod logo" width="128" />
   <h1>yapmod</h1>
-  <p><strong>Yapper, made yours.</strong></p>
-  <p>A free, open-source desktop app for <a href="https://www.yapin.gg">Yapper</a> that gives you a dedicated window, native integration, and the ability to customize everything.</p>
+  <p>A free, open-source desktop app for <a href="https://www.yapin.gg">Yapper</a> that you can shape to fit the way you use it.</p>
 
   <p>
-    <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=app%20version&color=f67567" alt="App version" /></a>
+    <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=version&color=f67567" alt="Version" /></a>
     <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-    <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License: GPL v3" /></a>
+    <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License" /></a>
   </p>
 </div>
 
 ---
 
-yapmod is a lightweight desktop client built with [Tauri](https://tauri.app) — it uses the webview your system already ships instead of bundling a full browser, so the download is small and the app stays fast.
+yapmod gives Yapper a real home on your desktop — a small, fast app you can extend with themes and plugins. Everything stays on your machine.
 
-It's an independent community project, not affiliated with Yapper. The official team has their own desktop app; yapmod exists for people who want something lightweight, customizable, and open source.
+> An independent community project, not affiliated with Yapper.
 
-## Features
+## Themes
 
-- **A desktop app that feels at home** — dedicated window, system notifications, unread badge, and an optional tray icon to keep yapmod running in the background.
-- **Make it yours** — choose a theme or create your own with CSS. Your settings and themes stay on your computer.
-- **Open source, across platforms** — available for Windows, macOS, and Linux. The project is public, so you can see how it works and help shape what comes next.
+Change how Yapper looks without touching code. Browse the [community catalog](https://ilyeshdz.github.io/yapmod/docs/) or write your own CSS theme in minutes.
+
+<!-- TODO: Add a screenshot showing two side-by-side themes (e.g., default vs. Mono Dark) -->
+<!-- ![Theme comparison](images/themes.png) -->
+
+Themes are CSS-only and installed locally. Your settings never leave your computer.
+
+## Plugins
+
+Extend what the app does. Community plugins can add new features, remove distractions, or tweak behavior — all with a toggle.
+
+Some examples:
+
+- **Popup Remover** — automatically dismisses promotional dialogs so they stop interrupting you.
+- **Custom Background** — set a background image with blur, opacity, and accent color controls.
+
+Plugins run trusted JavaScript in the page. Browse or submit plugins on the [community catalog](https://ilyeshdz.github.io/yapmod/docs/).
+
+<!-- TODO: Add a screenshot showing the plugin settings UI -->
+<!-- ![Plugin settings](images/plugins.png) -->
+
+## A smaller footprint
+
+yapmod uses the webview your operating system already includes instead of bundling a full browser. The download is small, the app starts fast, and it uses less memory.
 
 ## Installation
 
-Grab the latest build from the [Releases](https://github.com/ilyeshdz/yapmod/releases) page:
+Download the latest build from the [Releases](https://github.com/ilyeshdz/yapmod/releases) page:
 
 | Platform | Format |
 |----------|--------|
-| **Windows** | `.msi` installer or NSIS `.exe` |
-| **macOS** | `.dmg` (Intel and Apple Silicon) |
-| **Linux** | `.deb`, `.rpm`, or `.AppImage` |
+| **Windows** | `.exe` installer, `.msi`, or portable `.zip` |
+| **macOS** | `.dmg` (Apple Silicon and Intel) |
+| **Linux** | `.AppImage`, `.deb`, `.rpm`, or portable `.tar.gz` |
 
-These builds follow the **stable** channel. To try changes before they ship, install the [nightly prerelease](https://github.com/ilyeshdz/yapmod/releases/tag/nightly) instead. Nightly builds update from the nightly feed only and are replaced each day. An installation stays on the channel it was built for; switching requires installing a build from the other channel.
+Want to try in-progress changes before they ship? Grab the [nightly build](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). Nightly updates daily and may be unstable.
 
-> **macOS note:** builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
+> **macOS:** builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
 
 ## Documentation
 
-Installation guides, themes, troubleshooting, and contribution docs live at [ilyeshdz.github.io/yapmod/docs](https://ilyeshdz.github.io/yapmod/docs/).
+Installation guides, theme and plugin tutorials, and troubleshooting live at [ilyeshdz.github.io/yapmod/docs](https://ilyeshdz.github.io/yapmod/docs/).
 
 ## Community
 
-Join the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
+Join the conversation on the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
 
 ## Contributing
 
-Contributions are welcome. Since the project is early in development, please open an issue to discuss larger changes before starting work, and keep pull requests focused and consistent with the existing code.
+Contributions are welcome. For larger changes, open an issue first so we can discuss the approach. Keep pull requests focused and consistent with the existing code.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
