@@ -34,9 +34,9 @@ const COLOR_TOKENS: TokenDefinition[] = [
   { name: "text-muted", variable: "--text-muted", dark: "#9c9daa", light: "#5b5d66" },
   { name: "text-faint", variable: "--text-faint", dark: "#6e6f7b", light: "#8b8d96" },
   { name: "border", variable: "--border", dark: "#ffffff12", light: "#00000017" },
-  { name: "accent", variable: "--accent", dark: "#ff6b4a", light: "#ff6b4a" },
-  { name: "accent-hover", variable: "--accent-hover", dark: "#ff5a35", light: "#ff5a35" },
-  { name: "accent-soft", variable: "--accent-soft", dark: "#ff6b4a29", light: "#ff6b4a24" },
+  { name: "accent", variable: "--accent", dark: "#dd5a8c", light: "#dd5a8c" },
+  { name: "accent-hover", variable: "--accent-hover", dark: "#c94d7a", light: "#c94d7a" },
+  { name: "accent-soft", variable: "--accent-soft", dark: "#dd5a8c29", light: "#dd5a8c24" },
   { name: "on-accent", variable: "--on-accent", dark: "#ffffff", light: "#ffffff" },
   { name: "danger", variable: "--danger", dark: "#f2555a", light: "#f2555a" },
   { name: "success", variable: "--success", dark: "#3fcf82", light: "#3fcf82" },
@@ -52,11 +52,11 @@ const COLOR_TOKENS: TokenDefinition[] = [
  * the client adds itself.
  */
 const OWN_TOKENS: TokenDefinition[] = [
-  { name: "brand", variable: null, dark: "#f67567", light: "#f67567" },
-  { name: "brand-2", variable: null, dark: "#ff8a70", light: "#ff8a70" },
-  { name: "brand-3", variable: null, dark: "#ffb25f", light: "#ffb25f" },
-  { name: "brand-soft", variable: null, dark: "rgba(246, 117, 103, 0.15)", light: "rgba(246, 117, 103, 0.15)" },
-  { name: "brand-hover", variable: null, dark: "rgba(77, 22, 15, 0.14)", light: "rgba(77, 22, 15, 0.14)" },
+  { name: "brand", variable: null, dark: "#dd5a8c", light: "#dd5a8c" },
+  { name: "brand-2", variable: null, dark: "#e57a9e", light: "#e57a9e" },
+  { name: "brand-3", variable: null, dark: "#edaab5", light: "#edaab5" },
+  { name: "brand-soft", variable: null, dark: "rgba(221, 90, 140, 0.15)", light: "rgba(221, 90, 140, 0.15)" },
+  { name: "brand-hover", variable: null, dark: "rgba(90, 22, 40, 0.14)", light: "rgba(90, 22, 40, 0.14)" },
 ];
 
 export const TOKENS: TokenDefinition[] = [...COLOR_TOKENS, ...OWN_TOKENS];

@@ -15,8 +15,8 @@
 }
 
 .yapmod-theme-tab-active {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a)) !important;
-  color: var(--ym-accent, var(--accent, #ff6b4a)) !important;
+  border-color: var(--ym-accent, var(--accent, #dd5a8c)) !important;
+  color: var(--ym-accent, var(--accent, #dd5a8c)) !important;
 }
 
 .yapmod-theme-community-toolbar {

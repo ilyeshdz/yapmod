@@ -34,7 +34,7 @@
 }
 
 .yapmod-bug-report-description:focus {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  border-color: var(--ym-accent, var(--accent, #dd5a8c));
   outline: none;
 }
 
