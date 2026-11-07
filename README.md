@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="client/assets/icon.svg" alt="yapmod logo" width="128" />
+  <img src="images/banner.png" alt="yapmod banner" />
   <h1>yapmod</h1>
   <p>A free and open-source desktop app for <a href="https://www.yapin.gg">Yapin</a> that lets you customize the way it looks and works.</p>
 
