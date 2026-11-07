@@ -350,6 +350,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -358,6 +360,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Checkout the stable website
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
 
       - name: Rename artifacts
         env:
@@ -414,6 +422,29 @@ jobs:
           files: renamed-artifacts/*
           draft: true
 
+      - name: Setup Node for updater manifests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate Tauri updater manifests
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node scripts/app-updates.mjs generate "$APP_VERSION" renamed-artifacts site/web/dist
+
+      - name: Upload Pages artifact with updater manifests
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/web/dist
+
+      - name: Deploy updater manifests
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   nightly-release:
     needs: [prepare, build, web]
     if: >-
@@ -422,8 +453,13 @@ jobs:
       inputs.app != false &&
       inputs.dry_run != true
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: write
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -501,6 +537,29 @@ jobs:
           overwrite_files: true
           prerelease: true
           make_latest: false
+
+      - name: Setup Node for updater manifests
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate Tauri updater manifests
+        env:
+          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node scripts/app-updates.mjs generate "$APP_VERSION" nightly-artifacts site/web/dist
+
+      - name: Upload Pages artifact with updater manifests
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/web/dist
+
+      - name: Deploy updater manifests
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   client:
     needs: [prepare, build]

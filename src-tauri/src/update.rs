@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use tauri::AppHandle;
+use tauri_plugin_updater::UpdaterExt;
 use ts_rs::TS;
 
 use crate::{channel::UpdateChannel, http, version::is_newer};
@@ -115,8 +117,8 @@ async fn latest_nightly_version() -> Result<Option<String>, String> {
 
 /// Looks up the newest published release on this installation's channel.
 ///
-/// yapmod never updates itself, so this only tells the user that a newer
-/// version exists and where to get it.
+/// Returns metadata so the UI can decide whether to prompt the user to
+/// download and install the update via `install_app_update`.
 #[tauri::command]
 pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
     let current_version = app.package_info().version.to_string();
@@ -139,6 +141,82 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
         channel,
         release_url,
     })
+}
+
+/// Downloads and installs the latest app update using Tauri's built-in updater.
+///
+/// The updater fetches the signed manifest, verifies the download hash, replaces
+/// the current app bundle, and restarts the application automatically.
+#[tauri::command]
+pub async fn install_app_update(app: AppHandle) -> Result<(), String> {
+    let updater = app
+        .updater()
+        .map_err(|error| format!("updater not configured: {error}"))?;
+
+    let Some(update) = updater
+        .check()
+        .await
+        .map_err(|error| format!("failed to check for update: {error}"))?
+    else {
+        return Err("no update available".to_string());
+    };
+
+    update
+        .download_and_install(
+            |chunk_length, content_length| {
+                eprintln!(
+                    "update download: {} from {:?}",
+                    chunk_length, content_length
+                );
+            },
+            || {
+                eprintln!("update download finished");
+            },
+        )
+        .await
+        .map_err(|error| format!("download and install failed: {error}"))?;
+
+    app.restart();
+}
+
+/// Spawns a background task that checks for app updates periodically.
+///
+/// Checks every 6 hours with exponential backoff on failure. Stops after
+/// 24+ hours of consecutive failures until the next app launch.
+pub fn spawn_update_checker(app: AppHandle) {
+    let interval = Duration::from_secs(6 * 60 * 60);
+    let max_failures = 4u32; // 4 * 6h = 24h
+
+    tokio::spawn(async move {
+        let mut consecutive_failures = 0u32;
+
+        loop {
+            tokio::time::sleep(interval).await;
+
+            match check_for_update(app.clone()).await {
+                Ok(info) => {
+                    if info.available {
+                        eprintln!("background check: update {} available", info.latest_version);
+                    }
+                    consecutive_failures = 0;
+                }
+                Err(error) => {
+                    consecutive_failures = consecutive_failures.saturating_add(1);
+                    eprintln!(
+                        "background update check failed ({}/{}): {}",
+                        consecutive_failures, max_failures, error
+                    );
+                    if consecutive_failures >= max_failures {
+                        eprintln!(
+                            "stopping background update checker after {} consecutive failures",
+                            consecutive_failures
+                        );
+                        break;
+                    }
+                }
+            }
+        }
+    });
 }
 
 #[cfg(test)]

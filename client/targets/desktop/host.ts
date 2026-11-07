@@ -124,6 +124,7 @@ export function createDesktopHost(payload: Partial<Payload>): YapmodHost {
       prepareClientUpdate: (currentClientVersion) =>
         invokeCommand("prepare_client_update", { currentClientVersion }),
       check: () => invokeCommand("check_for_update"),
+      installAppUpdate: () => invokeCommand("install_app_update"),
       restart: () => invokeCommand("restart_app"),
     },
 

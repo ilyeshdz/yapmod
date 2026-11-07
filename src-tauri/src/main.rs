@@ -29,12 +29,14 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             config::set_settings,
             badge::set_badge_count,
             notify::notify,
             notify::request_notification_permission,
             update::check_for_update,
+            update::install_app_update,
             client_update::confirm_client_update,
             client_update::get_client_update_launch_status,
             client_update::prepare_client_update,
@@ -173,6 +175,9 @@ fn main() {
             }
 
             win.show()?;
+
+            // Start background update checker (6-hour interval)
+            update::spawn_update_checker(app.handle().clone());
 
             Ok(())
         })

@@ -126,6 +126,7 @@ export type UpdatePort = {
   confirmClientUpdate(): Promise<void>;
   prepareClientUpdate(currentVersion: string): Promise<ClientUpdateInfo | null>;
   check(): Promise<UpdateInfo | null>;
+  installAppUpdate?(): Promise<void>;
   restart(): Promise<void>;
 };
 

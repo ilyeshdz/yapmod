@@ -28,5 +28,15 @@
       "signingIdentity": "-",
       "entitlements": "./Entitlements.plist"
     }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "endpoints": [
+        "https://ilyeshdz.github.io/yapmod/app-updates/{{target}}/{{current_version}}"
+      ],
+      "pubkey": "bW9uS3k0dGhpc0lzQVNsYWNrZUZvclRoZVB1YmxpY0tleU11c3RCZVJlcGxhY2Vk"
+    }
   }
 }
