@@ -10,6 +10,7 @@ import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { requestNotificationPermission } from "../../core/notify";
 import { ChangelogList } from "./changelog";
+import { openBugReport } from "../bug-report/api";
 
 const SECTION_ID = "yapmod";
 const CHANGELOG_SECTION_ID = "yapmod-changelog";
@@ -298,6 +299,15 @@ export function installDefaultSettings(): void {
         }),
       );
     }
+  }
+
+  if (yapmod.modal) {
+    items.push({
+      type: "button",
+      id: "report_bug",
+      label: "Report a bug",
+      onClick: () => openBugReport(),
+    });
   }
 
   const section: SettingsSection = {

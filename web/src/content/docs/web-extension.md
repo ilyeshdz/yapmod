@@ -71,6 +71,7 @@ The loader verifies the Ed25519 manifest signature, the channel, the expiry, the
 - **Plugins** can be installed from the community catalog or imported from a folder. Packages, plugin settings and consent records live in extension storage, so they survive updates. Plugin scripts run in the page realm.
 - **Plugin inspectors** can observe and modify Yapper's WebSocket and HTTP traffic, just like on desktop.
 - **Notifications** use the browser notification API. The browser asks for permission the first time notifications are enabled.
+- **Bug reports** include the extension and client versions, your platform and other technical details. Choose **Report a bug** in **Settings → Yapmod** to copy the report or open a prefilled GitHub issue.
 - **External links** open in a normal browser tab.
 
 ## What the browser build does not do

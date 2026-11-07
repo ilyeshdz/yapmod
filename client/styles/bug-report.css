@@ -1,0 +1,118 @@
+/* Bug report */
+
+.yapmod-bug-report {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.yapmod-bug-report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.yapmod-bug-report-label {
+  color: var(--ym-text, var(--text, #ececf1));
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.yapmod-bug-report-description {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 110px;
+  padding: 8px 10px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: var(--ym-radius, var(--radius, 10px));
+  background: var(--ym-bg-input, var(--bg-input, rgba(127, 127, 127, 0.08)));
+  color: var(--ym-text, var(--text, #ececf1));
+  font: inherit;
+  font-size: 0.9em;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.yapmod-bug-report-description:focus {
+  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  outline: none;
+}
+
+.yapmod-bug-report-info {
+  padding: 12px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: var(--ym-radius, var(--radius, 10px));
+  background: var(--ym-bg-input, var(--bg-input, rgba(127, 127, 127, 0.06)));
+}
+
+.yapmod-bug-report-info h3 {
+  margin: 0 0 8px;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.yapmod-bug-report-fields {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.yapmod-bug-report-fields dt {
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-weight: 600;
+}
+
+.yapmod-bug-report-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.yapmod-bug-report-info .hint {
+  margin: 10px 0 0;
+}
+
+.yapmod-bug-report-status {
+  margin: 0;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 12px;
+}
+
+.yapmod-bug-report-status:empty {
+  display: none;
+}
+
+.yapmod-bug-report-status[data-tone="success"] {
+  color: var(--ym-success, var(--success, #3fcf82));
+}
+
+.yapmod-bug-report-status[data-tone="error"] {
+  color: var(--ym-danger, var(--danger, #f2555a));
+}
+
+.yapmod-bug-report-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.yapmod-bug-report-intro .hint {
+  margin: 0;
+  max-width: 60ch;
+}
+
+@media (max-width: 520px) {
+  .yapmod-bug-report-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .yapmod-bug-report-fields dd {
+    margin-bottom: 6px;
+  }
+}
