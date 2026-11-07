@@ -114,7 +114,7 @@ community-themes/    Source packages published to the theme catalog
 - Bypass plugin/theme validation, size limits, or path/symlink checks.
 - Run a non-dry-run release or client-update publication from the wrong branch.
 - Commit signing keys, tokens, or downloaded private assets.
-- Push directly to `main`.
+- Add `Co-authored-by: Junie` trailer to git commits.
 
 ## Terminology
 
