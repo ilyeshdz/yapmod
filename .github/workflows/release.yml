@@ -125,11 +125,11 @@ jobs:
 
           - platform: macos-latest
             target: x86_64-apple-darwin
-            bundles: app
+            bundles: app,dmg
 
           - platform: macos-latest
             target: aarch64-apple-darwin
-            bundles: app
+            bundles: app,dmg
 
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
@@ -221,6 +221,12 @@ jobs:
         env:
           YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
           YAPMOD_UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
+          # Allows the Tauri DMG bundler to run macOS Automation scripts (via create-dmg)
+          # to set the custom background, icon positions, and window size on macOS.
+          # Without this, the bundler passes --skip-jenkins to create-dmg in CI,
+          # which skips all Automation-based styling, resulting in a plain DMG.
+          # See: https://github.com/tauri-apps/tauri/issues/1731
+          TAURI_BUNDLER_DMG_IGNORE_CI: ${{ runner.os == 'macOS' && 'true' || '' }}
         run: pnpm tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
       - name: (Linux) Create portable archive
@@ -264,24 +270,12 @@ jobs:
           path: src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
-      - name: (macOS) Create DMG
-        if: runner.os == 'macOS'
-        id: create-dmg
-        uses: L-Super/create-dmg-actions@v1
-        with:
-          dmg_name: 'yapmod'
-          src_dir: '${{ github.workspace }}/src-tauri/target/${{ matrix.target }}/release/bundle/macos/yapmod.app'
-          background: '${{ github.workspace }}/src-tauri/images/dmg-background.png'
-          window_size: '660x400'
-          icon_position: '180 170'
-          app_drop_link: '480 170'
-
       - name: (macOS) Upload .dmg
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: yapmod-${{ matrix.target }}-dmg
-          path: '${{ github.workspace }}/${{ steps.create-dmg.outputs.dmg_path }}'
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
       - name: (Windows) Upload portable
