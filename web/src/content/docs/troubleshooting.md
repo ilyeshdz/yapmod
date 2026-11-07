@@ -52,4 +52,6 @@ Sign in with your Yapper account. If that fails on the Yapper website too, the p
 
 ## Still stuck?
 
-[Open an issue](https://github.com/ilyeshdz/yapmod/issues) with your operating system, your yapmod version and the steps to reproduce. That is usually enough to pin down the cause.
+Open **Settings → Yapmod** and choose **Report a bug**. It fills in your operating system, your yapmod versions and other technical details, and can open a prefilled GitHub issue.
+
+You can also [open an issue](https://github.com/ilyeshdz/yapmod/issues) with your operating system, your yapmod version and the steps to reproduce. That is usually enough to pin down the cause.

@@ -38,6 +38,10 @@ Window transparency is not available on Linux, where the effect depends on the d
 
 The Yapmod settings section also shows the installed desktop and client versions. Open **Changelog** in the same settings group to browse release notes.
 
+## Report a bug
+
+Open **Settings → Yapmod** and choose **Report a bug**. Describe what happened, then copy the report or open a prefilled GitHub issue. The report includes the desktop and client versions, your platform, language, screen size, active theme and enabled plugins. It does not include your messages or account information.
+
 ## Themes
 
 Manage installed themes in **Settings → Themes**. See [Using themes](/yapmod/docs/using-themes) for installing and removing them, or the [Themes developer documentation](/yapmod/docs/themes) for the theme format.
