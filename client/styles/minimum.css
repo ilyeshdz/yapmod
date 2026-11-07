@@ -1,5 +1,22 @@
 /* Settings sections */
 
+/*
+ * Override the app accent palette so that every component the wrapped app
+ * styles through CSS variables (buttons, links, focus rings) uses the
+ * yapmod brand colour.  A community theme that sets its own accent will
+ * naturally win, because its stylesheet is appended after this one.
+ */
+:root {
+  --accent: #dd5a8c !important;
+  --accent-hover: #c94d7a !important;
+  --accent-soft: #dd5a8c29 !important;
+  --on-accent: #ffffff !important;
+  --tint-a: #dd5a8c !important;
+  --accent-fill: #dd5a8c !important;
+  --accent-fill-hover: #c94d7a !important;
+  --fx-accent: #dd5a8c !important;
+}
+
 .topbar[data-tauri-drag-region="deep"],
 .topbar[data-tauri-drag-region="deep"] * {
   cursor: default !important;
@@ -232,7 +249,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--ym-accent, var(--tint-a, #5865f2));
+  background: var(--ym-accent, var(--tint-a, #dd5a8c));
 }
 
 /* Update modal */
@@ -264,7 +281,7 @@
 }
 
 .yapmod-update-version-latest .yapmod-update-version-number {
-  color: var(--ym-brand, #f67567);
+  color: var(--ym-brand, #dd5a8c);
 }
 
 .yapmod-update-modal .yapmod-modal-foot {
@@ -288,7 +305,7 @@
   gap: 8px;
   min-height: 28px;
   padding: 2px 10px;
-  background: var(--ym-brand, var(--accent, var(--tint-a, #f67567)));
+  background: var(--ym-brand, var(--accent, var(--tint-a, #dd5a8c)));
   color: var(--ym-on-accent, var(--on-accent, #fff));
   font-size: 12px;
 }
@@ -358,7 +375,7 @@
   cursor: pointer;
 }
 .dd-trigger.open {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  border-color: var(--ym-accent, var(--accent, #dd5a8c));
 }
 .dd-value {
   min-width: 0;
@@ -437,7 +454,7 @@
 .yapmod-settings-panel .dens-slider input[type="range"] {
   flex: 1;
   min-width: 0;
-  accent-color: var(--ym-accent, var(--accent, #ff6b4a));
+  accent-color: var(--ym-accent, var(--accent, #dd5a8c));
   cursor: pointer;
 }
 

@@ -4,7 +4,7 @@
     "client/features/themes/tokens.ts",
     "community-themes/rules.json"
   ],
-  "sourceHash": "e60d776353cb709d",
+  "sourceHash": "1657ffa61bdbf397",
   "types": {
     "ThemeManifest": {
       "name": "ThemeManifest",
@@ -245,20 +245,20 @@
     {
       "name": "accent",
       "variable": "--accent",
-      "dark": "#ff6b4a",
-      "light": "#ff6b4a"
+      "dark": "#dd5a8c",
+      "light": "#dd5a8c"
     },
     {
       "name": "accent-hover",
       "variable": "--accent-hover",
-      "dark": "#ff5a35",
-      "light": "#ff5a35"
+      "dark": "#c94d7a",
+      "light": "#c94d7a"
     },
     {
       "name": "accent-soft",
       "variable": "--accent-soft",
-      "dark": "#ff6b4a29",
-      "light": "#ff6b4a24"
+      "dark": "#dd5a8c29",
+      "light": "#dd5a8c24"
     },
     {
       "name": "on-accent",
@@ -299,32 +299,32 @@
     {
       "name": "brand",
       "variable": null,
-      "dark": "#f67567",
-      "light": "#f67567"
+      "dark": "#dd5a8c",
+      "light": "#dd5a8c"
     },
     {
       "name": "brand-2",
       "variable": null,
-      "dark": "#ff8a70",
-      "light": "#ff8a70"
+      "dark": "#e57a9e",
+      "light": "#e57a9e"
     },
     {
       "name": "brand-3",
       "variable": null,
-      "dark": "#ffb25f",
-      "light": "#ffb25f"
+      "dark": "#edaab5",
+      "light": "#edaab5"
     },
     {
       "name": "brand-soft",
       "variable": null,
-      "dark": "rgba(246, 117, 103, 0.15)",
-      "light": "rgba(246, 117, 103, 0.15)"
+      "dark": "rgba(221, 90, 140, 0.15)",
+      "light": "rgba(221, 90, 140, 0.15)"
     },
     {
       "name": "brand-hover",
       "variable": null,
-      "dark": "rgba(77, 22, 15, 0.14)",
-      "light": "rgba(77, 22, 15, 0.14)"
+      "dark": "rgba(90, 22, 40, 0.14)",
+      "light": "rgba(90, 22, 40, 0.14)"
     }
   ],
   "rules": {

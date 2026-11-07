@@ -92,8 +92,8 @@
 }
 
 .yapmod-plugin-state-active {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a));
-  color: var(--ym-accent, var(--accent, #ff6b4a));
+  border-color: var(--ym-accent, var(--accent, #dd5a8c));
+  color: var(--ym-accent, var(--accent, #dd5a8c));
   opacity: 1;
 }
 
@@ -258,7 +258,7 @@
 }
 
 .yapmod-plugin-text-input:focus {
-  border-color: var(--ym-accent, var(--accent, #ff6b4a));
+  border-color: var(--ym-accent, var(--accent, #dd5a8c));
 }
 
 .yapmod-plugin-text-input[readonly] {
