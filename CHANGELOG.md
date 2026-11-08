@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Automatic app updates with background checking. The app checks for updates every 6 hours with exponential backoff on failure, downloads and installs updates silently, and shows a notification when a new version is available. CI generates signed updater manifests published via GitHub Pages (#25).
 - Settings export and import feature. On desktop, export opens a native save dialog so users can choose the file name and location; web falls back to an automatic download. Import validates the file format and shows clear errors on invalid input (#46).
 - Keyboard shortcut API reference page documenting how to register, scope, and clean up keyboard event listeners in plugins (#42).
 - Expanded plugin API documentation with threat model, CSS scoping patterns, plugin interaction model, and additional examples (#42).
