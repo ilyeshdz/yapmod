@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `tokio-tungstenite` now uses `rustls-tls` instead of `native-tls`, unifying the TLS implementation across the project to a single `rustls` backend (#45).
 - Shared helper functions for subscription management, handler notification, and ArrayBuffer copying are extracted from the HTTP and WebSocket inspectors into a common module, eliminating duplicated code (#68).
+- The `isRecord` type guard is extracted from three files into the shared helpers module, eliminating duplication (#68).
+- Plugin setting validation now reports specific, actionable error messages identifying each setting and its exact problem (#68).
 
 ### Fixed
 
