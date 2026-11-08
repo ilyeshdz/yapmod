@@ -11,23 +11,124 @@ import {
 import type { CommunityTheme, ThemeBundle } from "./types";
 import type { YapmodThemeApi } from "./api";
 import type { YapmodStoreApi } from "../../shared/types";
+import type { DropdownOption } from "../../components/dropdown";
 import { Dropdown } from "../../components/dropdown";
+import { PackageToolbar } from "../../components/package-toolbar";
 import { openExternally } from "../../core/links";
 import { getHost } from "../../platform/host";
 import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
-import { CommunityThemeCard, InstalledThemeCard } from "./theme-card";
+import { ThemeCard, type ThemeEntry } from "./theme-card";
 
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
+
+type Filter = "all" | "installed" | "available";
+
+const FILTER_OPTIONS: DropdownOption[] = [
+  { value: "all", label: "All themes" },
+  { value: "installed", label: "Installed" },
+  { value: "available", label: "Not installed" },
+];
 
 export type ThemePickerProps = {
   themeApi: YapmodThemeApi;
   store: YapmodStoreApi;
 };
 
+function buildEntries(
+  installed: ThemeBundle[],
+  community: CommunityTheme[],
+): ThemeEntry[] {
+  const communityById = new Map(community.map((theme) => [theme.id, theme]));
+  const entries = new Map<string, ThemeEntry>();
+
+  for (const theme of installed) {
+    const catalogTheme = communityById.get(theme.id);
+
+    entries.set(theme.id, {
+      id: theme.id,
+      name: theme.name,
+      description: theme.description,
+      author: theme.author,
+      version: theme.version,
+      license: theme.license,
+      mode: theme.mode,
+      tags: theme.tags,
+      source: catalogTheme ? "community" : "local",
+      installed: theme,
+      community: catalogTheme ?? null,
+    });
+  }
+
+  for (const theme of community) {
+    if (entries.has(theme.id)) {
+      continue;
+    }
+
+    entries.set(theme.id, {
+      id: theme.id,
+      name: theme.name,
+      description: theme.description,
+      author: theme.author,
+      version: theme.version,
+      license: theme.license,
+      mode: theme.mode,
+      tags: theme.tags,
+      source: "community",
+      installed: null,
+      community: theme,
+    });
+  }
+
+  // Installed themes are the ones users are most likely to manage, so they
+  // lead the list. The app's own theme always comes first.
+  const rest = [...entries.values()].sort((left, right) => {
+    const installedOrder = Number(left.installed === null) - Number(right.installed === null);
+
+    if (installedOrder !== 0) {
+      return installedOrder;
+    }
+
+    return left.name.localeCompare(right.name, undefined, {
+      sensitivity: "base",
+    });
+  });
+
+  return [
+    {
+      id: "",
+      name: "Yapper's theme",
+      description: "The app's own palette, typography and spacing.",
+      author: null,
+      version: null,
+      license: null,
+      mode: "",
+      tags: [],
+      source: "builtin",
+      installed: null,
+      community: null,
+      builtin: true,
+    },
+    ...rest,
+  ];
+}
+
+function matchesQuery(entry: ThemeEntry, query: string): boolean {
+  if (!query) {
+    return true;
+  }
+
+  return [entry.name, entry.author, entry.description, entry.mode, ...entry.tags]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .some((value) => value.toLowerCase().includes(query));
+}
+
 /**
- * The theme gallery, rendered inside the host settings panel.
+ * The unified theme gallery, rendered inside the host settings panel.
+ *
+ * Community and locally installed themes share one list; installation state
+ * is a switch on each card instead of two separate tabs.
  */
 export function ThemePicker(props: ThemePickerProps): JSX.Element {
   const { themeApi, store } = props;
@@ -41,9 +142,7 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
   );
   const [communityLoaded, setCommunityLoaded] = createSignal(false);
   const [communityLoading, setCommunityLoading] = createSignal(false);
-  const [activeTab, setActiveTab] = createSignal<"installed" | "community">(
-    "installed",
-  );
+  const [filter, setFilter] = createSignal<Filter>("all");
   const [searchQuery, setSearchQuery] = createSignal("");
   const [activeId, setActiveId] = createSignal(
     store.get<string>("theme_id", "") ?? "",
@@ -53,22 +152,27 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
   );
   const [status, setStatus] = createSignal({ message: "", error: false });
 
-  const installedIds = createMemo(
-    () => new Set(installedThemes().map((theme) => theme.id)),
+  const entries = createMemo(() =>
+    buildEntries(installedThemes(), communityThemes()),
   );
 
-  const filteredCommunity = createMemo(() => {
+  const filteredThemes = createMemo(() => {
     const query = searchQuery().trim().toLowerCase();
+    const currentFilter = filter();
 
-    if (!query) {
-      return communityThemes();
-    }
+    return entries().filter((entry) => {
+      const installed = entry.builtin === true || entry.installed !== null;
 
-    return communityThemes().filter((theme) =>
-      [theme.name, theme.author, theme.description, ...theme.tags]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query)),
-    );
+      if (currentFilter === "installed" && !installed) {
+        return false;
+      }
+
+      if (currentFilter === "available" && installed) {
+        return false;
+      }
+
+      return matchesQuery(entry, query);
+    });
   });
 
   function setMessage(message: string, error = false): void {
@@ -95,36 +199,68 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
     }
 
     setCommunityLoading(true);
-    setMessage("Loading community themes…");
 
     try {
       const themes = await themeApi.listCommunity();
       setCommunityThemes(themes);
       setCommunityLoaded(true);
-      setMessage(
-        themes.length === 0
-          ? "No community themes are published yet."
-          : `${themes.length} community theme${themes.length === 1 ? "" : "s"} available.`,
-      );
     } catch (error) {
-      setMessage(
-        `Could not load community themes: ${String(error)}`,
-        true,
-      );
+      setMessage(`Could not load community themes: ${String(error)}`, true);
     } finally {
       setCommunityLoading(false);
     }
   }
 
-  async function installCommunityTheme(theme: CommunityTheme): Promise<void> {
+  async function refreshAll(): Promise<void> {
+    setMessage("Refreshing themes…");
+    await Promise.all([refresh(), loadCommunity(true)]);
+
+    if (!status().error) {
+      setMessage("");
+    }
+  }
+
+  async function setInstalled(entry: ThemeEntry, next: boolean): Promise<boolean> {
+    if (next) {
+      if (!entry.community || entry.installed) {
+        return true;
+      }
+
+      try {
+        setMessage(`Installing ${entry.name}…`);
+        await themeApi.installCommunity(entry.community.id);
+        setInstalledThemes(await themeApi.list());
+        setMessage(`Installed ${entry.name}.`);
+        return true;
+      } catch (error) {
+        setMessage(`Could not install ${entry.name}: ${String(error)}`, true);
+        return false;
+      }
+    }
+
+    if (!entry.installed) {
+      return false;
+    }
+
+    if (!(await confirmRemove(entry.name))) {
+      return false;
+    }
+
     try {
-      setMessage(`Installing ${theme.name}…`);
-      await themeApi.installCommunity(theme.id);
+      await themeApi.remove(entry.id);
+
+      if (activeId() === entry.id) {
+        store.set("theme_id", "");
+        setActiveId("");
+        themeApi.apply(null);
+      }
+
       setInstalledThemes(await themeApi.list());
-      setActiveTab("installed");
-      setMessage(`Installed ${theme.name}.`);
+      setMessage(`Uninstalled ${entry.name}.`);
+      return true;
     } catch (error) {
-      setMessage(String(error), true);
+      setMessage(`Could not uninstall ${entry.name}: ${String(error)}`, true);
+      return false;
     }
   }
 
@@ -139,26 +275,6 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
       setMessage("Installing…");
       const theme = await themeApi.install(source);
       setMessage(`Installed ${theme?.name ?? "the theme"}.`);
-      await refresh();
-    } catch (error) {
-      setMessage(String(error), true);
-    }
-  }
-
-  async function removeTheme(theme: ThemeBundle): Promise<void> {
-    if (!(await confirmRemove(theme.name))) {
-      return;
-    }
-
-    try {
-      await themeApi.remove(theme.id);
-
-      if (activeId() === theme.id) {
-        store.set("theme_id", "");
-        setActiveId("");
-        themeApi.apply(null);
-      }
-
       await refresh();
     } catch (error) {
       setMessage(String(error), true);
@@ -181,17 +297,10 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
     }
   }
 
-  function show(view: "installed" | "community"): void {
-    setActiveTab(view);
-
-    if (view === "community") {
-      void loadCommunity();
-    }
-  }
-
   onMount(() => {
     ensureStyle(UI_STYLE_ID, themeCSS);
     void refresh();
+    void loadCommunity();
 
     const unsubscribeTheme = themeApi.onChange(() => void refresh());
     const unsubscribeId = store.onChange("theme_id", (value) => {
@@ -210,137 +319,81 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
 
   return (
     <>
-      <div class="yapmod-theme-tabs" role="tablist" aria-label="Theme collection">
-        <button
-          classList={{
-            btn: true,
-            small: true,
-            ghost: true,
-            "yapmod-theme-tab-active": activeTab() === "installed",
-          }}
-          type="button"
-          role="tab"
-          aria-selected={activeTab() === "installed"}
-          onClick={() => show("installed")}
-        >
-          Installed
-        </button>
-        <button
-          classList={{
-            btn: true,
-            small: true,
-            ghost: true,
-            "yapmod-theme-tab-active": activeTab() === "community",
-          }}
-          type="button"
-          role="tab"
-          aria-selected={activeTab() === "community"}
-          onClick={() => show("community")}
-        >
-          Community
-        </button>
-      </div>
-
-      <Show when={activeTab() === "installed"}>
-        <div class="yapmod-theme-toolbar">
-          <Show when={canImport}>
-            <button class="btn small" type="button" onClick={() => void importTheme()}>
-              Import theme
-            </button>
-          </Show>
-          <button class="btn small ghost" type="button" onClick={() => void refresh()}>
-            Refresh
+      <PackageToolbar
+        query={searchQuery()}
+        onQueryChange={setSearchQuery}
+        filter={filter()}
+        filterOptions={FILTER_OPTIONS}
+        onFilterChange={(value) => setFilter(value as Filter)}
+        placeholder="Search all themes"
+      >
+        <Show when={canImport}>
+          <button class="btn small" type="button" onClick={() => void importTheme()}>
+            Import theme
           </button>
-          <Show when={filesystem}>
-            <button
-              class="btn small ghost"
-              type="button"
-              onClick={() => void themeApi.openFolder()}
-            >
-              Open folder
-            </button>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "community"}>
-        <div class="yapmod-theme-community-toolbar">
-          <input
-            class="input yapmod-theme-search"
-            type="search"
-            placeholder="Search community themes"
-            aria-label="Search community themes"
-            value={searchQuery()}
-            onInput={(event) => setSearchQuery(event.currentTarget.value)}
-          />
+        </Show>
+        <button
+          class="btn small ghost"
+          type="button"
+          onClick={() => void refreshAll()}
+          disabled={communityLoading()}
+        >
+          Refresh
+        </button>
+        <Show when={filesystem}>
           <button
             class="btn small ghost"
             type="button"
-            onClick={() => void loadCommunity(true)}
-            disabled={communityLoading()}
+            onClick={() => void themeApi.openFolder()}
           >
-            Refresh
+            Open folder
           </button>
-          <button
-            class="btn small"
-            type="button"
-            onClick={() =>
-              openExternally(
-                "https://ilyeshdz.github.io/yapmod/docs/submit-a-theme/",
-              )
-            }
-          >
-            Submit a theme
-          </button>
-        </div>
-      </Show>
+        </Show>
+        <button
+          class="btn small ghost"
+          type="button"
+          onClick={() =>
+            openExternally(
+              "https://ilyeshdz.github.io/yapmod/docs/submit-a-theme/",
+            )
+          }
+        >
+          Submit a theme
+        </button>
+      </PackageToolbar>
 
-      <Show when={activeTab() === "installed"}>
-        <div class="yapmod-plugin-grid">
-          <InstalledThemeCard
-            theme={null}
-            active={activeId() === ""}
-            onUse={() => select(null)}
-          />
-
-          <For each={installedThemes()}>
-            {(theme) => (
-              <InstalledThemeCard
-                theme={theme}
-                active={activeId() === theme.id}
-                onUse={() => select(theme)}
-                onReload={() => void reloadTheme(theme)}
-                onRemove={() => void removeTheme(theme)}
+      <div class="yapmod-package-grid">
+        <Show
+          when={filteredThemes().length > 0}
+          fallback={
+            <p class="hint">
+              {searchQuery().trim()
+                ? "No themes match your search."
+                : filter() === "available"
+                  ? communityLoading()
+                    ? "Loading community themes…"
+                    : "No community themes are available right now."
+                  : "No themes installed yet."}
+            </p>
+          }
+        >
+          <For each={filteredThemes()}>
+            {(entry) => (
+              <ThemeCard
+                entry={entry}
+                active={activeId() === entry.id}
+                onSelect={() => select(entry.installed)}
+                onInstallChange={(next) => setInstalled(entry, next)}
+                onReload={
+                  entry.installed
+                    ? () => void reloadTheme(entry.installed!)
+                    : undefined
+                }
               />
             )}
           </For>
-        </div>
-      </Show>
-
-      <Show when={activeTab() === "community"}>
-        <div class="yapmod-plugin-grid">
-          <Show
-            when={filteredCommunity().length > 0}
-            fallback={
-              <p class="hint">
-                {communityThemes().length === 0
-                  ? "No community themes have been published yet. Check back later or submit a theme."
-                  : "No themes match your search."}
-              </p>
-            }
-          >
-            <For each={filteredCommunity()}>
-              {(theme) => (
-                <CommunityThemeCard
-                  theme={theme}
-                  installed={installedIds().has(theme.id)}
-                  onInstall={() => void installCommunityTheme(theme)}
-                />
-              )}
-            </For>
-          </Show>
-        </div>
-      </Show>
+        </Show>
+      </div>
 
       <div class="field yapmod-theme-field">
         <label for="yapmod-yapmod-themes-theme-mode">Mode</label>
@@ -367,9 +420,10 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
         <p
           classList={{
             hint: true,
-            "yapmod-theme-status": true,
-            "yapmod-theme-status-error": status().error,
+            "yapmod-package-status": true,
+            "yapmod-package-status-error": status().error,
           }}
+          aria-live="polite"
         >
           {status().message}
         </p>
