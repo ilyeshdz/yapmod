@@ -28,7 +28,7 @@ export type InstalledThemeCardProps = {
 export function InstalledThemeCard(
   props: InstalledThemeCardProps,
 ): JSX.Element {
-  const name = () => props.theme?.name ?? "Yapper's theme";
+  const name = () => props.theme?.name ?? "Yapin's theme";
   const meta = () =>
     props.theme ? describe(props.theme) : "the look the app ships with";
   const description = () =>

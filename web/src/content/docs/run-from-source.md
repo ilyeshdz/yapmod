@@ -31,7 +31,7 @@ Start the desktop app in development mode from the repository root:
 pnpm tauri dev
 ```
 
-This makes a one-time client build, then opens the Yapmod window. The window loads the live Yapper site.
+This makes a one-time client build, then opens the Yapmod window. The window loads the live Yapin site.
 
 To develop the website-backed community theme and plugin catalogs locally, start the website in a second terminal before opening **Settings → Themes → Community** or **Settings → Yapmod → Plugins → Community**:
 

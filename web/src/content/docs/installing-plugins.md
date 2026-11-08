@@ -10,7 +10,7 @@ Open **Settings → Yapmod → Plugins**.
 - Choose **View files** on an installed card to inspect its manifest, stylesheet, and optional script. Community packages are copied locally at installation and can be reviewed the same way.
 - Use the gear button on a card to edit that plugin's settings in a modal, then choose **Save** to apply them.
 - Some plugins add their own panel to the settings sidebar. Plugin panels appear under the **Plugins** group, or under a group named by the plugin.
-- Read the warning before confirming. JavaScript packages run directly in the Yapper page and are not sandboxed.
+- Read the warning before confirming. JavaScript packages run directly in the Yapin page and are not sandboxed.
 - Use **Enable** and **Disable** to control an installed plugin. **Remove** deletes the package and its stored plugin data.
 
 Community installation creates a local copy. There is no automatic update system: remove and reinstall a package manually to use a newer version.

@@ -4,7 +4,7 @@
 /// as an internal link.
 pub const INTERNAL_HOST: &str = "yapin.gg";
 
-/// Origins allowed to host the Yapper page and use its native bridge. Keep
+/// Origins allowed to host the Yapin page and use its native bridge. Keep
 /// this list exact: a wildcard subdomain would grant every subdomain the
 /// same Tauri command surface.
 pub const INJECTION_ORIGINS: [&str; 2] = ["https://yapin.gg", "https://www.yapin.gg"];
@@ -42,7 +42,7 @@ mod tests {
     fn recognizes_only_the_new_internal_host_family() {
         assert!(is_internal_host("www.yapin.gg"));
         assert!(is_internal_host("chat.yapin.gg"));
-        assert!(!is_internal_host("yapper.website"));
+        assert!(!is_internal_host("yapin.website"));
     }
 
     #[test]
@@ -54,7 +54,7 @@ mod tests {
         ));
         assert!(!is_injection_url(&"http://www.yapin.gg/".parse().unwrap()));
         assert!(!is_injection_url(
-            &"https://www.yapper.website/".parse().unwrap()
+            &"https://www.yapin.website/".parse().unwrap()
         ));
     }
 }

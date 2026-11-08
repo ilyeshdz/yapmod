@@ -56,7 +56,7 @@ export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Elemen
         </p>
         {manifest.script && (
           <p>
-            Trusted JavaScript plugin — runs in the Yapper page.
+            Trusted JavaScript plugin — runs in the Yapin page.
           </p>
         )}
         {props.plugin.error && (

@@ -11,7 +11,7 @@ import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 
 /**
- * The theme API exposed to Yapper and plugins.
+ * The theme API exposed to Yapin and plugins.
  *
  * The engine and the repository stay separate modules; this facade keeps the
  * public shape stable for callers that use both.

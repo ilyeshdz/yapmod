@@ -107,11 +107,11 @@ Keep selectors narrow and scope them with `data-yapmod-theme`. Broad rules on th
 
 ## Fonts, images and other assets
 
-A local theme is plain CSS, so relative URLs resolve against the Yapper page, not the theme folder. That means `url("./bg.png")` will not find a file next to `theme.css`.
+A local theme is plain CSS, so relative URLs resolve against the Yapin page, not the theme folder. That means `url("./bg.png")` will not find a file next to `theme.css`.
 
 - Use a full `https:` URL, or a `data:` URI, for images and fonts.
 - A remote asset is a network request made by the page. A theme can load its own fonts and backgrounds, but it should not depend on a server that may disappear.
-- The Community build allows `url()`, `@import`, and other standard CSS constructs. For a remote font, prefer a direct `woff2` URL in `@font-face`; the Yapper page allows `https://fonts.gstatic.com` and `data:` fonts. See [Recipes](/yapmod/docs/themes/recipes#custom-fonts) for a JetBrains Mono example.
+- The Community build allows `url()`, `@import`, and other standard CSS constructs. For a remote font, prefer a direct `woff2` URL in `@font-face`; the Yapin page allows `https://fonts.gstatic.com` and `data:` fonts. See [Recipes](/yapmod/docs/themes/recipes#custom-fonts) for a JetBrains Mono example.
 
 :::caution[A theme is trusted CSS]
 Local themes are not sandboxed and are not restricted to a fixed property list. A theme can hide, move or imitate interface elements. Only install a theme whose source you trust, and review a Community theme before installing it.

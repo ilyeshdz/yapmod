@@ -116,7 +116,7 @@ A font is not a token, so use a plain rule. Scope it to the theme id so it disap
 }
 ```
 
-To load a remote font, declare it with `@font-face`. A direct `woff2` URL is more predictable than importing a stylesheet: the Yapper page allows `https://fonts.gstatic.com` for fonts and `data:` URIs, but its style policy does not allow the Google Fonts stylesheet origin. This is how the **Mono Dark** community theme loads JetBrains Mono.
+To load a remote font, declare it with `@font-face`. A direct `woff2` URL is more predictable than importing a stylesheet: the Yapin page allows `https://fonts.gstatic.com` for fonts and `data:` URIs, but its style policy does not allow the Google Fonts stylesheet origin. This is how the **Mono Dark** community theme loads JetBrains Mono.
 
 ```css
 @font-face {
@@ -175,7 +175,7 @@ The app will keep showing this theme in dark mode even when the user's setting i
 
 ## Layering a subtle background image
 
-Use a full address or a data URI. A relative path resolves against the Yapper page, not the theme folder.
+Use a full address or a data URI. A relative path resolves against the Yapin page, not the theme folder.
 
 ```css
 :root[data-yapmod-theme="my-theme"] body {

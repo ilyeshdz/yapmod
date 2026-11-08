@@ -84,7 +84,7 @@ If restoration fails, yapmod records a diagnostic and leaves the plugin visible 
 
 The script is loaded as a real ES module, not evaluated as a script body. That gives it module syntax and its own module scope. It does **not** isolate the plugin from the page:
 
-- The plugin runs in the Yapper page's JavaScript realm.
+- The plugin runs in the Yapin page's JavaScript realm.
 - It can read and mutate the DOM, use page globals, and observe data visible to the page.
 - It can replace page behavior through the inspector APIs.
 - It can make network requests with the page's normal capabilities.

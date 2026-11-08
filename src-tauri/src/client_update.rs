@@ -369,7 +369,7 @@ pub fn get_client_update_launch_status(
     status.inner().clone()
 }
 
-/// Called only after postinject has completed on an approved Yapper origin.
+/// Called only after postinject has completed on an approved Yapin origin.
 #[tauri::command]
 pub fn confirm_client_update(app: AppHandle) -> Result<(), String> {
     let channel = UpdateChannel::active();

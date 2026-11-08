@@ -124,7 +124,7 @@ function createBanner(options: BannerOptions): BannerEntry {
   return entry;
 }
 
-/** Adds or updates a nonblocking banner directly below Yapper's topbar. */
+/** Adds or updates a nonblocking banner directly below Yapin's topbar. */
 export function showBanner(options: BannerOptions): YapmodBanner {
   const existing = banners.get(options.id);
 

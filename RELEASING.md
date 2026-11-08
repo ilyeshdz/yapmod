@@ -198,7 +198,7 @@ signed web feed:
 
 The loader is not store-compatible: browser store policy forbids executing
 code that is downloaded at runtime. It also relies on the page's CSP allowing
-the loader to inject the staged client; Yapper's current report-only policy
+the loader to inject the staged client; Yapin's current report-only policy
 does, but a strict `script-src` could break it. Publish the loader as an
 unpacked or self-hosted build only.
 

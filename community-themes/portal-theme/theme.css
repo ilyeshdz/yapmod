@@ -1,6 +1,6 @@
 :root[data-yapmod-mode="dark"] {
     /* Embedded background image (base64 JPEG) */
-    --ym-bg-image: url("https://files.yapper.website/attachments/2d856386-e1b2-4c47-924a-39d4b7c391cb/r2-1792682595223-w0sxsf.png");
+    --ym-bg-image: url("https://files.yapin.website/attachments/2d856386-e1b2-4c47-924a-39d4b7c391cb/r2-1792682595223-w0sxsf.png");
 
     /* Panels are slightly translucent so the image shows through */
     --ym-bg-rail: #07080acc;

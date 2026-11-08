@@ -1,10 +1,10 @@
 # Contributing to yapmod
 
-Thanks for interested in contributing! yapmod is a free, open-source desktop app for [Yapper](https://www.yapin.gg) — an independent community project not affiliated with Yapper.
+Thanks for interested in contributing! yapmod is a free, open-source desktop app for [Yapin](https://www.yapin.gg) — an independent community project not affiliated with Yapin.
 
 ## What is yapmod?
 
-yapmod gives Yapper a real home on your computer: its own window, native integration with your operating system, and small builds that use the webview your system already ships instead of bundling a browser. It aims to be more than a website in a window, and in time to be a platform you can extend with themes and plugins.
+yapmod gives Yapin a real home on your computer: its own window, native integration with your operating system, and small builds that use the webview your system already ships instead of bundling a browser. It aims to be more than a website in a window, and in time to be a platform you can extend with themes and plugins.
 
 ## Tech stack
 
@@ -59,6 +59,6 @@ fix(injection): hide the previous settings panel when switching sections
 
 ## Community
 
-Join the discussion on the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
+Join the discussion on the official Yapin server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop)
 
 For more detailed guidelines, see the [Contributing docs](https://ilyeshdz.github.io/yapmod/docs/contributing).

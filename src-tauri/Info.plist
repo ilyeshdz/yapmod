@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>yapmod needs microphone access so you can talk in Yapper voice calls.</string>
+	<string>yapmod needs microphone access so you can talk in Yapin voice calls.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>yapmod needs camera access for video calls in Yapper.</string>
+	<string>yapmod needs camera access for video calls in Yapin.</string>
 </dict>
 </plist>

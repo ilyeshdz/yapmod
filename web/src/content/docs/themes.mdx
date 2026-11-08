@@ -15,11 +15,11 @@ The stylesheet is ordinary CSS. yapmod does not restrict a local theme to a fixe
 ## What a theme can change
 
 - Colours, borders, radii, shadows and spacing through **tokens** such as `--ym-bg-main` and `--ym-accent`.
-- Component styling with ordinary selectors from the Yapper page.
+- Component styling with ordinary selectors from the Yapin page.
 - Light and dark variants, with a mode that can follow the app setting or the system.
 - Fonts, backgrounds and other CSS features, including remote assets. See the [styling reference](/yapmod/docs/themes/styling) for the practical boundaries.
 
-System notifications keep the operating system's look. A theme is applied to the Yapper page and the yapmod interface inside it.
+System notifications keep the operating system's look. A theme is applied to the Yapin page and the yapmod interface inside it.
 
 ## How a theme is applied
 
@@ -28,7 +28,7 @@ The desktop shell reads the selected theme before the page paints and sends it w
 1. Adds `data-yapmod-theme="<id>"` and `data-yapmod-mode="dark|light"` to the root element.
 2. Builds a token layer that maps your `--ym-*` tokens onto the app's own variables.
 3. Inserts the token layer and your stylesheet as the last stylesheet in the document, so your rules can override the app.
-4. Mirrors the resolved mode into the host's own `data-theme` and `yapper-theme` state.
+4. Mirrors the resolved mode into the host's own `data-theme` and `yapin-theme` state.
 5. Keeps the theme applied when the system or app mode changes.
 
 The details, including what happens with `mode: "both"` and how the host theme is restored, are in [Loading and modes](/yapmod/docs/themes/loading).

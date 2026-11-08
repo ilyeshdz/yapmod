@@ -27,8 +27,8 @@ export function PluginConsent(
       <p>{title()}</p>
       <p>
         {manifest.script
-          ? "This plugin runs JavaScript directly in the Yapper window. It can read and change the page, interact with functionality available to that page, and access sensitive data visible there. It is not sandboxed or isolated. Installing it means trusting its author and accepting these risks."
-          : "This plugin can change or imitate the Yapper interface through CSS. Plugins are not reviewed or guaranteed safe; only install packages you trust."}
+          ? "This plugin runs JavaScript directly in the Yapin window. It can read and change the page, interact with functionality available to that page, and access sensitive data visible there. It is not sandboxed or isolated. Installing it means trusting its author and accepting these risks."
+          : "This plugin can change or imitate the Yapin interface through CSS. Plugins are not reviewed or guaranteed safe; only install packages you trust."}
       </p>
       <Show when={manifest.description}>
         <p>{manifest.description}</p>
