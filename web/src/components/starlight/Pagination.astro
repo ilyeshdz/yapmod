@@ -1,0 +1,87 @@
+---
+/**
+ * Custom Starlight Pagination with enhanced navigation buttons.
+ * Adds gradient backgrounds and smooth hover effects.
+ */
+import Default from '@astrojs/starlight/components/Pagination.astro';
+---
+<Default><slot /></Default>
+<style>
+  /* Pagination container */
+  .sl-pagination {
+    gap: 1rem !important;
+  }
+
+  /* Pagination links */
+  .sl-pagination a {
+    border-radius: 12px !important;
+    border: 1.5px solid rgba(221, 90, 140, 0.2) !important;
+    padding: 1rem 1.5rem !important;
+    transition: all 0.25s ease !important;
+    background: rgba(28, 21, 36, 0.5) !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sl-pagination a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(221, 90, 140, 0.1), rgba(242, 163, 197, 0.05));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .sl-pagination a:hover {
+    border-color: rgba(221, 90, 140, 0.4) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(221, 90, 140, 0.15) !important;
+  }
+
+  .sl-pagination a:hover::before {
+    opacity: 1;
+  }
+
+  [data-theme="light"] .sl-pagination a {
+    background: rgba(255, 255, 255, 0.5) !important;
+    border-color: rgba(221, 90, 140, 0.15) !important;
+  }
+
+  /* Pagination labels */
+  .sl-pagination .label {
+    font-family: "Geist Pixel", monospace !important;
+    font-size: 0.7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: rgba(221, 90, 140, 0.7) !important;
+  }
+
+  .sl-pagination .title {
+    font-family: "Geist", system-ui, -apple-system, sans-serif !important;
+    font-weight: 600 !important;
+    color: #DD5A8C !important;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Arrow icons */
+  .sl-pagination svg {
+    color: #DD5A8C !important;
+    transition: transform 0.2s ease !important;
+  }
+
+  .sl-pagination a:hover svg {
+    transform: translateX(3px);
+  }
+
+  .sl-pagination a:first-child svg {
+    transform: rotate(180deg);
+  }
+
+  .sl-pagination a:first-child:hover svg {
+    transform: rotate(180deg) translateX(3px);
+  }
+</style>

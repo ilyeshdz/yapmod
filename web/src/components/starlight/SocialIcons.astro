@@ -1,0 +1,31 @@
+---
+/**
+ * Custom Starlight SocialIcons with enhanced styling.
+ * Adds gradient hover effects and smooth transitions.
+ */
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+---
+<Default><slot /></Default>
+<style>
+  /* Social icons container */
+  .sl-social-icon-link {
+    transition: all 0.25s ease !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+  }
+
+  .sl-social-icon-link:hover {
+    transform: translateY(-2px) !important;
+    background: rgba(221, 90, 140, 0.1) !important;
+  }
+
+  .sl-social-icon-link svg {
+    transition: all 0.25s ease !important;
+    fill: var(--sl-muted) !important;
+  }
+
+  .sl-social-icon-link:hover svg {
+    fill: #DD5A8C !important;
+    transform: scale(1.1);
+  }
+</style>

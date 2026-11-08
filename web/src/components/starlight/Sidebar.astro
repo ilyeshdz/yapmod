@@ -1,0 +1,103 @@
+---
+/**
+ * Custom Starlight Sidebar with enhanced styling for yapmod.
+ * Adds Geist Pixel labels, rounded hover states, and accent indicators.
+ */
+import Default from '@astrojs/starlight/components/Sidebar.astro';
+---
+<Default><slot /></Default>
+<style>
+  /* Sidebar container */
+  .sl-sidebar {
+    background: rgba(19, 14, 24, 0.5) !important;
+    border-right: 1.5px solid rgba(221, 90, 140, 0.08) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  [data-theme="light"] .sl-sidebar {
+    background: rgba(255, 247, 245, 0.6) !important;
+    border-right: 1.5px solid rgba(221, 90, 140, 0.06) !important;
+  }
+
+  /* Section labels with Geist Pixel */
+  .sl-sidebar li.sidebar-section > .sidebar-link,
+  .sl-sidebar li.sidebar-section > button {
+    font-family: "Geist Pixel", monospace !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: rgba(221, 90, 140, 0.8) !important;
+    padding: 1.2rem 1rem 0.4rem 1rem !important;
+    margin-top: 0.5rem;
+  }
+
+  /* Sidebar links */
+  .sl-sidebar ul li a.sidebar-link {
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    transition: all 0.2s ease !important;
+    position: relative;
+    font-family: "Geist", system-ui, -apple-system, sans-serif !important;
+  }
+
+  .sl-sidebar ul li a.sidebar-link:hover {
+    background: rgba(221, 90, 140, 0.08) !important;
+    color: #DD5A8C !important;
+    transform: translateX(2px);
+  }
+
+  /* Active link with accent indicator */
+  .sl-sidebar ul li a.sidebar-link[aria-current="true"] {
+    background: rgba(221, 90, 140, 0.12) !important;
+    color: #DD5A8C !important;
+    font-weight: 600 !important;
+    border-left: 3px solid #DD5A8C !important;
+    padding-left: 9px !important;
+  }
+
+  .sl-sidebar ul li a.sidebar-link[aria-current="true"]::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    background: linear-gradient(180deg, #DD5A8C, #F2A3C5);
+    border-radius: 2px;
+  }
+
+  /* Nested links indentation */
+  .sl-sidebar ul li ul li a.sidebar-link {
+    padding-left: 1.5rem !important;
+    font-size: 0.9em !important;
+  }
+
+  /* Collapse button styling */
+  .sl-sidebar button[aria-expanded] {
+    border-radius: 6px !important;
+    transition: background-color 0.2s ease !important;
+  }
+
+  .sl-sidebar button[aria-expanded]:hover {
+    background: rgba(221, 90, 140, 0.08) !important;
+  }
+
+  /* Sidebar logo area */
+  .sl-sidebar-header {
+    padding: 1rem !important;
+    border-bottom: 1px solid rgba(221, 90, 140, 0.08) !important;
+  }
+
+  .sl-sidebar-header a {
+    font-family: "Geist Pixel", monospace !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    background: linear-gradient(135deg, #DD5A8C 0%, #E87DA6 55%, #F2A3C5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+</style>

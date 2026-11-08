@@ -1,0 +1,42 @@
+---
+/**
+ * Custom Starlight Footer with yapmod branding and disclaimer.
+ */
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+<Default><slot /></Default>
+<style>
+  /* Enhanced footer styling */
+  .sl-footer {
+    border-top: 1.5px solid rgba(221, 90, 140, 0.15) !important;
+    padding: 2rem 0 !important;
+    background: linear-gradient(180deg, transparent 0%, rgba(221, 90, 140, 0.03) 100%);
+  }
+
+  [data-theme="light"] .sl-footer {
+    border-top: 1.5px solid rgba(221, 90, 140, 0.1) !important;
+    background: linear-gradient(180deg, transparent 0%, rgba(221, 90, 140, 0.02) 100%);
+  }
+
+  /* Footer links with accent hover */
+  .sl-footer a {
+    transition: color 0.2s ease, transform 0.2s ease;
+    border-radius: 4px;
+  }
+
+  .sl-footer a:hover {
+    color: #DD5A8C !important;
+    transform: translateY(-1px);
+  }
+
+  /* Edit link styling */
+  .sl-footer a[href*="github"] {
+    position: relative;
+    padding-bottom: 2px;
+    border-bottom: 1px solid transparent;
+  }
+
+  .sl-footer a[href*="github"]:hover {
+    border-bottom-color: #DD5A8C;
+  }
+</style>

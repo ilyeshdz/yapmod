@@ -1,0 +1,69 @@
+---
+/**
+ * Custom Starlight TableOfContents with enhanced styling.
+ * Adds accent color for active items and smooth transitions.
+ */
+import Default from '@astrojs/starlight/components/TableOfContents.astro';
+---
+<Default><slot /></Default>
+<style>
+  /* Table of Contents container */
+  .sl-toc {
+    position: sticky;
+    top: 5rem;
+  }
+
+  /* TOC header */
+  .sl-toc h2 {
+    font-family: "Geist Pixel", monospace !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: rgba(221, 90, 140, 0.8) !important;
+    margin-bottom: 0.8rem !important;
+  }
+
+  /* TOC links */
+  .sl-toc ul li a {
+    font-family: "Geist", system-ui, -apple-system, sans-serif !important;
+    font-size: 0.85rem !important;
+    color: var(--sl-muted) !important;
+    transition: all 0.2s ease !important;
+    border-left: 2px solid transparent !important;
+    padding-left: 0.8rem !important;
+    display: block;
+    padding: 4px 0 !important;
+  }
+
+  .sl-toc ul li a:hover {
+    color: #DD5A8C !important;
+    border-left-color: rgba(221, 90, 140, 0.3) !important;
+  }
+
+  /* Active TOC item */
+  .sl-toc ul li a[aria-current="true"] {
+    color: #DD5A8C !important;
+    font-weight: 600 !important;
+    border-left-color: #DD5A8C !important;
+  }
+
+  /* Nested TOC items */
+  .sl-toc ul li ul li a {
+    padding-left: 1.5rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Mobile TOC */
+  .sl-mobile-toc {
+    border-top: 1.5px solid rgba(221, 90, 140, 0.1) !important;
+    padding-top: 1.5rem !important;
+    margin-top: 2rem !important;
+  }
+
+  .sl-mobile-toc h2 {
+    font-family: "Geist Pixel", monospace !important;
+    font-size: 0.85rem !important;
+    color: rgba(221, 90, 140, 0.8) !important;
+  }
+</style>
