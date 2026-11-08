@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_fs::FsExt;
 use ts_rs::TS;
 
 use crate::error::YapmodError;
@@ -305,8 +306,10 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
 /// they cancelled the dialog.
 #[tauri::command]
 pub async fn save_export_file(app: AppHandle, content: String) -> Result<bool, YapmodError> {
+    let app_clone = app.clone();
     let selected = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
+        app_clone
+            .dialog()
             .file()
             .set_title("Save settings export")
             .set_file_name("yapmod-settings-export.json")
@@ -316,11 +319,17 @@ pub async fn save_export_file(app: AppHandle, content: String) -> Result<bool, Y
     .await
     .map_err(|e| YapmodError::io(e.to_string()))?;
 
-    let Some(path) = selected else {
+    let Some(selected_path) = selected else {
         return Ok(false);
     };
 
-    let path = PathBuf::from(path.to_string());
+    let path = PathBuf::from(selected_path.to_string());
+
+    // Allow the parent directory in the fs sandbox so we can write the file.
+    if let Some(parent) = path.parent() {
+        let _ = app.fs_scope().allow_directory(parent, false);
+    }
+
     fs::write(&path, content).map_err(|e| YapmodError::io(format!("Failed to write file: {e}")))?;
     Ok(true)
 }

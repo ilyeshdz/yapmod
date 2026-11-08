@@ -22,6 +22,7 @@ semver = "1"
 include-flate = { version = "0.3", default-features = false, features = ["deflate"] }
 ts-rs = { version = "12", features = ["serde-compat", "serde-json-impl", "no-serde-warnings"] }
 tauri-plugin-dialog = "2.8.3"
+tauri-plugin-fs = "2"
 tauri-plugin-autostart = "2"
 futures-util = "0.3"
 tokio = { version = "1", features = ["sync", "rt"] }
