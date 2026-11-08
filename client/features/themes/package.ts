@@ -1,4 +1,5 @@
 import type { ThemeBundle, ThemeManifest, ThemeMode } from "./types";
+import { isRecord } from "../../shared/helpers";
 
 /**
  * The rules a theme manifest must follow.
@@ -11,10 +12,6 @@ export const THEME_API = 1;
 export const DEFAULT_THEME_CSS = "theme.css";
 export const MAX_THEME_NAME_LENGTH = 120;
 export const MAX_THEME_TAGS = 20;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function optionalString(value: unknown): string | null {
   return typeof value === "string" ? value : null;

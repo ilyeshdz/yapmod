@@ -1,5 +1,6 @@
 import type { PluginBundle } from "../../shared/types";
 import type { ThemeBundle } from "../../features/themes/types";
+import { isRecord } from "../../shared/helpers";
 import { extensionApi, storageArea } from "./extension";
 
 const SETTINGS_KEY = "yapmod:settings";
@@ -45,10 +46,6 @@ async function writeJson(key: string, value: unknown): Promise<void> {
   }
 
   writeFallback(key, value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function readStoredSettings(): Promise<Record<string, unknown>> {

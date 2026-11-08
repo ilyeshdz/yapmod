@@ -54,3 +54,11 @@ export function copyArrayBufferView(view: ArrayBufferView): ArrayBuffer {
   new Uint8Array(dest).set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
   return dest;
 }
+
+/**
+ * Type guard that checks whether a value is a plain object (non-null,
+ * non-array).
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
