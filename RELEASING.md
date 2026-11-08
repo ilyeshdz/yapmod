@@ -112,11 +112,13 @@ updates the nightly client feeds.
 2. Update the app version in `src-tauri/Cargo.toml`.
 3. If the injected client changed, update `client/version.json`.
 4. If the extension shell changed, update `client/targets/web/version.json`.
-5. Push `main`.
-6. Dispatch `Release` with `channel: stable`, `app: true`, `client: true`.
+5. Add the release entry to `src-tauri/assets/release-notes.json` (for the in-app UI)
+   and `CHANGELOG.md` (for GitHub visitors).
+6. Push `main`.
+7. Dispatch `Release` with `channel: stable`, `app: true`, `client: true`.
    It builds the artifacts and creates a **draft** release for the version in
    `Cargo.toml`.
-7. Review and publish the draft release.
+8. Review and publish the draft release.
 
 Publishing the draft triggers the stable client update: the workflow checks out
 the release tag, builds the client, increments the stable `releaseSequence`,
