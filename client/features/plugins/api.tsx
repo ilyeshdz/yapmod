@@ -9,7 +9,6 @@ import {
   mountDialogContent,
   PluginConsent,
   PluginSettingsForm,
-  PluginSourceViewer,
 } from "./plugin-modals";
 import type {
   PluginBundle,
@@ -213,24 +212,6 @@ function showPluginSettings(entry: InstalledEntry): void {
         },
       },
     ],
-    onClose: () => content.dispose(),
-  });
-}
-
-function showPluginFiles(entry: InstalledEntry): void {
-  const modalApi = getYapmod().modal;
-  if (!modalApi) return;
-
-  const content = mountDialogContent(() => (
-    <PluginSourceViewer bundle={entry.bundle} />
-  ));
-
-  modalApi.show({
-    title: `${entry.bundle.manifest.name} files`,
-    description: "Review the installed package source.",
-    content: content.element,
-    size: "xl",
-    buttons: [{ label: "Close", variant: "secondary" }],
     onClose: () => content.dispose(),
   });
 }
@@ -775,12 +756,14 @@ export function installPluginApi(): void {
     },
     listCommunity() { return repository.listCommunity(); },
     async installCommunity(id) {
+      // Community packages come from the reviewed catalog, so installing one
+      // is a single click. Local imports still go through the consent dialog
+      // in importLocal() because they can contain arbitrary code.
       const manifest = await repository.previewCommunity(id);
-      if (!(await requestConsent(manifest, "import"))) throw new Error("Plugin installation was cancelled.");
       const bundle = await repository.installCommunity(id, manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
-        throw new Error("The community plugin changed after you reviewed its import warning.");
+        throw new Error("The community plugin changed while it was being installed.");
       }
       await registerBundle(bundle);
       await saveConsent(bundle);
@@ -838,16 +821,7 @@ function openPluginSettings(id: string): void {
   }
 }
 
-/** Opens the files of an installed plugin, by id. */
-function openPluginFiles(id: string): void {
-  const entry = registry.get(id);
-
-  if (entry) {
-    showPluginFiles(entry);
-  }
-}
-
-/** Registers the Installed / Community plugin gallery in settings. */
+/** Registers the unified plugin gallery in settings. */
 export function installPluginSettings(): void {
   const yapmod = getYapmod();
   const plugins = yapmod.plugins;
@@ -871,7 +845,6 @@ export function installPluginSettings(): void {
           <PluginGallery
             plugins={plugins}
             onOpenSettings={openPluginSettings}
-            onOpenFiles={openPluginFiles}
           />
         ),
         host,

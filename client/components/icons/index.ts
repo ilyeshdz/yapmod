@@ -7,6 +7,8 @@ import { copy } from "./copy";
 import { dock } from "./dock";
 import { files } from "./files";
 import { float } from "./float";
+import { folder } from "./folder";
+import { globe } from "./globe";
 import { history } from "./history";
 import { monitor } from "./monitor";
 import { palette } from "./palette";
@@ -26,6 +28,8 @@ export {
   dock,
   files,
   float,
+  folder,
+  globe,
   history,
   monitor,
   palette,
@@ -52,6 +56,8 @@ export const iconPaths = {
   check,
   copy,
   files,
+  folder,
+  globe,
   refresh,
   plus,
   search,

@@ -36,7 +36,7 @@ Window transparency is not available on Linux, where the effect depends on the d
 
 **Check for updates automatically** looks for yapmod app and client updates when the app starts and shows an update prompt. The desktop app itself is installed from the [Releases page](https://github.com/ilyeshdz/yapmod/releases); signed client updates can be downloaded in the background and applied after restarting yapmod. Turn this option off to stop automatic checks and prompts.
 
-The Yapmod settings section also shows the installed desktop and client versions. Open **Changelog** in the same settings group to browse release notes.
+The Yapmod settings section also shows the installed desktop and client versions.
 
 ## Report a bug
 
