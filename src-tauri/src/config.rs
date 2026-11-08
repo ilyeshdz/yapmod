@@ -22,12 +22,13 @@ pub struct Config {
 }
 
 /// The settings that are always present.
-const DEFAULT_SETTINGS: [(&str, Value); 5] = [
+const DEFAULT_SETTINGS: [(&str, Value); 6] = [
     ("use_native_titlebar", Value::Bool(false)),
     ("start_maximized", Value::Bool(false)),
     ("keep_in_tray", Value::Bool(true)),
     ("enable_transparency", Value::Bool(false)),
     ("transparency_force_themes", Value::Bool(false)),
+    ("autostart", Value::Bool(false)),
 ];
 
 /// The default for numeric settings, which cannot be built in a `const`.
@@ -245,6 +246,7 @@ fn valid_setting(key: &str, value: &Value) -> bool {
         | "keep_in_tray"
         | "enable_transparency"
         | "transparency_force_themes"
+        | "autostart"
         | "auto_update"
         | "notifications"
         | "unread_badge" => value.is_boolean(),
@@ -287,7 +289,36 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
     // away instead of waiting for a restart.
     crate::tray::sync(&app);
 
+    // Apply autostart immediately so the change takes effect without a restart.
+    manage_autostart(&app);
+
     Ok(())
+}
+
+/// Enable or disable the login autostart entry based on the current setting.
+pub fn manage_autostart(app: &AppHandle) {
+    use tauri_plugin_autostart::ManagerExt;
+
+    let config = match Config::load(app) {
+        Ok(cfg) => cfg,
+        Err(error) => {
+            eprintln!("failed to load config for autostart: {error}");
+            return;
+        }
+    };
+
+    let enabled = config.setting_bool("autostart").unwrap_or(false);
+    let autostart_manager = app.autolaunch();
+
+    if enabled {
+        if let Err(error) = autostart_manager.enable() {
+            eprintln!("failed to enable autostart: {error}");
+        }
+    } else {
+        if let Err(error) = autostart_manager.disable() {
+            eprintln!("failed to disable autostart: {error}");
+        }
+    }
 }
 
 /// Deletes every persisted value owned by a removed plugin. Plugin IDs are
@@ -378,6 +409,20 @@ mod tests {
         assert!(!valid_setting("plugin:../sample:option", &json!(true)));
         assert!(!valid_setting("plugin:sample:invalid.key", &json!(true)));
         assert!(!valid_setting("plugin:sample", &json!(true)));
+    }
+
+    #[test]
+    fn autostart_setting_accepts_only_booleans() {
+        assert!(valid_setting("autostart", &json!(true)));
+        assert!(valid_setting("autostart", &json!(false)));
+        assert!(!valid_setting("autostart", &json!("yes")));
+        assert!(!valid_setting("autostart", &json!(1)));
+    }
+
+    #[test]
+    fn autostart_defaults_to_false() {
+        let config = Config::from_str("not json").unwrap();
+        assert_eq!(config.setting_bool("autostart"), Some(false));
     }
 
     #[test]

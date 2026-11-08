@@ -202,6 +202,17 @@ export function installDefaultSettings(): void {
         fallback: true,
       }),
     );
+
+    items.push(
+      createToggle({
+        id: "autostart",
+        label: "Start yapmod on login",
+        description:
+          "Automatically launch yapmod when you log in. Changes apply immediately.",
+        group: "Window",
+        fallback: false,
+      }),
+    );
   }
 
   // --- Transparency setting (desktop only) ---
