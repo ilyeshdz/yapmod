@@ -620,18 +620,10 @@ pub fn list_plugins(app: AppHandle) -> Result<Vec<PluginBundle>, YapmodError> {
     let mut plugins = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|e| YapmodError::io(e.to_string()))?;
-        if entry
+        let file_type = entry
             .file_type()
-            .map_err(|e| YapmodError::io(e.to_string()))?
-            .is_symlink()
-        {
-            continue;
-        }
-        if !entry
-            .file_type()
-            .map_err(|e| YapmodError::io(e.to_string()))?
-            .is_dir()
-        {
+            .map_err(|e| YapmodError::io(e.to_string()))?;
+        if file_type.is_symlink() || !file_type.is_dir() {
             continue;
         }
         if let Ok(bundle) = read_bundle(&entry.path()) {
@@ -671,76 +663,15 @@ pub async fn preview_community_plugin(id: String) -> Result<PluginManifest, Yapm
         .map(|(manifest, _, _)| manifest)
 }
 
-#[tauri::command]
-pub async fn install_community_plugin(
-    app: AppHandle,
-    id: String,
-    expected_manifest: PluginManifest,
+/// Downloads the CSS and optional script for a community plugin and installs
+/// them into the target folder. Shared by install and update commands.
+async fn download_and_install_community_plugin(
+    app: &AppHandle,
+    id: &str,
+    manifest: &PluginManifest,
+    manifest_bytes: &[u8],
+    verified: bool,
 ) -> Result<PluginBundle, YapmodError> {
-    let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
-    if manifest != expected_manifest {
-        return Err(YapmodError::validation(
-            "the community plugin changed after you reviewed its import warning",
-        ));
-    }
-    let css = fetch_asset(
-        &format!("plugins/{id}/{}", manifest.stylesheet),
-        PLUGIN_RULES.max_css_bytes,
-    )
-    .await?;
-    let css_text = String::from_utf8(css.clone()).map_err(|_| {
-        YapmodError::validation("the community plugin stylesheet is not valid UTF-8")
-    })?;
-    validate_css(&css_text)?;
-    let script = match manifest.script.as_deref() {
-        Some(script_file) => Some(
-            fetch_asset(
-                &format!("plugins/{id}/{script_file}"),
-                PLUGIN_RULES.max_script_bytes,
-            )
-            .await?,
-        ),
-        None => None,
-    };
-    let installed = install_bundle(
-        &plugins_dir(&app)?.join(id),
-        &manifest_bytes,
-        &css,
-        script.as_deref(),
-        verified,
-    )?;
-    if installed.manifest != expected_manifest {
-        return Err(YapmodError::validation(
-            "the installed plugin differs from the reviewed manifest",
-        ));
-    }
-    Ok(installed)
-}
-
-/// Removes an installed community plugin and installs the latest version from
-/// the catalog in one atomic operation. Returns the new bundle on success.
-#[tauri::command]
-pub async fn update_community_plugin(
-    app: AppHandle,
-    id: String,
-) -> Result<PluginBundle, YapmodError> {
-    if !valid_id(&id) {
-        return Err(YapmodError::validation("that is not a valid plugin id"));
-    }
-
-    // Fetch the latest manifest from the catalog
-    let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
-
-    // Remove the old installation
-    let folder = plugins_dir(&app)?.join(&id);
-    if folder.exists()
-        && fs::symlink_metadata(&folder).is_ok_and(|m| !m.file_type().is_symlink() && m.is_dir())
-    {
-        let _ = fs::remove_dir_all(&folder);
-    }
-    crate::config::remove_plugin_data(&app, &id).ok();
-
-    // Install the new version
     let css = fetch_asset(
         &format!("plugins/{id}/{}", manifest.stylesheet),
         PLUGIN_RULES.max_css_bytes,
@@ -761,12 +692,60 @@ pub async fn update_community_plugin(
         None => None,
     };
     install_bundle(
-        &plugins_dir(&app)?.join(id),
-        &manifest_bytes,
+        &plugins_dir(app)?.join(id),
+        manifest_bytes,
         &css,
         script.as_deref(),
         verified,
     )
+}
+
+#[tauri::command]
+pub async fn install_community_plugin(
+    app: AppHandle,
+    id: String,
+    expected_manifest: PluginManifest,
+) -> Result<PluginBundle, YapmodError> {
+    let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
+    if manifest != expected_manifest {
+        return Err(YapmodError::validation(
+            "the community plugin changed after you reviewed its import warning",
+        ));
+    }
+    let installed =
+        download_and_install_community_plugin(&app, &id, &manifest, &manifest_bytes, verified)
+            .await?;
+    if installed.manifest != expected_manifest {
+        return Err(YapmodError::validation(
+            "the installed plugin differs from the reviewed manifest",
+        ));
+    }
+    Ok(installed)
+}
+
+/// Removes an installed community plugin and installs the latest version from
+/// the catalog in one atomic operation. Returns the new bundle on success.
+#[tauri::command]
+pub async fn update_community_plugin(
+    app: AppHandle,
+    id: String,
+) -> Result<PluginBundle, YapmodError> {
+    if !valid_id(&id) {
+        return Err(YapmodError::validation("that is not a valid plugin id"));
+    }
+
+    let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
+
+    // Remove the old installation
+    let folder = plugins_dir(&app)?.join(&id);
+    if folder.exists()
+        && fs::symlink_metadata(&folder).is_ok_and(|m| !m.file_type().is_symlink() && m.is_dir())
+    {
+        let _ = fs::remove_dir_all(&folder);
+    }
+    crate::config::remove_plugin_data(&app, &id).ok();
+
+    download_and_install_community_plugin(&app, &id, &manifest, &manifest_bytes, verified).await
 }
 
 #[tauri::command]
