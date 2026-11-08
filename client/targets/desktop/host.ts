@@ -99,6 +99,7 @@ export function createDesktopHost(payload: Partial<Payload>): YapmodHost {
       installCommunity: (id) => invokeCommand("install_community_theme", { id }),
       reload: (id) => invokeCommand("reload_theme", { id }),
       remove: (id) => invokeCommand("remove_theme", { id }),
+      updateCommunity: (id) => invokeCommand("update_community_theme", { id }),
       folder: () => invokeCommand("themes_folder"),
       openFolder: () => invokeCommand("open_themes_folder"),
     },
@@ -115,6 +116,7 @@ export function createDesktopHost(payload: Partial<Payload>): YapmodHost {
       pickFile: (accept) => invokeCommand("pick_plugin_file", { accept }),
       reload: (id) => invokeCommand("reload_plugin", { id }),
       remove: (id) => invokeCommand("remove_plugin", { id }),
+      updateCommunity: (id) => invokeCommand("update_community_plugin", { id }),
       openFolder: () => invokeCommand("open_plugins_folder"),
     },
 

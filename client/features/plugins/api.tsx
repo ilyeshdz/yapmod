@@ -779,6 +779,14 @@ export function installPluginApi(): void {
       registry.delete(id);
       emitChange();
     },
+    async updateCommunity(id) {
+      const bundle = await repository.updateCommunity(id);
+      validateBundle(bundle);
+      await registerBundle(bundle);
+      await saveConsent(bundle);
+      emitChange();
+      return bundle.manifest;
+    },
     async refreshInstalled() {
       const bundles = await repository.list();
       const next = new Map(bundles.map((bundle) => [bundle.manifest.id, bundle]));

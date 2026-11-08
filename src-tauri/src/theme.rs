@@ -635,6 +635,83 @@ pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, Yapm
     install_theme_folder(&target, |target| copy_folder(&source, target))
 }
 
+/// Removes an installed community theme and installs the latest version from
+/// the catalog in one atomic operation. Returns the new bundle on success.
+#[tauri::command]
+pub async fn update_community_theme(
+    app: AppHandle,
+    id: String,
+) -> Result<ThemeBundle, YapmodError> {
+    if !is_valid_id(&id) {
+        return Err(YapmodError::validation("that is not a valid theme id"));
+    }
+
+    // Fetch the latest manifest from the catalog
+    let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
+    let manifest_bytes =
+        fetch_community_asset(&manifest_path, THEME_RULES.max_manifest_bytes).await?;
+    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes).map_err(|error| {
+        YapmodError::validation(format!("the community theme manifest is invalid: {error}"))
+    })?;
+
+    if manifest.id != id {
+        return Err(YapmodError::validation(
+            "the downloaded theme id does not match the catalog",
+        ));
+    }
+
+    if manifest.name.trim().is_empty() {
+        return Err(YapmodError::validation(
+            "the community theme has an invalid name",
+        ));
+    }
+
+    if let Some(api) = manifest.api
+        && api > THEME_RULES.theme_api
+    {
+        return Err(YapmodError::validation(format!(
+            "the theme was written for theme API {api}, this version understands {}",
+            THEME_RULES.theme_api
+        )));
+    }
+
+    let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
+
+    if !is_valid_community_file_name(css_file) {
+        return Err(YapmodError::validation(
+            "the theme manifest points at an unusable stylesheet",
+        ));
+    }
+
+    let css_path = format!("themes/{id}/{css_file}");
+    let css = String::from_utf8(fetch_community_asset(&css_path, THEME_RULES.max_css_bytes).await?)
+        .map_err(|_| {
+            YapmodError::validation("the community theme stylesheet is not valid UTF-8")
+        })?;
+
+    // Remove the old installation
+    let target = themes_dir(&app)?.join(&id);
+    if target.exists() {
+        let _ = fs::remove_dir_all(&target);
+    }
+
+    // Clear the active theme if it was the one being updated
+    if let Ok(mut config) = Config::load(&app)
+        && config.setting_str("theme_id") == Some(id.as_str())
+    {
+        config.settings.remove("theme_id");
+        let _ = Config::save(&app, &config);
+    }
+
+    // Install the new version
+    install_theme_folder(&target, |target| {
+        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)
+            .map_err(|e| YapmodError::io(e.to_string()))?;
+        fs::write(target.join(css_file), css).map_err(|e| YapmodError::io(e.to_string()))?;
+        Ok(())
+    })
+}
+
 /// Removes an installed theme.
 #[tauri::command]
 pub fn remove_theme(app: AppHandle, id: String) -> Result<(), YapmodError> {

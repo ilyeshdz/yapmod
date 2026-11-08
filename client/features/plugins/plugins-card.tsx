@@ -17,6 +17,8 @@ export type PluginEntry = {
   verified: boolean;
   installed: YapmodPluginInfo | null;
   community: CommunityPlugin | null;
+  /** True when a newer version exists in the community catalog. */
+  updateAvailable: boolean;
 };
 
 export type PluginCardProps = {
@@ -27,6 +29,7 @@ export type PluginCardProps = {
   onToggle: (enabled: boolean) => Promise<boolean>;
   onConfigure: () => void;
   onReload: () => void;
+  onUpdate?: () => void;
 };
 
 /**
@@ -68,6 +71,19 @@ export function PluginCard(props: PluginCardProps): JSX.Element {
                 label={`Settings for ${manifest.name}`}
                 title="Plugin settings"
                 onClick={props.onConfigure}
+              />
+            </Show>
+            <Show when={props.entry.updateAvailable && props.onUpdate}>
+              <IconButton
+                class="btn small ghost yapmod-package-icon-button"
+                iconClass="yapmod-package-action-icon"
+                icon="globe"
+                size={20}
+                strokeWidth={1.9}
+                label={`Update ${manifest.name}`}
+                title="Update to the latest version from the community catalog"
+                disabled={busy()}
+                onClick={props.onUpdate}
               />
             </Show>
             <IconButton

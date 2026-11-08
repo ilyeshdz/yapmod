@@ -104,6 +104,7 @@ export type ThemeRepository = {
   installCommunity(id: string): Promise<ThemeBundle>;
   reload(id: string): Promise<ThemeBundle>;
   remove(id: string): Promise<void>;
+  updateCommunity(id: string): Promise<ThemeBundle>;
   folder(): Promise<string>;
   openFolder(): Promise<void>;
 };
@@ -118,6 +119,7 @@ export type PluginRepository = {
   pickFile(accept: string | null | undefined): Promise<string | null>;
   reload(id: string): Promise<PluginBundle>;
   remove(id: string): Promise<void>;
+  updateCommunity(id: string): Promise<PluginBundle>;
   openFolder(): Promise<void>;
 };
 

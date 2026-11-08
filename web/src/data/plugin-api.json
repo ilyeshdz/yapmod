@@ -3,7 +3,7 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "4971586d200d8a29",
+  "sourceHash": "d84f3b029aab5366",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",

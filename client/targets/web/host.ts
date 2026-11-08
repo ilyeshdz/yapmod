@@ -179,6 +179,9 @@ export function createWebHost(
       remove(id) {
         return bridge.call("plugins:remove", { id });
       },
+      updateCommunity(id) {
+        return bridge.call("plugins:updateCommunity", { id });
+      },
       async openFolder() {
         // Extension storage has no folder to open.
       },
@@ -205,6 +208,9 @@ export function createWebHost(
       },
       remove(id) {
         return bridge.call("themes:remove", { id });
+      },
+      updateCommunity(id) {
+        return bridge.call("themes:updateCommunity", { id });
       },
       async folder() {
         throw new Error("The browser extension has no theme folder.");

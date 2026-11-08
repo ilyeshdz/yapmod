@@ -1,3 +1,4 @@
+import { Show } from "solid-js";
 import type { JSX } from "solid-js";
 import type { PackageSource } from "../../components/source-indicator";
 import { IconButton } from "../../components/icon-button";
@@ -26,6 +27,8 @@ export type ThemeEntry = {
   installed: ThemeBundle | null;
   community: CommunityTheme | null;
   builtin?: boolean;
+  /** True when a newer version exists in the community catalog. */
+  updateAvailable: boolean;
 };
 
 function describe(theme: ThemeMeta): string {
@@ -40,6 +43,7 @@ export type ThemeCardProps = {
   /** Applies or turns off the theme. Returns `false` when the change failed. */
   onActiveChange: (active: boolean) => Promise<boolean>;
   onReload?: () => void;
+  onUpdate?: () => void;
 };
 
 /**
@@ -69,17 +73,33 @@ export function ThemeCard(props: ThemeCardProps): JSX.Element {
       sourceNoun="theme"
       active={props.active}
       actions={
-        props.entry.installed && props.onReload ? (
-          <IconButton
-            class="btn small ghost yapmod-package-icon-button"
-            iconClass="yapmod-package-action-icon"
-            icon="refresh"
-            size={20}
-            strokeWidth={1.9}
-            label={`Reload ${props.entry.name}`}
-            title={`Reload ${props.entry.name} from disk`}
-            onClick={() => props.onReload?.()}
-          />
+        props.entry.installed ? (
+          <>
+            <Show when={props.entry.updateAvailable && props.onUpdate}>
+              <IconButton
+                class="btn small ghost yapmod-package-icon-button"
+                iconClass="yapmod-package-action-icon"
+                icon="globe"
+                size={20}
+                strokeWidth={1.9}
+                label={`Update ${props.entry.name}`}
+                title="Update to the latest version from the community catalog"
+                onClick={() => props.onUpdate?.()}
+              />
+            </Show>
+            <Show when={props.onReload}>
+              <IconButton
+                class="btn small ghost yapmod-package-icon-button"
+                iconClass="yapmod-package-action-icon"
+                icon="refresh"
+                size={20}
+                strokeWidth={1.9}
+                label={`Reload ${props.entry.name}`}
+                title={`Reload ${props.entry.name} from disk`}
+                onClick={() => props.onReload?.()}
+              />
+            </Show>
+          </>
         ) : undefined
       }
       controls={
