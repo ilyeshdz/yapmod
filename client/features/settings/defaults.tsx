@@ -265,6 +265,15 @@ export function installDefaultSettings(): void {
   if (yapmod.modal) {
     items.push({
       type: "button",
+      id: "report_bug",
+      label: "Report a bug",
+      onClick: () => openBugReport(),
+    });
+  }
+
+  if (yapmod.modal) {
+    items.push({
+      type: "button",
       id: "export_settings",
       label: "Export settings",
       group: "Data",
@@ -278,19 +287,11 @@ export function installDefaultSettings(): void {
       group: "Data",
       onClick: () => handleImport(),
     });
-
-    items.push({
-      type: "button",
-      id: "report_bug",
-      label: "Report a bug",
-      group: "About",
-      onClick: () => openBugReport(),
-    });
   }
 
   // Keep related options together, in a predictable order that does not
   // depend on which platform added them first.
-  const groupOrder = ["Window", "Notifications", "Updates", "Data", "About"];
+  const groupOrder = ["Window", "Notifications", "Updates", "Data"];
   items.sort(
     (left, right) =>
       groupOrder.indexOf(left.group ?? "") - groupOrder.indexOf(right.group ?? ""),
