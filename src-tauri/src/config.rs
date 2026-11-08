@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, fs, path::PathBuf, sync::RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_fs::FsExt;
 use ts_rs::TS;
 
 use crate::error::YapmodError;
@@ -297,6 +299,45 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
     manage_autostart(&app);
 
     Ok(())
+}
+
+/// Opens a native save dialog and writes the exported settings JSON to the
+/// chosen location. Returns `true` if the user saved the file, `false` if
+/// they cancelled the dialog.
+#[tauri::command]
+pub async fn save_export_file(app: AppHandle, content: String) -> Result<bool, YapmodError> {
+    // The dialog API is callback-based and must run on the main thread.
+    // Bridge the callback to an async context using a oneshot channel.
+    let (tx, rx) = tokio::sync::oneshot::channel::<Option<String>>();
+
+    app.dialog()
+        .file()
+        .set_title("Save settings export")
+        .set_file_name("yapmod-settings-export.json")
+        .add_filter("JSON", &["json"])
+        .save_file(move |selected| {
+            let path = selected.map(|p| p.to_string());
+            let _ = tx.send(path);
+        });
+
+    let Some(selected_path) = rx.await.map_err(|e| YapmodError::io(e.to_string()))? else {
+        return Ok(false);
+    };
+
+    let path = PathBuf::from(selected_path);
+
+    // Ensure the parent directory exists.
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| YapmodError::io(format!("Failed to create directory: {e}")))?;
+        }
+        // Allow the parent directory in the fs sandbox so we can write the file.
+        let _ = app.fs_scope().allow_directory(parent, false);
+    }
+
+    fs::write(&path, content).map_err(|e| YapmodError::io(format!("Failed to write file: {e}")))?;
+    Ok(true)
 }
 
 /// Enable or disable the login autostart entry based on the current setting.

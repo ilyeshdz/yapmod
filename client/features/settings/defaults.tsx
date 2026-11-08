@@ -5,6 +5,7 @@ import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { requestNotificationPermission } from "../../core/notify";
 import { openBugReport } from "../bug-report/api";
+import { handleExport, handleImport } from "./export-import";
 
 const SECTION_ID = "yapmod";
 const GROUP_LABEL = "Yapmod";
@@ -264,6 +265,22 @@ export function installDefaultSettings(): void {
   if (yapmod.modal) {
     items.push({
       type: "button",
+      id: "export_settings",
+      label: "Export settings",
+      group: "Data",
+      onClick: () => void handleExport(),
+    });
+
+    items.push({
+      type: "button",
+      id: "import_settings",
+      label: "Import settings",
+      group: "Data",
+      onClick: () => handleImport(),
+    });
+
+    items.push({
+      type: "button",
       id: "report_bug",
       label: "Report a bug",
       group: "About",
@@ -273,7 +290,7 @@ export function installDefaultSettings(): void {
 
   // Keep related options together, in a predictable order that does not
   // depend on which platform added them first.
-  const groupOrder = ["Window", "Notifications", "Updates", "About"];
+  const groupOrder = ["Window", "Notifications", "Updates", "Data", "About"];
   items.sort(
     (left, right) =>
       groupOrder.indexOf(left.group ?? "") - groupOrder.indexOf(right.group ?? ""),
