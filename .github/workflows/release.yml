@@ -60,6 +60,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify updater public key
+        run: |
+          set -euo pipefail
+          pubkey=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).plugins.updater.pubkey)')
+          case "$pubkey" in
+            bW9uS3k0dGhpc0lzQVNsYWNrZUZvclRoZVB1YmxpY0tleU11c3RCZVJlcGxhY2Vk|REPLACE_WITH_CONTENTS_OF_*)
+              echo "Error: the updater public key in tauri.conf.json has not been set." >&2
+              echo "Generate a keypair with: npx tauri signer generate -w ~/.tauri/yapmod.key" >&2
+              echo "Then replace the pubkey value with the contents of ~/.tauri/yapmod.key.pub" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Choose app version
         id: version
         env:
@@ -643,7 +656,7 @@ jobs:
       - name: Preserve the other channel
         env:
           CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
-          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'nightly' || (needs.prepare.outputs.channel == 'stable' && 'nightly' || 'stable') }}
           CLIENT_ROOT: ${{ github.workspace }}
           OUTPUT_DIR: site/web/dist
         run: node scripts/client-updates.mjs preserve
@@ -651,7 +664,7 @@ jobs:
       - name: Preserve the other web channel
         env:
           CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
-          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'nightly' || (needs.prepare.outputs.channel == 'stable' && 'nightly' || 'stable') }}
           CLIENT_ROOT: ${{ github.workspace }}
           OUTPUT_DIR: site/web/dist
           CLIENT_UPDATES_DIR: client-updates-web
