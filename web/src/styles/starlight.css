@@ -1,116 +1,109 @@
 /* ---------------------------------------------------------------------------
    Starlight custom theme for yapmod
-   Applies the project's coral/peach color palette and Geist fonts.
+   Matches the website's coral/peach palette, dark purple backgrounds,
+   Geist fonts, rounded corners, and glow effects.
    --------------------------------------------------------------------------- */
 
-/* Fonts — Geist Pixel for headings, Geist for body */
+/* Shared design tokens — mirror the website's global.css */
 :root {
+  --sl-bg: #130e18;
+  --sl-surface: #1c1524;
+  --sl-line: #2e2438;
+  --sl-text: #fbf1f0;
+  --sl-muted: #b3a3b4;
+  --sl-on: #1a0f16;
+  --sl-accent: #f67567;
+  --sl-accent-2: #ff8a70;
+  --sl-accent-3: #ffb25f;
+  --sl-glow: rgba(246, 117, 103, 0.22);
+  --sl-g: linear-gradient(135deg, #f67567 0%, #ff8a70 55%, #ffb25f 100%);
+
+  /* Border radii — match the website */
+  --sl-radius-sm: 12px;
+  --sl-radius-md: 14px;
+  --sl-radius-lg: 22px;
+  --sl-radius-xl: 30px;
+
+  /* Fonts */
   --__sl-font-heading: "Geist Pixel", monospace;
   --__sl-font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-/* Dark mode colors (default) */
+/* Light mode tokens */
+:root[data-theme="light"] {
+  --sl-bg: #fff7f5;
+  --sl-surface: #fff;
+  --sl-line: #f1d9d4;
+  --sl-text: #25141c;
+  --sl-muted: #7a6068;
+  --sl-on: #fff7f5;
+  --sl-accent: #d9485f;
+  --sl-accent-2: #f67567;
+  --sl-accent-3: #f67567;
+  --sl-glow: rgba(246, 117, 103, 0.18);
+}
+
+/* Dark mode Starlight variables */
 :root,
 ::backdrop {
-  /* Background colors */
-  --__sl-color-bg: #130e18;
-  --__sl-color-bg-nav: #1c1524;
-  --__sl-color-bg-top-nav: #1c1524;
-
-  /* Text colors */
-  --__sl-color-text: #fbf1f0;
-  --__sl-color-text-accent: #f67567;
-  --__sl-color-text-inverse: #1a0f16;
-
-  /* Content colors */
-  --__sl-color-content-fade: #b3a3b4;
-  --__sl-color-border: #2e2438;
+  --__sl-color-bg: var(--sl-bg);
+  --__sl-color-bg-nav: var(--sl-surface);
+  --__sl-color-bg-top-nav: var(--sl-surface);
+  --__sl-color-text: var(--sl-text);
+  --__sl-color-text-accent: var(--sl-accent);
+  --__sl-color-text-inverse: var(--sl-on);
+  --__sl-color-content-fade: var(--sl-muted);
+  --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #3e3048;
-
-  /* Accent colors — coral gradient */
   --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
-  --__sl-color-accent: #f67567;
-  --__sl-color-accent-high: #ff8a70;
-
-  /* Brand gradient */
-  --sl-brand-gradient: linear-gradient(135deg, #f67567 0%, #ff8a70 55%, #ffb25f 100%);
-
-  /* Links */
-  --__sl-color-link: #ff8a70;
-
-  /* Buttons */
-  --__sl-button-on-page-bg: #f67567;
-  --__sl-button-on-page-hover-bg: #ff8a70;
-
-  /* Code */
-  --__sl-color-code: #ffb25f;
-  --__sl-color-code-bg: #1c1524;
-
-  /* Inline code */
-  --__sl-color-inline-code-bg: #1c1524;
-
-  /* Selection */
+  --__sl-color-accent: var(--sl-accent);
+  --__sl-color-accent-high: var(--sl-accent-2);
+  --sl-brand-gradient: var(--sl-g);
+  --__sl-color-link: var(--sl-accent-2);
+  --__sl-button-on-page-bg: var(--sl-accent);
+  --__sl-button-on-page-hover-bg: var(--sl-accent-2);
+  --__sl-color-code: var(--sl-accent-3);
+  --__sl-color-code-bg: var(--sl-surface);
+  --__sl-color-inline-code-bg: var(--sl-surface);
   --__sl-color-hairline-shade: rgba(246, 117, 103, 0.2);
-
-  /* Cards */
-  --__sl-card-border-color: #2e2438;
-  --__sl-card-hover-border-color: #f67567;
-
-  /* Search */
+  --__sl-card-border-color: var(--sl-line);
+  --__sl-card-hover-border-color: var(--sl-accent);
   --__sl-color-backdrop: rgba(19, 14, 24, 0.85);
-
-  /* Focus ring */
-  --__sl-color-focus: #f67567;
-
-  /* Sidebar */
-  --__sl-color-sidebar-active: #f67567;
-
-  /* Content padding */
+  --__sl-color-focus: var(--sl-accent);
+  --__sl-color-sidebar-active: var(--sl-accent);
   --sl-content-pad-horizontal: 2rem;
 }
 
-/* Light mode colors */
+/* Light mode Starlight variables */
 :root[data-theme="light"],
 [data-theme="light"] ::backdrop {
-  --__sl-color-bg: #fff7f5;
-  --__sl-color-bg-nav: #fff;
-  --__sl-color-bg-top-nav: #fff;
-
-  --__sl-color-text: #25141c;
-  --__sl-color-text-accent: #d9485f;
-  --__sl-color-text-inverse: #fff7f5;
-
-  --__sl-color-content-fade: #7a6068;
-  --__sl-color-border: #f1d9d4;
+  --__sl-color-bg: var(--sl-bg);
+  --__sl-color-bg-nav: var(--sl-surface);
+  --__sl-color-bg-top-nav: var(--sl-surface);
+  --__sl-color-text: var(--sl-text);
+  --__sl-color-text-accent: var(--sl-accent);
+  --__sl-color-text-inverse: var(--sl-on);
+  --__sl-color-content-fade: var(--sl-muted);
+  --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #e0c4bd;
-
   --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
-  --__sl-color-accent: #d9485f;
-  --__sl-color-accent-high: #f67567;
-
-  --__sl-color-link: #d9485f;
-
-  --__sl-button-on-page-bg: #d9485f;
-  --__sl-button-on-page-hover-bg: #f67567;
-
-  --__sl-color-code: #f67567;
+  --__sl-color-accent: var(--sl-accent);
+  --__sl-color-accent-high: var(--sl-accent-2);
+  --__sl-color-link: var(--sl-accent);
+  --__sl-button-on-page-bg: var(--sl-accent);
+  --__sl-button-on-page-hover-bg: var(--sl-accent-2);
+  --__sl-color-code: var(--sl-accent-2);
   --__sl-color-code-bg: #fff;
-
   --__sl-color-inline-code-bg: #fff0ed;
-
   --__sl-color-hairline-shade: rgba(246, 117, 103, 0.15);
-
-  --__sl-card-border-color: #f1d9d4;
-  --__sl-card-hover-border-color: #d9485f;
-
+  --__sl-card-border-color: var(--sl-line);
+  --__sl-card-hover-border-color: var(--sl-accent);
   --__sl-color-backdrop: rgba(255, 247, 245, 0.85);
-
-  --__sl-color-focus: #d9485f;
-
-  --__sl-color-sidebar-active: #d9485f;
+  --__sl-color-focus: var(--sl-accent);
+  --__sl-color-sidebar-active: var(--sl-accent);
 }
 
-/* Heading styles — Geist Pixel for a pixel-art feel */
+/* Heading sizes */
 :root {
   --__sl-text-h1: 2.4rem;
   --__sl-text-h2: 1.8rem;
@@ -119,86 +112,510 @@
   --__sl-text-h5: 1.125rem;
 }
 
-/* Smooth transitions for theme switching */
+/* Color scheme */
 :root {
   color-scheme: light dark;
 }
 
-/* Brand logo styling */
+/* Smooth theme transitions on all elements */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease;
+}
+
+/* ============================================================================
+   TOP NAV BAR — match website nav height and style
+   ============================================================================ */
+
+.top-nav {
+  border-bottom: 1.5px solid var(--sl-line);
+  backdrop-filter: blur(12px);
+}
+
+.top-nav::part(wrapper) {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
 .sl-nav-logo {
   padding: 0;
 }
 
 .sl-nav-logo img,
 .sl-nav-logo svg {
-  height: 2.5rem;
+  height: 2.2rem;
 }
 
-/* Gradient accent for headings with the brand gradient */
+/* Nav links */
+.top-nav a[part="link"] {
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--sl-muted);
+  border-radius: var(--sl-radius-sm);
+  padding: 6px 12px;
+}
+
+.top-nav a[part="link"]:hover {
+  color: var(--sl-text);
+  background: var(--sl-accent-low);
+}
+
+/* ============================================================================
+   SIDEBAR — match website card style
+   ============================================================================ */
+
+.sidebar {
+  border-inline-end: 1.5px solid var(--sl-line);
+}
+
+.sidebar-pane {
+  background: var(--sl-bg);
+}
+
+/* Sidebar section labels */
+.sidebar-pane nav section li.accordion > details > summary,
+.sidebar-pane nav section > header {
+  font-family: "Geist Pixel", monospace;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sl-muted);
+}
+
+/* Sidebar links */
+.sidebar-pane nav a {
+  border-radius: var(--sl-radius-sm);
+  padding: 6px 12px;
+  margin: 0 -12px;
+  display: block;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-pane nav a:hover {
+  background: var(--sl-accent-low);
+  color: var(--sl-text);
+}
+
+/* Sidebar active link */
+.sidebar-pane .sidebar-active > a {
+  border-inline-start: 3px solid var(--sl-accent);
+  background: var(--sl-accent-low);
+  color: var(--sl-accent);
+  font-weight: 600;
+}
+
+/* Sidebar tree nesting */
+.sidebar-pane nav ul {
+  padding-left: 1rem;
+}
+
+/* ============================================================================
+   HERO / PAGE TITLE — gradient text like the website h1
+   ============================================================================ */
+
 .sl-markdown-content h1 {
-  background: var(--sl-brand-gradient);
+  background: var(--sl-g);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 1rem;
 }
 
-/* Card hover effects */
-.sl-card-list .sl-card {
-  transition: border-color 0.2s ease, transform 0.2s ease;
+/* Hero section on the landing/doc pages */
+.sl-markdown-content h2 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  border-bottom-color: var(--sl-line);
+  padding-bottom: 0.4em;
 }
 
-.sl-card-list .sl-card:hover {
+.sl-markdown-content h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================================
+   CARDS — match website .col card style
+   ============================================================================ */
+
+.sl-card {
+  border-radius: var(--sl-radius-lg) !important;
+  border: 1.5px solid var(--sl-line) !important;
+  background: var(--sl-surface);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sl-card:hover {
+  border-color: var(--sl-accent) !important;
   transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--sl-glow);
 }
 
-/* Sidebar active indicator */
-.sidebar-pane .sidebar-active > a {
-  border-left-color: var(--__sl-color-sidebar-active);
+.sl-card-list .sl-card {
+  border-radius: var(--sl-radius-lg);
 }
 
-/* Nav bar styling */
-.top-nav {
-  border-bottom: 1.5px solid var(--__sl-color-border);
+/* Card title */
+.sl-card > a > h3,
+.sl-card > a > h2 {
+  font-family: "Geist Pixel", monospace;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
 }
 
-/* Footer styling */
-.footer {
-  border-top: 1.5px solid var(--__sl-color-border);
+/* Card description */
+.sl-card p {
+  color: var(--sl-muted);
+  font-size: 0.95rem;
 }
 
-/* Code block styling */
+/* ============================================================================
+   BUTTONS — match website .btn style
+   ============================================================================ */
+
+/* Primary button (on-page CTA) */
+.sl-button[part="button"] {
+  border-radius: var(--sl-radius-md) !important;
+  font-family: "Geist", sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  padding: 14px 26px !important;
+  border: 1.5px solid var(--sl-line) !important;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease !important;
+}
+
+.sl-button[part="button"]:hover {
+  border-color: var(--sl-accent) !important;
+}
+
+/* Gradient button variant */
+.sl-button--primary[part="button"] {
+  background: var(--sl-g) !important;
+  color: var(--sl-on) !important;
+  border-color: transparent !important;
+}
+
+.sl-button--primary[part="button"]:hover {
+  filter: brightness(1.07);
+  color: var(--sl-on) !important;
+  border-color: transparent !important;
+}
+
+/* ============================================================================
+   LINKS — accent color with smooth hover
+   ============================================================================ */
+
+.sl-markdown-content a {
+  color: var(--sl-accent-2);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.sl-markdown-content a:hover {
+  color: var(--sl-accent);
+  border-bottom-color: var(--sl-accent);
+}
+
+/* ============================================================================
+   CODE BLOCKS — rounded, bordered, matching website
+   ============================================================================ */
+
 .sl-markdown-content pre {
-  border-radius: 0.75rem;
-  border: 1px solid var(--__sl-color-border);
+  border-radius: var(--sl-radius-md);
+  border: 1.5px solid var(--sl-line);
+  background: var(--sl-surface);
+  overflow-x: auto;
 }
 
-/* Blockquote / callout styling */
-.sl-markdown-content blockquote {
-  border-inline-start-color: var(--__sl-color-accent);
-  border-radius: 0.5rem;
+.sl-markdown-content pre code {
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-/* Table styling */
+/* Code block header/title bar */
+.sl-markdown-content .language-panel-group-tabs {
+  border-radius: var(--sl-radius-md) var(--sl-radius-md) 0 0;
+  background: var(--sl-bg-nav);
+  border-bottom: 1.5px solid var(--sl-line);
+}
+
+/* Inline code */
+.sl-markdown-content code:not(pre code) {
+  background: var(--sl-surface);
+  border: 1px solid var(--sl-line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.9em;
+  color: var(--sl-accent-3);
+}
+
+/* ============================================================================
+   TABLES — match website style
+   ============================================================================ */
+
 .sl-markdown-content table {
-  border-radius: 0.5rem;
+  border-radius: var(--sl-radius-md);
+  overflow: hidden;
+  border: 1.5px solid var(--sl-line);
 }
 
 .sl-markdown-content thead th {
-  background-color: var(--__sl-color-bg-nav);
+  background-color: var(--sl-surface);
+  font-family: "Geist Pixel", monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  border-bottom: 1.5px solid var(--sl-line);
+  padding: 12px 16px;
 }
 
-/* Skip link */
+.sl-markdown-content tbody td {
+  border-bottom: 1px solid var(--sl-line);
+  padding: 10px 16px;
+}
+
+.sl-markdown-content tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sl-markdown-content tbody tr:hover {
+  background: var(--sl-accent-low);
+}
+
+/* ============================================================================
+   BLOCKQUOTES & ADMONITIONS — accent border, rounded
+   ============================================================================ */
+
+.sl-markdown-content blockquote {
+  border-inline-start: 4px solid var(--sl-accent);
+  border-radius: var(--sl-radius-sm);
+  background: var(--sl-accent-low);
+  padding: 16px 20px;
+  margin: 1.5rem 0;
+}
+
+.sl-markdown-content blockquote p {
+  margin: 0;
+}
+
+/* Starlight admonitions */
+.sl-markdown-content .sl-note,
+.sl-markdown-content .sl-tip,
+.sl-markdown-content .sl-caution,
+.sl-markdown-content .sl-important {
+  border-radius: var(--sl-radius-md) !important;
+  border: 1.5px solid var(--sl-line) !important;
+}
+
+/* ============================================================================
+   IMAGES & MEDIA
+   ============================================================================ */
+
+.sl-markdown-content img {
+  border-radius: var(--sl-radius-md);
+  border: 1.5px solid var(--sl-line);
+}
+
+/* ============================================================================
+   FOOTER — match website footer
+   ============================================================================ */
+
+.footer {
+  border-top: 1.5px solid var(--sl-line);
+  padding: 30px 0 40px;
+  font-size: 14px;
+  color: var(--sl-muted);
+}
+
+.footer a {
+  color: var(--sl-muted);
+  transition: color 0.15s ease;
+}
+
+.footer a:hover {
+  color: var(--sl-text);
+}
+
+/* ============================================================================
+   SKIP LINK
+   ============================================================================ */
+
 .skip-to-content {
-  background: var(--sl-brand-gradient);
-  color: var(--__sl-color-text-inverse);
-  border-radius: 0 0.75rem 0 0;
+  background: var(--sl-g);
+  color: var(--sl-on);
+  border-radius: 0 var(--sl-radius-md) 0 0;
   font-weight: 600;
   padding: 0.75rem 1.25rem;
+  font-family: "Geist", sans-serif;
 }
 
-/* Responsive adjustments */
+/* ============================================================================
+   FOCUS RING — match website
+   ============================================================================ */
+
+:focus-visible {
+  outline: 3px solid var(--sl-accent) !important;
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* ============================================================================
+   SELECTION — match website
+   ============================================================================ */
+
+::selection {
+  background: rgba(246, 117, 103, 0.2);
+  color: var(--sl-text);
+}
+
+/* ============================================================================
+   SEARCH MODAL
+   ============================================================================ */
+
+/* Search trigger button */
+.search-input-wrapper {
+  border-radius: var(--sl-radius-sm) !important;
+  border: 1.5px solid var(--sl-line) !important;
+  background: var(--sl-bg) !important;
+}
+
+.search-input-wrapper:hover {
+  border-color: var(--sl-muted) !important;
+}
+
+/* ============================================================================
+   TABLE OF CONTENTS (right sidebar)
+   ============================================================================ */
+
+.table-of-contents {
+  border-inline-start: 1.5px solid var(--sl-line);
+}
+
+.table-of-contents nav[part="toc"] {
+  padding: 1rem;
+}
+
+.table-of-contents li a {
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  display: block;
+  color: var(--sl-muted);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.table-of-contents li a:hover {
+  color: var(--sl-text);
+  background: var(--sl-accent-low);
+}
+
+.table-of-contents li a[aria-current="true"] {
+  color: var(--sl-accent);
+  font-weight: 600;
+}
+
+/* ============================================================================
+   PREVIOUS / NEXT PAGE NAVIGATION
+   ============================================================================ */
+
+.sl-link-list a {
+  border-radius: var(--sl-radius-lg) !important;
+  border: 1.5px solid var(--sl-line) !important;
+  background: var(--sl-surface) !important;
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sl-link-list a:hover {
+  border-color: var(--sl-accent) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--sl-glow);
+}
+
+/* ============================================================================
+   GLOW EFFECT — radial gradient behind hero content
+   ============================================================================ */
+
+/* Add subtle glow behind the main content area */
+.content-panel::before {
+  content: "";
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(closest-side, var(--sl-glow), transparent);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   SCROLLBAR — themed
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sl-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sl-line);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-muted);
+}
+
+/* ============================================================================
+   LIST STYLING
+   ============================================================================ */
+
+.sl-markdown-content ul,
+.sl-markdown-content ol {
+  padding-left: 1.5rem;
+}
+
+.sl-markdown-content li {
+  padding: 4px 0;
+}
+
+.sl-markdown-content li::marker {
+  color: var(--sl-accent);
+}
+
+/* ============================================================================
+   HR / SEPARATORS
+   ============================================================================ */
+
+.sl-markdown-content hr {
+  border-color: var(--sl-line);
+  border-style: solid;
+  border-width: 1.5px 0 0;
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
 @media (max-width: 80em) {
   :root {
     --sl-content-pad-horizontal: 1.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .sl-card {
+    border-radius: var(--sl-radius-md) !important;
   }
 }
