@@ -36,7 +36,7 @@ pnpm tauri dev
 
 This makes a one-time client build, then opens the Yapmod window. The window loads the live Yapper site.
 
-To develop the website-backed community theme and plugin catalogs locally, start the website in a second terminal before opening **Settings → Themes → Community** or **Settings → Yapmod → Plugins → Community**:
+To develop the website-backed community theme and plugin catalogs locally, start the website in a second terminal before opening **Settings → Themes** or **Settings → Yapmod → Plugins**:
 
 ```bash
 pnpm --dir web dev
