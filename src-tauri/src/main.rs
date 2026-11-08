@@ -5,7 +5,6 @@ use tauri::{
     Manager, WebviewUrl, WebviewWindowBuilder,
     webview::{PageLoadEvent, PermissionKind, PermissionResponse},
 };
-use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_opener::OpenerExt;
 
 mod badge;
@@ -27,10 +26,11 @@ mod window;
 
 fn main() {
     let app = tauri::Builder::default()
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            None,
-        ))
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .macos_launcher(tauri_plugin_autostart::MacosLauncher::LaunchAgent)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
