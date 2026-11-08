@@ -26,7 +26,9 @@ Open Yapper's **Settings → Yapmod** section to configure the desktop app. Noti
 
 **Window transparency** applies the operating system's native translucent window effect: vibrancy on macOS, and Mica with Acrylic or Blur fallbacks on Windows. The change applies immediately, and yapmod remembers it for the next launch.
 
-Transparency makes the window background see-through, not every panel. Enable **Force theme transparency** to make the active theme's panels translucent too, so the desktop shows through. Dialogs, menus and other elevated surfaces stay opaque so text remains readable, and the transparency level is tuned to keep content legible.
+Transparency makes the window background see-through, not every panel. Enable **Force theme transparency** to make the active theme's panels translucent too, so the desktop shows through. Dialogs, menus and other elevated surfaces stay opaque so text remains readable.
+
+The **Transparency level** slider controls how much of the theme colour remains; lower values are more transparent.
 
 Window transparency is not available on Linux, where the effect depends on the desktop compositor.
 
