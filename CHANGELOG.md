@@ -7,30 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
+## [0.7.0] - 2026-11-05
 
-- Window position and size are now persisted across launches.
-- Added an autostart on login setting.
-- Native window transparency support for themes.
-- In-app bug report flow for submitting issues directly from the application.
-- Browser extension target with isolated bridge and signed client updates.
-- Custom DMG background and updated application icons.
+### Highlights
 
-### Changed
+- **Browser extension.** You can now run Yapmod as a Chrome or Firefox extension. It loads the client behind an isolated bridge, stores plugins and themes in `chrome.storage.local`, and supports signed client updates at runtime. There is also a separate self-hosted loader build for private deployments.
+- **Multi-target client architecture.** The client has been restructured around a unified host contract. Feature code talks to the host through message ports instead of making direct platform calls, so both the desktop app and the browser extension share the same feature logic. Each target implements its own host, and tests enforce the boundaries.
+- **Plugin UI component system.** Plugins can build custom UI using a built-in component library with styled buttons, icons, and layout utilities. They can also register custom settings panels that show up in the Yapmod settings sidebar.
+- **Plugin reload.** Installed plugins and themes can be reloaded without restarting the app, and plugins are automatically re-enabled after a reload.
+- **Mono Dark community theme.** A new monochrome dark theme with a subtle beige accent and custom font import. Theme accent colors now map to Yapper's primary host CSS variables for better visual integration.
 
-- Settings panels, plugins, and themes galleries have been redesigned.
-- Website migrated to Astro Starlight.
-- Default theme primary color set to #DD5A8c.
-- Mono Dark community theme added with subtle beige accent.
-- Theme format updated to remove preview support and use plugin-style cards.
+### Improvements and fixes
 
-### Removed
+- **Settings persistence.** Settings are backed up to `localStorage` on app close, so you do not lose them if the app closes unexpectedly.
+- **Plugin restore.** Plugins are properly restored after the document body exists, fixing a race condition during startup.
+- **Custom settings positioning.** Custom settings panels from plugins now render at the bottom of the settings sidebar in the right order.
+- **Custom background opacity.** The Custom Background plugin now supports opacity control for background images.
+- **Notification and link handling.** Notification delivery and link opening work better across platforms.
+- **Client release fixes.** Fixed a deadlock in the client update concurrency group and a missing `OUTPUT_DIR` variable that could block releases.
 
-- Yaplay integration has been removed.
+### Development and infrastructure
 
-### Fixed
-
-- Various documentation and build fixes.
+- **Web extension target.** A full browser extension shell has been added, with a page-realm bridge, extension storage backend, plugin and theme import, an RPC layer, manifest, and background service worker. The extension has its own version, separate from the app and client versions.
+- **CI/CD pipeline overhaul.** The release workflow was rewritten from scratch, consolidating seven workflow files into two. The unified pipeline handles stable and nightly channels, desktop builds on four platforms, web extension packaging, and signed client update feed publication, all from a single workflow dispatch.
+- **Unified build tooling.** One build script now handles client bundling, type generation, and version management, replacing the old separate scripts. Web extension packaging and bundle validation are included too.
+- **Documentation improvements.** The docs site now has client-side routing, a search palette, and 22 new pages covering the plugin API, theme development, architecture guides, and the web extension. API reference data is auto-generated from the codebase.
+- **Plugin and theme ecosystem.** The community plugin catalog now includes the Popup Remover plugin (contributed via PR #19). The theme catalog includes Mono Dark. Catalog infrastructure supports automatic generation and validation.
+- **Simplified Rust validation.** Plugin and theme validation in the Rust backend has been simplified since the boundary is trusted, removing duplicated policy rules. External resources like fonts and images are now allowed in plugin and theme CSS.
+- **Yaplay integration removed.** The Yaplay integration has been removed from the project.
 
 ## [0.6.0] - 2026-10-27
 
