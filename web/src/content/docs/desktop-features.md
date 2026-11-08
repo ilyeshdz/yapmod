@@ -1,16 +1,13 @@
 ---
 title: Desktop features
-group: Start
-order: 3
-eyebrow: Start here
 description: Notifications, unread badges, window behavior and updates.
 ---
 
-Open Yapper's **Settings → Yapmod** section to configure the desktop app. Notifications, the unread badge, keep-running and automatic update checks are on by default. The window options are off by default.
+Open Yapin's **Settings → Yapmod** section to configure the desktop app. Notifications, the unread badge, keep-running and automatic update checks are on by default. The window options are off by default.
 
 ## Notifications and unread badge
 
-- **Desktop notifications** sends system notifications for messages when the yapmod window is in the background. Yapper still decides which messages should notify you, and your operating system may ask you to allow notifications.
+- **Desktop notifications** sends system notifications for messages when the yapmod window is in the background. Yapin still decides which messages should notify you, and your operating system may ask you to allow notifications.
 - **Show the unread badge** puts the unread count on the app icon. macOS and Linux show it on the Dock or launcher icon; Windows draws it over the taskbar icon. The operating system controls how the badge looks.
 
 ## Keep running when the window closes

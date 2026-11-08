@@ -98,7 +98,7 @@ function createWindowStub(href: string): Window {
 
 /**
  * Webviews have no window to open a new tab in, so `window.open` silently
- * does nothing. Yapper uses it to hand external links to the browser, so we
+ * does nothing. Yapin uses it to hand external links to the browser, so we
  * take over that call and open the URL ourselves.
  */
 function installWindowOpenPatch(): void {
@@ -122,7 +122,7 @@ function installWindowOpenPatch(): void {
 }
 
 /**
- * Reads the URL out of the "Leaving Yapper" confirmation dialog, which
+ * Reads the URL out of the "Leaving Yapin" confirmation dialog, which
  * renders it as `https://<host>/path` across two elements.
  */
 function readLeavingUrl(scope: ParentNode): string | null {

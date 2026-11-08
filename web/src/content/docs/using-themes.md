@@ -1,12 +1,9 @@
 ---
 title: Using themes
-group: Start
-order: 5
-eyebrow: Start here
 description: Install, apply and remove themes in yapmod.
 ---
 
-A theme is a folder containing a manifest and a stylesheet. It can change Yapper, the yapmod settings and dialogs. System notifications keep their normal system look.
+A theme is a folder containing a manifest and a stylesheet. It can change Yapin, the yapmod settings and dialogs. System notifications keep their normal system look.
 
 Looking for the authoring format? Start with the [Themes developer documentation](/yapmod/docs/themes).
 
@@ -44,6 +41,6 @@ Use **Import theme**, **Refresh** and **Open folder** to manage the gallery. **M
 
 ![The Themes settings, showing the theme gallery and controls](../../assets/docs/themes-gallery.png)
 
-A theme is plain CSS. If one looks wrong, turn off its switch or turn on **Yapper's theme** in the gallery to return to the normal look.
+A theme is plain CSS. If one looks wrong, turn off its switch or turn on **Yapin's theme** in the gallery to return to the normal look.
 
 [Creating a theme](/yapmod/docs/themes/getting-started) covers the format, tokens and a complete example.

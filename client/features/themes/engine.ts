@@ -11,7 +11,7 @@ const THEME_STYLE_ID = "yapmod-theme-styles";
  * The app reads them while the page is still loading, so mirroring the
  * choice is what keeps the theme from flashing on the first frame.
  */
-const HOST_THEME_KEY = "yapper-theme";
+const HOST_THEME_KEY = "yapin-theme";
 
 export type ThemeListener = (theme: ThemeBundle | null) => void;
 

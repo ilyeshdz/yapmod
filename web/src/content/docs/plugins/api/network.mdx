@@ -1,21 +1,15 @@
 ---
 title: Network inspectors
-group: API reference
-order: 6
-area: plugins
-eyebrow: API
 description: Observe and modify fetch requests, responses and WebSocket messages.
 ---
 
-import ApiType from "../../../../components/docs/ApiType.astro";
-import Callout from "../../../../components/docs/Callout.astro";
+import ApiType from "../../components/ApiType.astro";
 
 yapmod installs its inspectors before the app starts. The plugin API exposes the shared inspector channels, not a private copy. Every subscription and interceptor is global to the page while registered.
 
-<Callout type="warning" title="No history, no replay">
+:::caution[No history, no replay]
 The inspectors keep no event history. A subscriber receives each event once, while it is subscribed. If a plugin needs a log, it must keep one itself and release it during cleanup.
-</Callout>
-
+:::
 ## HTTP
 
 <ApiType name="HTTPInspector" signature={false} />
@@ -167,10 +161,9 @@ api.onCleanup(stop);
 
 Each interceptor receives the latest payload produced by the previous interceptor. An interceptor may return a promise, but message delivery is synchronous and a returned promise is not a valid payload, so the chain is discarded. If an interceptor throws or returns an invalid type, the whole chain is discarded and the original payload is delivered or sent.
 
-<Callout type="note" title="Boundaries">
+:::note[Boundaries]
 Connection lifecycle events such as open, close and reconnect are not exposed. Incoming and outgoing subscriptions observe messages, not connection state. The inspectors do not suppress delivery; they only observe or replace payloads.
-</Callout>
-
+:::
 ## Related types
 
 <ApiType name="HTTPOutgoingMessageHandler" />

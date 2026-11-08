@@ -1,15 +1,10 @@
 ---
 title: Structure and manifest
-group: Guides
-order: 2
-area: themes
-eyebrow: Reference
 description: Every theme manifest field, the file rules, modes, and validation behaviour.
 ---
 
-import ApiType from "../../../components/docs/ApiType.astro";
-import Callout from "../../../components/docs/Callout.astro";
-import Limits from "../../../components/docs/Limits.astro";
+import ApiType from "../components/ApiType.astro";
+import Limits from "../components/Limits.astro";
 
 A theme is a folder. yapmod looks for `manifest.json` in that folder, reads the stylesheet it names, and stores the result as a bundle. Only `id` and `name` are required.
 

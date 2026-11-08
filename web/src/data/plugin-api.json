@@ -3,7 +3,7 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "7f7afeeade536c49",
+  "sourceHash": "4971586d200d8a29",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
@@ -100,7 +100,7 @@
           "type": "YapmodModalApi",
           "optional": false,
           "readonly": true,
-          "description": "Opens modal dialogs in the Yapper window. Plugins can create consent dialogs, settings forms, or any other UI that requires user interaction."
+          "description": "Opens modal dialogs in the Yapin window. Plugins can create consent dialogs, settings forms, or any other UI that requires user interaction."
         },
         {
           "name": "notify",
@@ -465,7 +465,7 @@
           "type": "(panel: PluginSettingsPanel) => () => void",
           "optional": false,
           "readonly": false,
-          "description": "Registers a settings panel in the Yapper settings sidebar. Registering the same panel id again replaces the previous panel. Returns an unregister function; the panel is also removed when the plugin is disabled."
+          "description": "Registers a settings panel in the Yapin settings sidebar. Registering the same panel id again replaces the previous panel. Returns an unregister function; the panel is also removed when the plugin is disabled."
         },
         {
           "name": "openPanel",
@@ -486,7 +486,7 @@
     "PluginSettingsPanel": {
       "name": "PluginSettingsPanel",
       "kind": "type",
-      "description": "A settings panel contributed by a plugin. Panels appear in the sidebar of the Yapper settings dialog, next to yapmod's own sections. Register one with `api.settings.registerPanel()` while the plugin is active; the registration is removed automatically when the plugin is disabled.",
+      "description": "A settings panel contributed by a plugin. Panels appear in the sidebar of the Yapin settings dialog, next to yapmod's own sections. Register one with `api.settings.registerPanel()` while the plugin is active; the registration is removed automatically when the plugin is disabled.",
       "declaration": "export type PluginSettingsPanel = { id?: string; label: string; description?: string; icon?: \"monitor\" | \"palette\" | \"history\" | \"puzzle\"; group?: string; order?: number; items?: SettingsItem[]; render?: (\n    host: HTMLElement,\n    context: SettingsContext,\n  ) => void | (() => void); onShow?: () => void; onHide?: () => void;\n};",
       "members": [
         {

@@ -79,7 +79,7 @@ function addWindowControls(topbar: HTMLElement): void {
 }
 
 /**
- * Yapper's topbar is a drag region on macOS and hosts custom window controls
+ * Yapin's topbar is a drag region on macOS and hosts custom window controls
  * on Windows. It is painted after the app boots, hence the observer.
  */
 function installTopbarWindowControls(): void {

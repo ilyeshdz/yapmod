@@ -1,8 +1,5 @@
 ---
 title: Release channels
-group: Start
-order: 3
-eyebrow: Start here
 description: Stable and nightly release channels explained.
 ---
 

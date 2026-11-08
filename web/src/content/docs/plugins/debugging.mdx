@@ -1,13 +1,8 @@
 ---
 title: Debugging plugins
-group: Guides
-order: 5
-area: plugins
-eyebrow: Guide
 description: Diagnose import, activation, CSS, settings and cleanup failures.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 Most plugin problems fall into five groups: the package was not valid, the module shape was wrong, activation threw, a setting was undeclared, or cleanup did not run.
 
@@ -83,7 +78,7 @@ Notifications, clipboard and some storage APIs can be denied. Guard the call and
 4. Remember that host styles may have higher specificity. Use a scoped selector rather than an unscoped `!important` reset.
 5. For runtime CSS, remember that `api.styles.add()` returns a remover; register it with `api.onCleanup()`.
 
-A theme may also be overriding your plugin. Test with **Yapper's theme** selected, then reintroduce the theme.
+A theme may also be overriding your plugin. Test with **Yapin's theme** selected, then reintroduce the theme.
 
 ## Settings do not update the plugin
 
@@ -108,10 +103,9 @@ api.onCleanup(() => {
 
 Also check for resources created outside the activation path, such as a timer started inside an event handler after activation.
 
-<Callout type="tip" title="Reproduce from a clean install">
+:::tip[Reproduce from a clean install]
 Remove the plugin, re-import it, enable it, then disable it. This catches stale settings, stale installed files and cleanup paths that only work on the first session.
-</Callout>
-
+:::
 ## Inspecting network behavior
 
 The inspectors keep no history. To debug, add a temporary subscription that logs, then remove it. Do not ship a plugin that logs message bodies, headers or tokens.

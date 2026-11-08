@@ -1,15 +1,10 @@
 ---
 title: Manifest reference
-group: Overview
-order: 6
-area: plugins
-eyebrow: Reference
 description: The package manifest, settings schema and validation limits.
 ---
 
-import ApiType from "../../../components/docs/ApiType.astro";
-import Callout from "../../../components/docs/Callout.astro";
-import Limits from "../../../components/docs/Limits.astro";
+import ApiType from "../components/ApiType.astro";
+import Limits from "../components/Limits.astro";
 
 Every plugin has a `manifest.json` at the root of its folder. The manifest is parsed with unknown fields rejected, so a typo such as `styleSheet` fails the import instead of being silently ignored.
 
@@ -61,10 +56,9 @@ Every plugin has a `manifest.json` at the root of its folder. The manifest is pa
 | `stylesheet` | No | string | Must be `"plugin.css"` when present. If omitted, `plugin.css` is used. The file must exist. |
 | `script` | No | string | Must be `"plugin.js"` when present. Omit it for a CSS-only plugin. |
 
-<Callout type="note" title="The stylesheet is still required">
+:::note[The stylesheet is still required]
 `stylesheet` may be omitted because it defaults to `plugin.css`, but the file itself is required. A package with no stylesheet cannot be read as a plugin bundle.
-</Callout>
-
+:::
 ## Settings
 
 Settings are declared in the manifest. yapmod renders a settings dialog on the plugin card and saves the values when the user chooses **Save**. A plugin reads them through `api.settings`.

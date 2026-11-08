@@ -1,5 +1,5 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
+import logo from "../assets/yapmod-logo.png";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
 import Features from "../components/Features.astro";
@@ -7,20 +7,67 @@ import Download from "../components/Download.astro";
 import Build from "../components/Build.astro";
 import Community from "../components/Community.astro";
 import Footer from "../components/Footer.astro";
+import "../styles/global.css";
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+const favicon = new URL(`${base}/favicon.svg`, Astro.site);
 ---
 
-<BaseLayout>
-  <div class="wrap">
-    <Nav />
-    <Hero />
-  </div>
+<!doctype html>
+<html lang="en" style={`--logo: url("${logo.src}");`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>yapmod — Yapin, made yours</title>
+    <meta name="description" content="yapmod is a free, open-source desktop app for Yapin. Install it on Windows, macOS or Linux and make it your own." />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={favicon} />
 
-  <main id="main">
-    <Features />
-    <Download />
-    <Build />
-    <Community />
-  </main>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="yapmod" />
+    <meta property="og:title" content="yapmod — Yapin, made yours" />
+    <meta property="og:description" content="yapmod is a free, open-source desktop app for Yapin." />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={favicon} />
+    <meta name="twitter:card" content="summary_large_image" />
 
-  <Footer />
-</BaseLayout>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Geist+Pixel&family=Geist:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <script is:inline>
+      (() => {
+        try {
+          const stored = localStorage.getItem("starlight-theme");
+          if (stored === "light" || stored === "dark") {
+            document.documentElement.dataset.theme = stored;
+          } else if (stored === "" || stored === null) {
+            // Auto mode or no preference: use system preference
+            const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+            document.documentElement.dataset.theme = prefersLight ? "light" : "dark";
+          }
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="wrap">
+      <Nav />
+      <Hero />
+    </div>
+
+    <main id="main">
+      <Features />
+      <Download />
+      <Build />
+      <Community />
+    </main>
+
+    <Footer />
+  </body>
+</html>

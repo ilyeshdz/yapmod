@@ -100,7 +100,7 @@ function requestConsent(
   if (!api) {
     return Promise.resolve(
       window.confirm(
-        `${label} ${manifest.name}?\n\nThis CSS plugin can change or imitate the Yapper interface. Only continue if you trust its source.`,
+        `${label} ${manifest.name}?\n\nThis CSS plugin can change or imitate the Yapin interface. Only continue if you trust its source.`,
       ),
     );
   }
@@ -837,7 +837,7 @@ export function installPluginSettings(): void {
     group: "Yapmod",
     order: 3,
     description: getHost().capabilities.pageRealm
-      ? "Import local plugins or browse community packages. JavaScript plugins run as trusted code in the Yapper page."
+      ? "Import local plugins or browse community packages. JavaScript plugins run as trusted code in the Yapin page."
       : "Import local plugins or browse community packages. JavaScript plugins run in the extension's isolated world.",
     render: (host: HTMLElement) =>
       render(

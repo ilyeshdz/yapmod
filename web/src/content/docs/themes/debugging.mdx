@@ -1,13 +1,8 @@
 ---
 title: Debugging themes
-group: Guides
-order: 6
-area: themes
-eyebrow: Guide
 description: Find out why a theme is not applied, why it looks wrong, and how to inspect it.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 Themes fail in two different ways: the theme is not loaded at all, or it loads and its CSS does the wrong thing. Check which one you have before editing colours.
 
@@ -101,7 +96,7 @@ Surfaces that float above the page often use `--ym-bg-float`, `--ym-bg-elev` or 
 The recovery path does not require reading the theme:
 
 1. Open **Settings → Themes**.
-2. Pick **Yapper's theme**. This removes the theme's attributes and restores the host theme state.
+2. Pick **Yapin's theme**. This removes the theme's attributes and restores the host theme state.
 3. Remove the broken theme with the × on its card.
 
 If the settings are unreachable, close yapmod and remove the theme's folder from the themes directory. The next launch will not find a selected theme and will use the host theme.
@@ -126,6 +121,6 @@ When a theme fails in a way you cannot explain, include:
 - the resolved `data-yapmod-mode` value;
 - your yapmod version and platform.
 
-<Callout type="note" title="The CSS is always the suspect">
+:::note[The CSS is always the suspect]
 There is no theme script, no theme API and no background runtime. A behaviour that looks like code is either the app, a plugin, or a CSS rule such as an animation, a transition or a remote asset request.
-</Callout>
+:::

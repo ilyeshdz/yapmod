@@ -101,7 +101,7 @@ function createSlider(
 
 /**
  * Registers the section that holds yapmod's own settings, so the desktop
- * client is configurable from inside Yapper's settings modal.
+ * client is configurable from inside Yapin's settings modal.
  */
 export function installDefaultSettings(): void {
   const yapmod = getYapmod();
@@ -161,7 +161,7 @@ export function installDefaultSettings(): void {
         label: desktop ? "Desktop notifications" : "Notifications",
         description: desktop
           ? "Show a notification in the notification center when a message arrives while the window is in the background."
-          : "Show a browser notification when a message arrives while the Yapper tab is in the background.",
+          : "Show a browser notification when a message arrives while the Yapin tab is in the background.",
         group: "Notifications",
         fallback: true,
         onChange: (value) => {

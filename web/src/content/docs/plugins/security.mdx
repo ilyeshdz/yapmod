@@ -1,18 +1,12 @@
 ---
 title: Security and limitations
-group: Overview
-order: 5
-area: plugins
-eyebrow: Plugins
 description: What the plugin runtime does and does not protect against.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
-<Callout type="warning" title="There is no security sandbox">
-JavaScript plugins are trusted page code. yapmod does not run them in an iframe, worker, isolated realm or permission-restricted environment. A plugin runs with the same JavaScript and DOM access as code in the Yapper page.
-</Callout>
-
+:::caution[There is no security sandbox]
+JavaScript plugins are trusted page code. yapmod does not run them in an iframe, worker, isolated realm or permission-restricted environment. A plugin runs with the same JavaScript and DOM access as code in the Yapin page.
+:::
 ## What yapmod enforces
 
 yapmod contributes predictability and reviewability, not isolation:

@@ -1,9 +1,5 @@
 ---
 title: Submit a theme
-group: Publish
-order: 1
-area: themes
-eyebrow: Publish
 description: Publish a theme in the Yapmod community gallery.
 ---
 

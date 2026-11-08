@@ -33,7 +33,7 @@ client/
 `pnpm client:package:web` also writes `dist/yapmod-web-<version>.zip` with the
 manifest at the archive root, ready for a browser store or a release asset. The
 browser lists it as **Yapmod Web**. It runs at `document_start` on the two
-Yapper origins:
+Yapin origins:
 
 - `preinject.js` runs in `MAIN`, so the client, plugins and network inspectors
   share the page's JavaScript realm.

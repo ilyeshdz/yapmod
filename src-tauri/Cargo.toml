@@ -1,7 +1,7 @@
 [package]
 name = "yapmod"
 version = "0.7.0"
-description = "A open-source modded desktop client for yapper"
+description = "A open-source modded desktop client for yapin"
 authors = ["ilyeshdz"]
 edition = "2024"
 

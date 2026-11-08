@@ -34,7 +34,7 @@ Source: `package.json`, `web/package.json`, `.github/workflows/`. Run from the r
 ## File Map
 
 ```text
-client/              SolidJS/TypeScript injected into the Yapper page
+client/              SolidJS/TypeScript injected into the Yapin page
 src-tauri/           Rust Tauri 2 desktop shell and native commands
 web/                 Astro website and documentation (own package)
 scripts/             Node tooling for generated types and client updates
@@ -72,7 +72,7 @@ community-themes/    Source packages published to the theme catalog
 
 ## Key Decisions
 
-- The app is a Tauri shell around the live Yapper website. The client is injected at document start and after page load; it is not a bundled SPA.
+- The app is a Tauri shell around the live Yapin website. The client is injected at document start and after page load; it is not a bundled SPA.
 - Injected code may run only on the exact HTTPS origins `https://yapin.gg` and `https://www.yapin.gg`. Internal navigation also includes subdomains of `yapin.gg`; injection does not.
 - The desktop app and the injected client are versioned independently: `src-tauri/Cargo.toml` vs `client/version.json`.
 - Stable and nightly are isolated release channels. Each has its own signed client-update feed, cache directory, and release sequence; a build never switches channel through an update.
@@ -121,7 +121,7 @@ community-themes/    Source packages published to the theme catalog
 
 | Term | Means |
 |------|-------|
-| Injected client | The `client/` code embedded into the remote Yapper page |
+| Injected client | The `client/` code embedded into the remote Yapin page |
 | Preinject | Script injected at document start; owns settings, theme engine, plugin API |
 | Postinject | Script injected after page load; owns window controls and update UI |
 | Client bundle | Independently updated signed artifact containing preinject/postinject + minimum CSS |

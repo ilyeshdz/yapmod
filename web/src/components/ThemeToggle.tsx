@@ -1,17 +1,29 @@
 /**
- * Colour-theme switch. The current theme is read from the html element, which
- * the inline script in the layout sets before first paint.
+ * Colour-theme switch. Shares the same localStorage key (`starlight-theme`) as
+ * the Starlight docs so the theme is consistent across the landing page and docs.
+ * Cycles through: auto → dark → light → auto.
  */
 export default function ThemeToggle() {
+  const storageKey = "starlight-theme";
+
+  const getPreferredColorScheme = () =>
+    window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+
+  const parseTheme = (v: unknown): "auto" | "dark" | "light" =>
+    v === "auto" || v === "dark" || v === "light" ? v : "auto";
+
   const toggle = () => {
     const root = document.documentElement;
-    const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-    const current = root.dataset.theme || (prefersLight ? "light" : "dark");
-    const next = current === "dark" ? "light" : "dark";
+    const stored = typeof localStorage !== "undefined" && localStorage.getItem(storageKey);
+    const current = parseTheme(stored);
 
-    root.dataset.theme = next;
+    // Cycle: auto → dark → light → auto
+    const next: "auto" | "dark" | "light" =
+      current === "auto" ? "dark" : current === "dark" ? "light" : "auto";
+
+    root.dataset.theme = next === "auto" ? getPreferredColorScheme() : next;
     try {
-      localStorage.setItem("yapmod-theme", next);
+      localStorage.setItem(storageKey, next === "auto" ? "" : next);
     } catch {
       // Ignore storage failures, the theme still applies for this session.
     }

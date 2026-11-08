@@ -1,13 +1,8 @@
 ---
 title: Loading and modes
-group: Guides
-order: 4
-area: themes
-eyebrow: Themes
 description: How the selected theme reaches the page, how mode is resolved, and when styles are remounted.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A theme is not loaded by a request from the page. The desktop shell resolves the selected theme at startup and hands the whole bundle to the page's initialization script. That is why the correct colours are present on the first frame instead of flashing after the app renders.
 
@@ -55,10 +50,10 @@ Unknown `mode` values are normalised to `dark` before this step, so the branch i
 
 ## The host app's theme
 
-The Yapper page has its own `data-theme` attribute and its own `prefers-color-scheme` handling. yapmod keeps them in step so components that still read the host theme look correct:
+The Yapin page has its own `data-theme` attribute and its own `prefers-color-scheme` handling. yapmod keeps them in step so components that still read the host theme look correct:
 
 - The resolved mode is copied to the root's `data-theme`.
-- The same value is written to the host's `localStorage` key, `yapper-theme`, because the host reads that key while loading.
+- The same value is written to the host's `localStorage` key, `yapin-theme`, because the host reads that key while loading.
 - A `MutationObserver` watches `data-theme`. If the host writes a different value, yapmod puts the resolved mode back.
 - When the theme is removed, yapmod restores the value the host had before the theme was applied, or deletes the key if there was none.
 
@@ -96,6 +91,6 @@ Use this order:
 
 More checks are in [Debugging themes](/yapmod/docs/themes/debugging).
 
-<Callout type="note" title="Removing a theme never needs a restart">
+:::note[Removing a theme never needs a restart]
 A theme contains only CSS. Picking another theme replaces the stylesheet, and removing one stops it from being read at the next start. There is no background process to stop.
-</Callout>
+:::

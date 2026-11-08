@@ -1,13 +1,8 @@
 ---
 title: Create your first theme
-group: Overview
-order: 2
-area: themes
-eyebrow: Themes
 description: Build a two-file theme, install it locally, and verify light and dark modes.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A theme is a folder with a manifest and a stylesheet. This guide creates a complete theme, installs it from the settings, and checks both modes.
 
@@ -112,15 +107,14 @@ If the theme is dark-only or light-only, set `mode` accordingly. A one-mode them
 A theme is plain CSS and can break the layout. If the interface becomes unusable:
 
 1. Open **Settings → Themes** if it is still visible.
-2. Pick **Yapper's theme** to restore the normal look.
+2. Pick **Yapin's theme** to restore the normal look.
 3. Remove the broken theme with the × on its card.
 
 There is no JavaScript in a theme, so removing it is enough; there is no background code to stop.
 
-<Callout type="tip" title="Start with tokens, then add CSS">
+:::tip[Start with tokens, then add CSS]
 A theme built only from tokens is portable across app updates. Add component-specific rules after the token layer looks right, and keep those rules narrow.
-</Callout>
-
+:::
 ## Next steps
 
 - Read [Structure and manifest](/yapmod/docs/themes/manifest) before adding metadata.

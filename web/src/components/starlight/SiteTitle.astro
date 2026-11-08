@@ -1,0 +1,41 @@
+---
+/**
+ * Custom SiteTitle that renders the logo as a gradient-filled mask div
+ * with visible text next to it, matching the landing page's .brand styling.
+ */
+// @ts-ignore — Starlight virtual module
+import config from "virtual:starlight/user-config";
+import logoImg from "../../assets/yapmod-logo.png";
+
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<a href={siteTitleHref} class="site-title sl-flex">
+  {config.logo && (
+    <div class="logo" role="img" aria-label={config.logo.alt} style={`-webkit-mask: url(${logoImg.src}) center / contain no-repeat; mask: url(${logoImg.src}) center / contain no-repeat;`} />
+  )}
+  <span class="title-text" translate="no">{siteTitle}</span>
+</a>
+
+<style>
+  .site-title {
+    align-items: center;
+    gap: 12px;
+    font: 800 22px "Geist Pixel", monospace;
+    color: var(--sl-color-text);
+    text-decoration: none;
+    white-space: nowrap;
+    min-width: 0;
+    letter-spacing: -0.04em;
+  }
+  .logo {
+    display: block;
+    width: 38px;
+    height: auto;
+    aspect-ratio: 829 / 606;
+    background: var(--sl-g);
+  }
+  .title-text {
+    overflow: hidden;
+  }
+</style>

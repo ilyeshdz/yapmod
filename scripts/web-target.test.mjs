@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { createManifest } from "../client/targets/web/manifest.mjs";
 
-test("the web manifest only runs on the exact Yapper origins", () => {
+test("the web manifest only runs on the exact Yapin origins", () => {
   const manifest = createManifest("1.2.3");
 
   for (const script of manifest.content_scripts) {

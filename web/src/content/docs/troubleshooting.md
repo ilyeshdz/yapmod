@@ -1,8 +1,5 @@
 ---
 title: Troubleshooting
-group: Start
-order: 4
-eyebrow: Start here
 description: Fixes for the problems people hit most often.
 ---
 
@@ -18,7 +15,7 @@ On macOS, allow yapmod under **System Settings → Privacy & Security → Microp
 
 ## No notifications arrive
 
-Check that *Desktop notifications* is on in the yapmod section of the settings. Yapper decides when to notify you, so a muted server or channel, Do Not Disturb, or a window that is in front will keep notifications away.
+Check that *Desktop notifications* is on in the yapmod section of the settings. Yapin decides when to notify you, so a muted server or channel, Do Not Disturb, or a window that is in front will keep notifications away.
 
 ## The unread badge does not show
 
@@ -44,11 +41,11 @@ Recent builds open external links in your browser. Update to the latest release 
 
 ## A theme looks wrong or breaks the layout
 
-Pick **Yapper's theme** in the theme gallery to get the usual look back. A theme is plain CSS, so a broken rule can break the interface around it.
+Pick **Yapin's theme** in the theme gallery to get the usual look back. A theme is plain CSS, so a broken rule can break the interface around it.
 
 ## I'm stuck on the login screen
 
-Sign in with your Yapper account. If that fails on the Yapper website too, the problem is on Yapper's side, not yapmod's.
+Sign in with your Yapin account. If that fails on the Yapin website too, the problem is on Yapin's side, not yapmod's.
 
 ## Still stuck?
 

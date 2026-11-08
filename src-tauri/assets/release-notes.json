@@ -2,12 +2,12 @@
   "0.1.0": {
     "title": "The first yapmod release",
     "date": "2026-10-20",
-    "summary": "yapmod is a modded desktop client for Yapper. This first release focuses on the basics: a real desktop window, a proper titlebar, and a place to grow from.",
+    "summary": "yapmod is a modded desktop client for Yapin. This first release focuses on the basics: a real desktop window, a proper titlebar, and a place to grow from.",
     "sections": [
       {
         "heading": "Highlights",
         "items": [
-          "Yapper now runs in its own desktop window.",
+          "Yapin now runs in its own desktop window.",
           "Added a custom macOS titlebar overlay.",
           "Introduced the yapmod logo and desktop icons."
         ]
@@ -17,7 +17,7 @@
   "0.1.1": {
     "title": "Modals and configuration",
     "date": "2026-10-20",
-    "summary": "This release adds the building blocks for customizing yapmod and showing dialogs over the Yapper interface.",
+    "summary": "This release adds the building blocks for customizing yapmod and showing dialogs over the Yapin interface.",
     "sections": [
       {
         "heading": "New",
@@ -54,12 +54,12 @@
   "0.2.0": {
     "title": "Settings, links, and a website",
     "date": "2026-10-20",
-    "summary": "This release puts yapmod's options where you expect them: inside Yapper's own settings page. It also adds an official website with direct downloads and makes external links open in your normal browser.",
+    "summary": "This release puts yapmod's options where you expect them: inside Yapin's own settings page. It also adds an official website with direct downloads and makes external links open in your normal browser.",
     "sections": [
       {
         "heading": "Highlights",
         "items": [
-          "Added a Yapmod section to Yapper's settings, so desktop options live next to the rest of the app.",
+          "Added a Yapmod section to Yapin's settings, so desktop options live next to the rest of the app.",
           "Added an official landing page with direct download links for macOS, Windows, and Linux.",
           "External links now open in your default browser instead of inside the app."
         ]
@@ -102,7 +102,7 @@
       {
         "heading": "How it works",
         "items": [
-          "Yapper keeps deciding when to notify you: muted channels and servers, Do Not Disturb, and a window that is in front are all respected."
+          "Yapin keeps deciding when to notify you: muted channels and servers, Do Not Disturb, and a window that is in front are all respected."
         ]
       }
     ]
@@ -180,9 +180,9 @@
         "heading": "Highlights",
         "items": [
           "Yapmod now supports client bundles published separately from desktop app releases. When a compatible update is available, it verifies the signed manifest and bundle hash, checks app compatibility, and stages the update. Yapmod then offers a restart to apply it; active calls will disconnect, and an update that fails to start is rolled back.",
-          "Fixed a Windows startup issue that could keep Yapmod's settings interface from loading correctly. Client startup now waits for the document root and head before installing its observers and styles, so the settings interface can integrate with Yapper's page.",
-          "Windows now has minimize, maximize or restore, and close controls in Yapper's top bar. Follow-up fixes restore button clicks and authorize the window commands. The host top bar also serves as the macOS window drag area.",
-          "Compact notification banners now appear in Yapper's top bar."
+          "Fixed a Windows startup issue that could keep Yapmod's settings interface from loading correctly. Client startup now waits for the document root and head before installing its observers and styles, so the settings interface can integrate with Yapin's page.",
+          "Windows now has minimize, maximize or restore, and close controls in Yapin's top bar. Follow-up fixes restore button clicks and authorize the window commands. The host top bar also serves as the macOS window drag area.",
+          "Compact notification banners now appear in Yapin's top bar."
         ]
       },
       {
@@ -190,7 +190,7 @@
         "items": [
           "Theme initialization waits until the document root exists, and injected styles wait until the page head is available. This makes startup styling more reliable.",
           "Fixed settings navigation freezes caused by repeated event listeners and a mutation observer loop. Added icons to Yapmod's settings sections.",
-          "Updated Yapmod's Yapper integration for yapin.gg, including the supported bare and www addresses used to open the app and load the injected client."
+          "Updated Yapmod's Yapin integration for yapin.gg, including the supported bare and www addresses used to open the app and load the injected client."
         ]
       },
       {

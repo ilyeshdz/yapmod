@@ -1,22 +1,16 @@
 ---
 title: Plugins
-group: Overview
-order: 1
-area: plugins
-eyebrow: Developer documentation
-description: Build packages that add CSS, behavior and settings to the Yapper page.
+description: Build packages that add CSS, behavior and settings to the Yapin page.
 ---
 
-import Callout from "../../components/docs/Callout.astro";
 
-A yapmod plugin is a small folder that yapmod copies into its plugins folder and applies to the Yapper page. Every package starts with a manifest and a stylesheet; adding an optional `plugin.js` lets it run JavaScript in the page.
+A yapmod plugin is a small folder that yapmod copies into its plugins folder and applies to the Yapin page. Every package starts with a manifest and a stylesheet; adding an optional `plugin.js` lets it run JavaScript in the page.
 
 Plugins are how you add behavior yapmod does not ship with: a custom unread counter, a message filter, a keyboard shortcut, a network inspector, a background image, or a small tool that reacts to events in the app.
 
-<Callout type="warning" title="Plugins are trusted page code">
-A JavaScript plugin is not a sandboxed extension. It runs in the Yapper page with the same DOM and JavaScript access as the page itself, including any data visible to the page. Read [Security and limitations](/yapmod/docs/plugins/security) before you distribute a plugin.
-</Callout>
-
+:::caution[Plugins are trusted page code]
+A JavaScript plugin is not a sandboxed extension. It runs in the Yapin page with the same DOM and JavaScript access as the page itself, including any data visible to the page. Read [Security and limitations](/yapmod/docs/plugins/security) before you distribute a plugin.
+:::
 Plugins run in the page realm on the desktop app and in the browser extension alike, so page hooks and the network inspectors behave the same way. The web extension lacks only the native `api.invoke` escape hatch, and its storage and catalog access pass through an isolated bridge. See [Web extension](/yapmod/docs/web-extension).
 
 ## What a plugin can do
@@ -56,7 +50,7 @@ You need:
 - yapmod installed from a current build, so the plugin API is available.
 - A text editor and a folder on disk for the package.
 - Familiarity with HTML, CSS and modern JavaScript if you want to write a script. The module format is plain ES modules; no build step is required.
-- The Yapper page's developer console for debugging. See [Development setup](/yapmod/docs/plugins/development).
+- The Yapin page's developer console for debugging. See [Development setup](/yapmod/docs/plugins/development).
 
 You do **not** need to build yapmod from source to test a plugin. The local import flow is the normal development loop.
 

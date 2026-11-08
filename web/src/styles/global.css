@@ -15,15 +15,15 @@
   --on: #1a0f16;
 
   /* Brand colors: the same ones the app ships with (client/assets/icon.svg). */
-  --accent: #f67567;
-  --accent-2: #ff8a70;
-  --accent-3: #ffb25f;
+  --accent: #DD5A8C;
+  --accent-2: #E87DA6;
+  --accent-3: #F2A3C5;
   /* The accent at 20%, used for selections and active states. */
   --accent-soft: color-mix(in srgb, var(--accent) 20%, transparent);
   /* Readable version of the accent, for text on light backgrounds. */
-  --accent-ink: #f67567;
-  --g: linear-gradient(135deg, #f67567 0%, #ff8a70 55%, #ffb25f 100%);
-  --glow: rgba(246, 117, 103, 0.22);
+  --accent-ink: #DD5A8C;
+  --g: linear-gradient(135deg, #DD5A8C 0%, #E87DA6 55%, #F2A3C5 100%);
+  --glow: rgba(221, 90, 140, 0.22);
 
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -37,8 +37,8 @@
     --line: #f1d9d4;
     --t: #25141c;
     --m: #7a6068;
-    --accent-ink: #d9485f;
-    --glow: rgba(246, 117, 103, 0.18);
+    --accent-ink: #c44a78;
+    --glow: rgba(221, 90, 140, 0.18);
   }
 }
 
@@ -48,8 +48,8 @@
   --line: #f1d9d4;
   --t: #25141c;
   --m: #7a6068;
-  --accent-ink: #d9485f;
-  --glow: rgba(246, 117, 103, 0.18);
+  --accent-ink: #c44a78;
+  --glow: rgba(221, 90, 140, 0.18);
 }
 
 *,
@@ -67,7 +67,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--t);
-  font: 400 17px/1.65 Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 400 17px/1.65 Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
   overflow-x: hidden;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -82,7 +82,7 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid #f67567;
+  outline: 3px solid #DD5A8C;
   outline-offset: 3px;
   border-radius: 10px;
 }
@@ -95,7 +95,7 @@ a {
 h1,
 h2,
 h3 {
-  font-family: Sora, Figtree, system-ui, sans-serif;
+  font-family: "Geist Pixel", monospace;
   margin: 0;
 }
 
@@ -123,7 +123,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  font: 800 22px Sora, sans-serif;
+  font: 800 22px "Geist Pixel", monospace;
   text-decoration: none;
   letter-spacing: -0.04em;
 }
@@ -210,7 +210,7 @@ h3 {
   gap: 10px;
   padding: 14px 26px;
   border-radius: 14px;
-  font: 600 16px Figtree, sans-serif;
+  font: 600 16px Geist, sans-serif;
   text-decoration: none;
   border: 1.5px solid var(--line);
   color: var(--t);
@@ -423,7 +423,7 @@ h2 {
   margin: 0 0 4px;
   padding: 4px 12px;
   color: var(--m);
-  font: 700 11px/1.4 Figtree, sans-serif;
+  font: 700 11px/1.4 Geist, sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

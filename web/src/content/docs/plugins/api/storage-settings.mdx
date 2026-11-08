@@ -1,14 +1,9 @@
 ---
 title: Storage and settings
-group: API reference
-order: 3
-area: plugins
-eyebrow: API
 description: Namespaced key/value storage and manifest-declared user settings.
 ---
 
-import ApiType from "../../../../components/docs/ApiType.astro";
-import Callout from "../../../../components/docs/Callout.astro";
+import ApiType from "../../components/ApiType.astro";
 
 ## `api.storage`
 
@@ -98,7 +93,7 @@ The settings dialog saves values to the store. The listener fires when the store
 
 ## Settings panels
 
-A plugin can add its own panel to the sidebar of the Yapper settings dialog. Panels are grouped with the other plugin panels, and they work like yapmod's own **Yapmod**, **Themes** and **Plugins** sections: the user opens Settings from Yapper and picks the panel from the sidebar.
+A plugin can add its own panel to the sidebar of the Yapin settings dialog. Panels are grouped with the other plugin panels, and they work like yapmod's own **Yapmod**, **Themes** and **Plugins** sections: the user opens Settings from Yapin and picks the panel from the sidebar.
 
 Panels are UI, not persistent values. Keep the values a panel edits in `api.storage` or in manifest-declared settings.
 
@@ -186,10 +181,9 @@ Re-renders the declarative `items` of one panel, or of every panel registered by
 api.settings.refreshPanel();
 ```
 
-<Callout type="note" title="Panels are plugin UI">
+:::note[Panels are plugin UI]
 A panel is not a permission boundary and does not add a setting to the manifest. It is rendered by yapmod because it is registered in the settings sidebar; the plugin still runs as trusted page code.
-</Callout>
-
+:::
 ## Root attributes
 
 yapmod mirrors declared settings onto `<html>`:
@@ -222,10 +216,9 @@ Use JavaScript rather than CSS `attr()` when the value needs parsing or when you
 | A value that should survive a restart | Either, depending on whether the user configures it |
 | Request history or message bodies | Neither; keep only what you need, in memory, and release it on cleanup |
 
-<Callout type="note" title="Settings are declared, not created at runtime">
+:::note[Settings are declared, not created at runtime]
 A plugin cannot add a setting dynamically. Declare it in `manifest.json`; yapmod renders the form and validates the value. If you need a different kind of input, build it as plugin UI and store the result yourself.
-</Callout>
-
+:::
 ## Related types
 
 <ApiType name="PluginSettingValue" />

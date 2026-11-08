@@ -35,7 +35,7 @@ function themeDescription(): string {
   const active = getYapmod().theme?.active;
 
   if (!active) {
-    return "Yapper default";
+    return "Yapin default";
   }
 
   return active.version ? `${active.name} v${active.version}` : active.name;

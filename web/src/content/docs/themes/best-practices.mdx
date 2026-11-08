@@ -1,13 +1,8 @@
 ---
 title: Best practices
-group: Guides
-order: 7
-area: themes
-eyebrow: Guide
 description: Patterns for themes that stay readable, portable and safe to remove.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A theme is a stylesheet, so the quality bar is mostly about restraint: few selectors, predictable tokens, and both modes treated as first-class.
 
@@ -58,7 +53,7 @@ Prefer one extra attribute of specificity over `!important`. Avoid styling the t
 
 ## Be careful with assets
 
-- Relative `url()` paths point at the Yapper page, not at the theme folder.
+- Relative `url()` paths point at the Yapin page, not at the theme folder.
 - Use a full `https:` address or a `data:` URI.
 - Keep remote assets optional. A font or background that fails to load should not make the theme unusable.
 - `@import` works, but a separate request delays first paint.
@@ -77,7 +72,7 @@ Prefer one extra attribute of specificity over `!important`. Avoid styling the t
 A theme should be easy to leave:
 
 1. Apply it.
-2. Pick **Yapper's theme**. The normal look should return immediately.
+2. Pick **Yapin's theme**. The normal look should return immediately.
 3. Switch back. The theme should apply again without a restart.
 4. Remove it. No attributes or style element should remain.
 
@@ -94,6 +89,6 @@ Before opening a pull request:
 - run the Community build with `pnpm check:web`;
 - read [Submit a theme](/yapmod/docs/submit-a-theme) for the repository rules.
 
-<Callout type="tip" title="Small beats clever">
+:::tip[Small beats clever]
 A theme with twenty well-chosen token overrides is easier to review, easier to maintain and more likely to keep working than one with two hundred component selectors. If a rule fights the app, check whether a token already covers the case.
-</Callout>
+:::

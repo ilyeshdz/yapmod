@@ -1,13 +1,8 @@
 ---
 title: Building plugin UI
-group: Guides
-order: 2
-area: plugins
-eyebrow: Guide
 description: Add in-page controls, banners, notifications and dialogs that clean up correctly.
 ---
 
-import Callout from "../../../../components/docs/Callout.astro";
 
 Use `api.ui` for buttons, icons, inputs, selects, toggles, fields, toolbars and badges so a plugin matches the host interface without rebuilding its controls. For anything else, build UI with the DOM, keep it namespaced with the plugin id, and remove it during cleanup.
 
@@ -169,6 +164,6 @@ export default {
 };
 ```
 
-<Callout type="warning" title="Avoid global CSS resets">
+:::caution[Avoid global CSS resets]
 A broad rule such as `* { font-family: ... }` or a reset on `body` can break the host interface and other plugins. Scope rules to the elements you own, or use tokens that the theme system understands.
-</Callout>
+:::

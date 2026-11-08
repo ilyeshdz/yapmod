@@ -4,7 +4,7 @@ import { getHost } from "../platform/host";
 /**
  * The bridge the host app looks for.
  *
- * Yapper asks `window.yapperDesktop` for the things a desktop shell can do
+ * Yapin asks `window.yapinDesktop` for the things a desktop shell can do
  * that a browser cannot, and calls the ones it knows about without checking
  * whether they exist. Everything else falls back to the browser.
  */
@@ -29,7 +29,7 @@ export type DesktopBridge = {
 export function installDesktopBridge(): void {
   const scope = getScope();
 
-  if (scope.yapperDesktop) {
+  if (scope.yapinDesktop) {
     return;
   }
 
@@ -53,5 +53,5 @@ export function installDesktopBridge(): void {
     },
   };
 
-  scope.yapperDesktop = bridge;
+  scope.yapinDesktop = bridge;
 }

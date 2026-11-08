@@ -123,7 +123,7 @@ fn main() {
                         webview.url().is_ok_and(|url| hosts::is_injection_url(&url));
 
                     // Voice and video need the microphone and camera. Only
-                    // grant them to an approved Yapper origin, never a page that
+                    // grant them to an approved Yapin origin, never a page that
                     // somehow navigated the webview elsewhere.
                     match (approved_origin, kind) {
                         (true, PermissionKind::Microphone | PermissionKind::Camera) => {

@@ -1,8 +1,5 @@
 ---
 title: Contributing
-group: Contributing
-order: 2
-eyebrow: Contributing
 description: How to help build and improve yapmod.
 ---
 
@@ -46,4 +43,4 @@ fix(injection): hide the previous settings panel when switching sections
 
 ## Community
 
-Ask questions and follow along on the official Yapper server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop).
+Ask questions and follow along on the official Yapin server: [yapin.gg/invite/develop](https://www.yapin.gg/invite/develop).
