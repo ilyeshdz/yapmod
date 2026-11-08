@@ -21,20 +21,26 @@ export type PluginEntry = {
 
 export type PluginCardProps = {
   entry: PluginEntry;
-  /** Returns `false` when the change failed or was cancelled. */
-  onInstallChange: (installed: boolean) => Promise<boolean>;
-  /** Returns `false` when the plugin could not be enabled or disabled. */
-  onEnabledChange: (enabled: boolean) => Promise<boolean>;
+  /** True while the plugin is being installed, enabled or removed. */
+  pending: boolean;
+  /** Turns the plugin on or off. Returns `false` when the change failed. */
+  onToggle: (enabled: boolean) => Promise<boolean>;
   onConfigure: () => void;
   onReload: () => void;
 };
 
-/** A plugin card with installation, activation and configuration controls. */
+/**
+ * A plugin card with a single on/off switch.
+ *
+ * Turning the switch on installs the package when needed and enables it;
+ * turning it off disables and removes it. Configuration stays available for
+ * installed plugins.
+ */
 export function PluginCard(props: PluginCardProps): JSX.Element {
   const { manifest } = props.entry;
   const installed = () => props.entry.installed !== null;
   const enabled = () => props.entry.installed?.enabled === true;
-  const busy = () => props.entry.installed?.busy === true;
+  const busy = () => props.pending || props.entry.installed?.busy === true;
   const meta = () =>
     [manifest.author, manifest.version ? `v${manifest.version}` : null, manifest.license]
       .filter(Boolean)
@@ -49,6 +55,7 @@ export function PluginCard(props: PluginCardProps): JSX.Element {
       source={props.entry.source}
       sourceNoun="plugin"
       verified={props.entry.verified}
+      active={enabled()}
       actions={
         installed() ? (
           <>
@@ -79,36 +86,18 @@ export function PluginCard(props: PluginCardProps): JSX.Element {
         ) : undefined
       }
       controls={
-        <>
-          <Show when={installed()}>
-            <label class="yapmod-package-control">
-              <span class="yapmod-package-control-label">Enabled</span>
-              <Switch
-                checked={enabled()}
-                disabled={busy()}
-                label={
-                  enabled()
-                    ? `Disable ${manifest.name}`
-                    : `Enable ${manifest.name}`
-                }
-                onChange={(next) => props.onEnabledChange(next)}
-              />
-            </label>
-          </Show>
-          <label class="yapmod-package-control">
-            <span class="yapmod-package-control-label">Installed</span>
-            <Switch
-              checked={installed()}
-              disabled={busy()}
-              label={
-                installed()
-                  ? `Uninstall ${manifest.name}`
-                  : `Install ${manifest.name}`
-              }
-              onChange={(next) => props.onInstallChange(next)}
-            />
-          </label>
-        </>
+        <label class="yapmod-package-control">
+          <Switch
+            checked={enabled()}
+            disabled={busy()}
+            label={
+              enabled()
+                ? `Turn off ${manifest.name}`
+                : `Turn on ${manifest.name}`
+            }
+            onChange={(next) => props.onToggle(next)}
+          />
+        </label>
       }
     >
       <Show when={manifest.script}>

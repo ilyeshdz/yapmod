@@ -111,6 +111,7 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
   const [filter, setFilter] = createSignal<Filter>("all");
   const [query, setQuery] = createSignal("");
   const [status, setStatus] = createSignal({ message: "", error: false });
+  const [pending, setPending] = createSignal<Set<string>>(new Set());
 
   const entries = createMemo(() => buildEntries(installed(), community()));
 
@@ -139,6 +140,52 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
 
   function syncInstalled(): void {
     setInstalled(props.plugins.list());
+  }
+
+  function setPendingState(id: string, value: boolean): void {
+    setPending((current) => {
+      const next = new Set(current);
+
+      if (value) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
+      return next;
+    });
+  }
+
+  /** Asks before a locally imported plugin is deleted from disk. */
+  async function confirmLocalRemoval(name: string): Promise<boolean> {
+    const modalApi = getYapmod().modal;
+
+    if (!modalApi) {
+      return window.confirm(
+        `Uninstall ${name}? Its package files and stored settings will be deleted.`,
+      );
+    }
+
+    let confirmed = false;
+    const modal = modalApi.show({
+      title: `Uninstall ${name}?`,
+      description:
+        "This plugin was imported from a local folder. Its package and stored settings will be removed from this device.",
+      buttons: [
+        { label: "Cancel", variant: "secondary" },
+        {
+          label: "Uninstall plugin",
+          variant: "danger",
+          onClick: () => {
+            confirmed = true;
+          },
+        },
+      ],
+      autoFocus: true,
+    });
+    await modal.closed;
+
+    return confirmed;
   }
 
   async function refreshInstalled(): Promise<void> {
@@ -194,21 +241,23 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     }
   }
 
-  async function setInstalledState(
-    entry: PluginEntry,
-    next: boolean,
-  ): Promise<boolean> {
-    if (next) {
-      if (!entry.community || entry.installed) {
-        return true;
+  async function turnOn(entry: PluginEntry): Promise<boolean> {
+    const info = entry.installed;
+
+    if (info?.enabled) {
+      return true;
+    }
+
+    if (!info) {
+      if (!entry.community) {
+        return false;
       }
 
       try {
         setMessage(`Installing ${entry.manifest.name}…`);
         await props.plugins.installCommunity(entry.community.id);
-        setMessage(`Installed ${entry.manifest.name}.`);
-        await refreshInstalled();
-        return true;
+        syncInstalled();
+        setMessage("");
       } catch (error) {
         const message = String(error);
 
@@ -225,84 +274,59 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
       }
     }
 
-    if (!entry.installed) {
-      return false;
-    }
-
-    const modalApi = getYapmod().modal;
-    let confirmed = false;
-
-    if (!modalApi) {
-      if (
-        !window.confirm(
-          `Uninstall ${entry.manifest.name}? Its package files and stored settings will be deleted.`,
-        )
-      ) {
-        return false;
-      }
-
-      confirmed = true;
-    } else {
-      const modal = modalApi.show({
-        title: `Uninstall ${entry.manifest.name}?`,
-        description:
-          "Its package and stored settings will be removed from this device.",
-        buttons: [
-          { label: "Cancel", variant: "secondary" },
-          {
-            label: "Uninstall plugin",
-            variant: "danger",
-            onClick: () => {
-              confirmed = true;
-            },
-          },
-        ],
-        autoFocus: true,
-      });
-      await modal.closed;
-
-      if (!confirmed) {
-        return false;
-      }
-    }
-
-    try {
-      await props.plugins.remove(entry.id);
-      setMessage(`Uninstalled ${entry.manifest.name}.`);
-      syncInstalled();
-      return true;
-    } catch (error) {
-      setMessage(
-        `Could not uninstall ${entry.manifest.name}: ${String(error)}`,
-        true,
-      );
-      return false;
-    }
-  }
-
-  async function setEnabled(
-    entry: PluginEntry,
-    enabled: boolean,
-  ): Promise<boolean> {
-    const info = entry.installed;
-
-    if (!info) {
-      return false;
-    }
-
-    const success = await props.plugins.setEnabled(info.manifest.id, enabled);
+    const success = await props.plugins.setEnabled(entry.id, true);
 
     if (!success) {
       setMessage(
-        enabled
-          ? `Could not enable ${info.manifest.name}. Review the warning or check the error on its card.`
-          : `Could not disable ${info.manifest.name}. Check the error on its card.`,
+        `Could not turn on ${entry.manifest.name}. Review the error on its card.`,
         true,
       );
     }
 
     syncInstalled();
     return success;
+  }
+
+  async function turnOff(entry: PluginEntry): Promise<boolean> {
+    if (!entry.installed) {
+      return false;
+    }
+
+    // Community packages are managed by the catalog and can be installed
+    // again at any time. Locally imported packages need one last warning
+    // because turning them off deletes the folder from this device.
+    if (entry.source === "local") {
+      if (!(await confirmLocalRemoval(entry.manifest.name))) {
+        return false;
+      }
+    }
+
+    try {
+      await props.plugins.remove(entry.id);
+      syncInstalled();
+      setMessage("");
+      return true;
+    } catch (error) {
+      setMessage(
+        `Could not remove ${entry.manifest.name}: ${String(error)}`,
+        true,
+      );
+      return false;
+    }
+  }
+
+  async function toggle(entry: PluginEntry, next: boolean): Promise<boolean> {
+    if (pending().has(entry.id)) {
+      return false;
+    }
+
+    setPendingState(entry.id, true);
+
+    try {
+      return next ? await turnOn(entry) : await turnOff(entry);
+    } finally {
+      setPendingState(entry.id, false);
+    }
   }
 
   async function reload(entry: PluginEntry): Promise<void> {
@@ -414,8 +438,8 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
             {(entry) => (
               <PluginCard
                 entry={entry}
-                onInstallChange={(next) => setInstalledState(entry, next)}
-                onEnabledChange={(next) => setEnabled(entry, next)}
+                pending={pending().has(entry.id)}
+                onToggle={(next) => toggle(entry, next)}
                 onConfigure={() => props.onOpenSettings(entry.id)}
                 onReload={() => void reload(entry)}
               />

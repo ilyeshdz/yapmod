@@ -42,7 +42,7 @@ The API is documented in the [API reference](/yapmod/docs/plugins/api). Every pl
 At a high level:
 
 1. yapmod reads `manifest.json`, checks the package limits and validates the stylesheet.
-2. On import or enable, the user reviews a consent dialog. Consent is tied to the manifest version and a hash of the CSS and script, so changed executable content needs approval again.
+2. Importing a local package opens a consent dialog. Installing from the community catalog is a single click, and enabling a package whose CSS or script changed asks for consent again. Consent is tied to the manifest version and a hash of the CSS and script.
 3. When enabled, yapmod applies `plugin.css` and, if present, imports `plugin.js` as an ES module.
 4. The module's default export runs `activate(api)`. The function may return a cleanup callback, and can also register callbacks with `api.onCleanup()`.
 5. On disable or removal, yapmod runs the cleanup callbacks in reverse order, removes injected styles and setting attributes, and stops automatically restoring the plugin on the next launch.

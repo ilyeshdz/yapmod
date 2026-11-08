@@ -756,12 +756,14 @@ export function installPluginApi(): void {
     },
     listCommunity() { return repository.listCommunity(); },
     async installCommunity(id) {
+      // Community packages come from the reviewed catalog, so installing one
+      // is a single click. Local imports still go through the consent dialog
+      // in importLocal() because they can contain arbitrary code.
       const manifest = await repository.previewCommunity(id);
-      if (!(await requestConsent(manifest, "import"))) throw new Error("Plugin installation was cancelled.");
       const bundle = await repository.installCommunity(id, manifest);
       validateBundle(bundle);
       if (JSON.stringify(bundle.manifest) !== JSON.stringify(manifest)) {
-        throw new Error("The community plugin changed after you reviewed its import warning.");
+        throw new Error("The community plugin changed while it was being installed.");
       }
       await registerBundle(bundle);
       await saveConsent(bundle);
