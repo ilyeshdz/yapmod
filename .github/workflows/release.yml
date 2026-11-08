@@ -65,7 +65,7 @@ jobs:
           set -euo pipefail
           pubkey=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).plugins.updater.pubkey)')
           case "$pubkey" in
-            bW9uS3k0dGhpc0lzQVNsYWNrZUZvclRoZVB1YmxpY0tleU11c3RCZVJlcGxhY2Vk|REPLACE_WITH_CONTENTS_OF_*)
+            REPLACE_WITH_CONTENTS_OF_*)
               echo "Error: the updater public key in tauri.conf.json has not been set." >&2
               echo "Generate a keypair with: npx tauri signer generate -w ~/.tauri/yapmod.key" >&2
               echo "Then replace the pubkey value with the contents of ~/.tauri/yapmod.key.pub" >&2
