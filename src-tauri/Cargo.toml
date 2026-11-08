@@ -11,6 +11,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-updater = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
@@ -25,7 +26,7 @@ tauri-plugin-dialog = "2.8.3"
 tauri-plugin-fs = "2"
 tauri-plugin-autostart = "2"
 futures-util = "0.3"
-tokio = { version = "1", features = ["sync", "rt"] }
+tokio = { version = "1", features = ["sync", "rt", "time", "macros"] }
 tokio-tungstenite = { version = "0.26", features = ["__rustls-tls"] }
 window-vibrancy = "0.8"
 tauri-plugin-window-state = "2"

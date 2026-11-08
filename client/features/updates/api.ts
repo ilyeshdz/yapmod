@@ -52,8 +52,8 @@ export function createUpdateContent(
 /**
  * Shows the "update available" modal.
  *
- * yapmod cannot update itself, so the modal only points the user to the
- * website, where the new version can be downloaded.
+ * If the host supports automatic app updates, the modal offers "Download & Install".
+ * Otherwise it falls back to pointing the user to the website.
  */
 export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
   const modal = getYapmod().modal;
@@ -65,30 +65,56 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
   const content = createUpdateContent(info);
   const product = info.channel === "nightly" ? "yapmod nightly" : "yapmod";
   const target = info.release_url || WEBSITE_URL;
+  const host = getHost();
+  const canAutoUpdate = !!host.updates?.installAppUpdate;
+
+  const buttons = canAutoUpdate
+    ? [
+        {
+          label: "Download & Install",
+          variant: "native" as const,
+          className: "small",
+          onClick: async () => {
+            try {
+              await host.updates?.installAppUpdate?.();
+            } catch (error) {
+              console.error("[yapmod] the app update install failed", error);
+            }
+          },
+        },
+        {
+          label: "Later",
+          variant: "native" as const,
+          className: "small ghost",
+        },
+      ]
+    : [
+        {
+          label: "Go to website",
+          variant: "native" as const,
+          className: "small",
+          onClick: () => {
+            openExternally(target);
+          },
+        },
+        {
+          label: "Later",
+          variant: "native" as const,
+          className: "small ghost",
+        },
+      ];
 
   return modal.show({
     id: UPDATE_MODAL_ID,
     title: UPDATE_MODAL_TITLE,
-    description: `${product} v${info.latest_version} is out. Download it from the website.`,
+    description: canAutoUpdate
+      ? `yapmod v${info.latest_version} is out. Download and install it now.`
+      : `${product} v${info.latest_version} is out. Download it from the website.`,
     content: content.element,
     size: "sm",
     className: "yapmod-update-modal",
     onClose: () => content.dispose(),
-    buttons: [
-      {
-        label: "Go to website",
-        variant: "native",
-        className: "small",
-        onClick: () => {
-          openExternally(target);
-        },
-      },
-      {
-        label: "Later",
-        variant: "native",
-        className: "small ghost",
-      },
-    ],
+    buttons,
   });
 }
 

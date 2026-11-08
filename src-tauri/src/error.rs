@@ -100,6 +100,12 @@ impl From<std::io::Error> for YapmodError {
     }
 }
 
+impl From<String> for YapmodError {
+    fn from(error: String) -> Self {
+        Self::network(error)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::YapmodError;

@@ -20,6 +20,7 @@
     "allow-notify",
     "allow-request-notification-permission",
     "allow-check-for-update",
+    "allow-install-app-update",
     "allow-confirm-client-update",
     "allow-get-client-update-launch-status",
     "allow-prepare-client-update",
