@@ -286,8 +286,16 @@
    HERO / PAGE TITLE — gradient text like the website h1
    ============================================================================ */
 
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+.sl-markdown-content h5,
+.sl-markdown-content h6 {
+  font-family: "Geist Pixel", monospace !important;
+}
+
 .sl-markdown-content h1 {
-  font-family: "Geist Pixel", monospace;
   background: var(--sl-g);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -299,7 +307,6 @@
 
 /* Hero section on the landing/doc pages */
 .sl-markdown-content h2 {
-  font-family: "Geist Pixel", monospace;
   font-weight: 800;
   letter-spacing: -0.03em;
   border-bottom-color: var(--sl-line);
@@ -307,9 +314,22 @@
 }
 
 .sl-markdown-content h3 {
-  font-family: "Geist Pixel", monospace;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.sl-markdown-content h4 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sl-markdown-content h5 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sl-markdown-content h6 {
+  font-weight: 600;
 }
 
 /* ============================================================================
