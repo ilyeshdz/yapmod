@@ -286,6 +286,10 @@
    HERO / PAGE TITLE — gradient text like the website h1
    ============================================================================ */
 
+/* Page title h1 is rendered outside .sl-markdown-content by Starlight.
+   Content headings (h1–h6) live inside .sl-markdown-content.
+   Both need Geist Pixel. */
+.content-panel > .sl-container > h1,
 .sl-markdown-content h1,
 .sl-markdown-content h2,
 .sl-markdown-content h3,
@@ -295,6 +299,8 @@
   font-family: "Geist Pixel", monospace !important;
 }
 
+/* Page title — gradient text */
+.content-panel > .sl-container > h1,
 .sl-markdown-content h1 {
   background: var(--sl-g);
   -webkit-background-clip: text;
