@@ -265,20 +265,10 @@ export function installDefaultSettings(): void {
   if (yapmod.modal) {
     items.push({
       type: "button",
-      id: "report_bug",
-      label: "Report a bug",
-      onClick: () => openBugReport(),
-    });
-  }
-
-  if (yapmod.modal) {
-    items.push({
-      type: "button",
       id: "export_settings",
       label: "Export settings",
-      description:
-        "Download a JSON file with your current settings, plugins, and active theme.",
-      group: "Data",
+      variant: "secondary",
+      group: "Actions",
       onClick: () => void handleExport(),
     });
 
@@ -286,16 +276,24 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "import_settings",
       label: "Import settings",
-      description:
-        "Restore settings from a previously exported JSON file.",
-      group: "Data",
+      variant: "secondary",
+      group: "Actions",
       onClick: () => handleImport(),
+    });
+
+    items.push({
+      type: "button",
+      id: "report_bug",
+      label: "Report a bug",
+      variant: "secondary",
+      group: "Actions",
+      onClick: () => openBugReport(),
     });
   }
 
   // Keep related options together, in a predictable order that does not
   // depend on which platform added them first.
-  const groupOrder = ["Window", "Notifications", "Updates", "Data"];
+  const groupOrder = ["Actions", "Window", "Notifications", "Updates"];
   items.sort(
     (left, right) =>
       groupOrder.indexOf(left.group ?? "") - groupOrder.indexOf(right.group ?? ""),

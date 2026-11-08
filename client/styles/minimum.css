@@ -156,6 +156,17 @@
   margin-top: 0;
 }
 
+/* Action buttons row at the top of a settings panel */
+
+.yapmod-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 /* Package galleries shared by Themes and Plugins */
 
 .yapmod-package-toolbar {
