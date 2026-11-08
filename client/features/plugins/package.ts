@@ -1,4 +1,5 @@
 import type { PluginBundle, PluginManifest } from "../../shared/types";
+import { isRecord } from "../../shared/helpers";
 
 /**
  * Validation shared by every target.
@@ -7,10 +8,6 @@ import type { PluginBundle, PluginManifest } from "../../shared/types";
  * checks are environment independent, so a target can reject a bad package
  * before it writes it to its own storage.
  */
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function optionalString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -89,34 +86,49 @@ export function validatePluginManifest(manifest: PluginManifest): void {
   }
   const ids = new Set<string>();
   for (const setting of manifest.settings) {
-    if (!setting || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(setting.id) || ids.has(setting.id) ||
-        typeof setting.label !== "string" || !setting.label.trim() || setting.label.length > 80 ||
-        (setting.description !== undefined && (typeof setting.description !== "string" || setting.description.length > 200))) {
-      throw new Error("The plugin contains an invalid or duplicate setting.");
+    const settingId = setting.id;
+    if (!setting || !/^[a-z0-9][a-z0-9_-]{0,23}$/i.test(settingId)) {
+      throw new Error(`The plugin setting id is invalid: "${settingId ?? "missing"}".`);
+    }
+    if (ids.has(settingId)) {
+      throw new Error(`The plugin contains a duplicate setting id: "${settingId}".`);
+    }
+    if (
+      typeof setting.label !== "string" ||
+      !setting.label.trim() ||
+      setting.label.length > 80
+    ) {
+      throw new Error(`The plugin setting "${settingId}" has an invalid label.`);
+    }
+    if (
+      setting.description !== undefined &&
+      (typeof setting.description !== "string" || setting.description.length > 200)
+    ) {
+      throw new Error(`The plugin setting "${settingId}" has an invalid description.`);
     }
     const validTypes = ["toggle", "text", "file", "color"];
     if (!validTypes.includes(setting.type)) {
-      throw new Error("The plugin contains an invalid or duplicate setting.");
+      throw new Error(`The plugin setting "${settingId}" has an invalid type: "${setting.type}".`);
     }
     if (
       "accept" in setting &&
       setting.accept !== undefined &&
       typeof setting.accept !== "string"
     ) {
-      throw new Error("The plugin contains an invalid or duplicate setting.");
+      throw new Error(`The plugin setting "${settingId}" has an invalid accept value.`);
     }
     // Validate default value matches the setting type
     if (setting.type === "toggle") {
       if (typeof setting.default !== "boolean") {
-        throw new Error("The plugin contains an invalid or duplicate setting.");
+        throw new Error(`The plugin setting "${settingId}" default value must be a boolean.`);
       }
     } else {
       // text, file, color: default must be string or null
       if (setting.default !== null && typeof setting.default !== "string") {
-        throw new Error("The plugin contains an invalid or duplicate setting.");
+        throw new Error(`The plugin setting "${settingId}" default value must be a string or null.`);
       }
     }
-    ids.add(setting.id);
+    ids.add(settingId);
   }
   if (manifest.stylesheet !== undefined && manifest.stylesheet !== "plugin.css") {
     throw new Error("The plugin stylesheet must be named plugin.css.");
