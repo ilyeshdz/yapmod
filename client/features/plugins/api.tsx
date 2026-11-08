@@ -2,6 +2,7 @@ import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { createPluginRepository } from "./repository";
 import { validatePluginBundle as validateBundle } from "./package";
+import { isRecord } from "../../shared/helpers";
 import { upsertStyle, whenBodyReady } from "../../shared/ui";
 import { render } from "solid-js/web";
 import { PluginGallery } from "./plugins-gallery";
@@ -53,7 +54,7 @@ function emitChange(): void {
 
 function storedRecord<T>(key: string): Record<string, T> {
   const value = getYapmod().store?.get<Record<string, T>>(key, {}) ?? {};
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return isRecord(value) ? value : {};
 }
 
 async function consentFor(bundle: PluginBundle): Promise<ConsentRecord> {
@@ -65,9 +66,10 @@ async function consentFor(bundle: PluginBundle): Promise<ConsentRecord> {
     "SHA-256",
     new TextEncoder().encode(`${bundle.css.length}:${bundle.css}\u0000${bundle.script ?? ""}`),
   );
+  const hashBytes = new Uint8Array(digest);
   return {
     version: bundle.manifest.version ?? "",
-    contentHash: [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""),
+    contentHash: Array.from(hashBytes, (b) => b.toString(16).padStart(2, "0")).join(""),
   };
 }
 

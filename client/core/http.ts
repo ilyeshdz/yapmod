@@ -30,11 +30,7 @@ const INSTALLED_MARKER = "__yapmod_http_inspector_installed";
  * Extracts headers from a Headers object or Request into an array of [name, value] pairs.
  */
 function extractHeaders(headers: Headers): [string, string][] {
-  const result: [string, string][] = [];
-  headers.forEach((value, key) => {
-    result.push([key, value]);
-  });
-  return result;
+  return [...headers.entries()];
 }
 
 /**

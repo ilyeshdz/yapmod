@@ -6,7 +6,7 @@ const FLUSH_DELAY_MS = 300;
 const LOCAL_STORAGE_PREFIX = "yapmod_store_";
 
 function lsKey(key: string): string {
-  return LOCAL_STORAGE_PREFIX + key;
+  return `${LOCAL_STORAGE_PREFIX}${key}`;
 }
 
 /**
