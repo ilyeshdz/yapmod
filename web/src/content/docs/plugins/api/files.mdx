@@ -1,13 +1,8 @@
 ---
 title: Files
-group: API reference
-order: 7
-area: plugins
-eyebrow: API
 description: Work with files selected through a file setting.
 ---
 
-import Callout from "../../../../components/docs/Callout.astro";
 
 The plugin API does not expose a general file-system reader. File access is deliberate and narrow: a **file** setting opens the native picker, reads the selected file immediately, and stores the contents as a base64 data URI.
 
@@ -75,10 +70,9 @@ The browser treats a second revoke as a no-op, so calling this after the automat
 
 The data URI is stored in the plugin's settings, so a large image increases the saved config and the startup payload. The 8 MiB budget is intentionally generous for an image, not for arbitrary files.
 
-<Callout type="warning" title="Do not build a file manager on top of this">
+:::caution[Do not build a file manager on top of this]
 The picker exists for a single user-selected asset. There is no runtime file-reading command, directory access or write API. If a plugin needs many files, ship them inside the package or fetch them from a service the user trusts.
-</Callout>
-
+:::
 ## Complete flow
 
 ```js

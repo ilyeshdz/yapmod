@@ -1,8 +1,5 @@
 ---
 title: Desktop features
-group: Start
-order: 3
-eyebrow: Start here
 description: Notifications, unread badges, window behavior and updates.
 ---
 

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@astrojs/preact": "^6.1.1",
+    "@astrojs/starlight": "^0.42.10",
     "astro": "^7.4.1",
     "preact": "^11.1.0",
     "preact-router": "^4.1.2"

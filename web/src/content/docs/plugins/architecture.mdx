@@ -1,13 +1,8 @@
 ---
 title: Architecture and lifecycle
-group: Overview
-order: 4
-area: plugins
-eyebrow: Plugins
 description: How yapmod validates, consents, activates, restores and unloads a plugin.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A plugin has a package boundary, a consent boundary and a runtime lifecycle. Understanding those three pieces makes failures much easier to diagnose.
 
@@ -58,10 +53,9 @@ When a plugin is enabled, yapmod runs these steps in order:
 
 `activate` may be asynchronous. yapmod waits for its promise before marking the plugin enabled, so errors reject the enable operation and appear on the card.
 
-<Callout type="note" title="Styles and settings come first">
+:::note[Styles and settings come first]
 The package stylesheet and setting attributes are applied before `activate` runs. A plugin can therefore rely on its CSS and on the root attributes during activation.
-</Callout>
-
+:::
 ## Failure and cleanup
 
 If `activate` throws, yapmod runs the cleanup callbacks that were already registered. This is why `api.onCleanup()` is safe for resources created early in activation: a later exception does not strand them.

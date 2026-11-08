@@ -1,8 +1,5 @@
 ---
 title: Using themes
-group: Start
-order: 5
-eyebrow: Start here
 description: Install, apply and remove themes in yapmod.
 ---
 

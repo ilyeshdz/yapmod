@@ -1,14 +1,9 @@
 ---
 title: Interface helpers
-group: API reference
-order: 4
-area: plugins
-eyebrow: API
 description: Banners, modals, system notifications and runtime styles.
 ---
 
-import ApiType from "../../../../components/docs/ApiType.astro";
-import Callout from "../../../../components/docs/Callout.astro";
+import ApiType from "../../components/ApiType.astro";
 
 ## `api.banner(message)`
 
@@ -130,10 +125,9 @@ remove();
 
 The CSS is applied as written. External resources, `@import`, and other standard CSS constructs are allowed. The returned function removes the style element. Runtime styles are also removed automatically when the plugin is disabled.
 
-<Callout type="tip" title="Prefer the package stylesheet">
+:::tip[Prefer the package stylesheet]
 Put permanent rules in `plugin.css` and use `api.styles.add()` only for genuinely dynamic CSS. Creating a new style element on every settings change without removing the old one leaks rules for the rest of the session.
-</Callout>
-
+:::
 ## Related types
 
 <ApiType name="YapmodModal" signature={false} />

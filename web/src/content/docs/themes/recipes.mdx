@@ -1,13 +1,8 @@
 ---
 title: Recipes
-group: Guides
-order: 5
-area: themes
-eyebrow: Guide
 description: Complete, copyable patterns for common theme changes.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 Each recipe is a full stylesheet section you can paste into `theme.css`. They build on the token table in [Styling and tokens](/yapmod/docs/themes/styling); change the values to suit your theme.
 
@@ -157,10 +152,9 @@ These are page-level details that no token covers. Keep the selectors generic an
 
 `color-mix()` lets a recipe derive a shade from the theme's own accent, so it keeps working when the user changes the theme.
 
-<Callout type="tip" title="Build from variables, not repeated hex values">
+:::tip[Build from variables, not repeated hex values]
 Inside plain CSS, refer to `var(--ym-accent)` and `var(--ym-text)` instead of repeating the literal colours. Then a single token change updates every derived rule, and the theme stays consistent in both modes.
-</Callout>
-
+:::
 ## A single-mode theme
 
 If the design only works in dark mode, say so in the manifest and skip the light block entirely.

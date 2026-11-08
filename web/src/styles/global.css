@@ -67,7 +67,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--t);
-  font: 400 17px/1.65 Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: 400 17px/1.65 Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
   overflow-x: hidden;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -95,7 +95,7 @@ a {
 h1,
 h2,
 h3 {
-  font-family: Sora, Figtree, system-ui, sans-serif;
+  font-family: "Geist Pixel", monospace;
   margin: 0;
 }
 
@@ -123,7 +123,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  font: 800 22px Sora, sans-serif;
+  font: 800 22px "Geist Pixel", monospace;
   text-decoration: none;
   letter-spacing: -0.04em;
 }
@@ -210,7 +210,7 @@ h3 {
   gap: 10px;
   padding: 14px 26px;
   border-radius: 14px;
-  font: 600 16px Figtree, sans-serif;
+  font: 600 16px Geist, sans-serif;
   text-decoration: none;
   border: 1.5px solid var(--line);
   color: var(--t);
@@ -423,7 +423,7 @@ h2 {
   margin: 0 0 4px;
   padding: 4px 12px;
   color: var(--m);
-  font: 700 11px/1.4 Figtree, sans-serif;
+  font: 700 11px/1.4 Geist, sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

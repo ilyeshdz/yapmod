@@ -1,8 +1,5 @@
 ---
 title: Install yapmod
-group: Start
-order: 2
-eyebrow: Start here
 description: Download and install the build for your platform.
 ---
 

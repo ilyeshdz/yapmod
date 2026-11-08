@@ -1,13 +1,8 @@
 ---
 title: Settings and persistence
-group: Guides
-order: 1
-area: plugins
-eyebrow: Guide
 description: Build a plugin whose behaviour users can configure and whose state survives a restart.
 ---
 
-import Callout from "../../../../components/docs/Callout.astro";
 
 This guide builds a badge with a toggle, a colour, and a remembered count. It uses only the current plugin API.
 
@@ -204,6 +199,6 @@ export default {
 };
 ```
 
-<Callout type="tip" title="Test a fresh install">
+:::tip[Test a fresh install]
 Delete the plugin's stored settings by removing the plugin, then install it again. Confirm that the declared defaults are what a new user sees, not values left over from your development session.
-</Callout>
+:::

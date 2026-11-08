@@ -1,8 +1,5 @@
 ---
 title: Community themes
-group: Themes
-order: 3
-eyebrow: Themes
 description: Browse and install themes published by the Yapmod community.
 ---
 

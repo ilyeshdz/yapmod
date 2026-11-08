@@ -1,14 +1,9 @@
 ---
 title: UI components
-group: API reference
-order: 5
-area: plugins
-eyebrow: API
 description: Themed buttons, icons, fields and controls for plugin interfaces.
 ---
 
-import ApiType from "../../../../components/docs/ApiType.astro";
-import Callout from "../../../../components/docs/Callout.astro";
+import ApiType from "../../components/ApiType.astro";
 
 `api.ui` provides the small set of interface primitives that yapmod itself uses. The components follow the active theme through the `--ym-*` tokens, so a plugin does not have to recreate button, field and badge styling or guess between light and dark mode.
 
@@ -138,10 +133,9 @@ status.dataset.tone = "success";
 
 Components create regular elements, so removing the parent from the page is enough. Event listeners attached through the component options are owned by the returned element. If you keep a reference, call `remove()` when the plugin or panel is destroyed.
 
-<Callout type="tip" title="Prefer components over bespoke controls">
+:::tip[Prefer components over bespoke controls]
 Use `api.ui` for controls that belong to the host interface, and keep custom DOM for content that is genuinely specific to your plugin. This keeps plugins visually consistent and makes theme changes apply automatically.
-</Callout>
-
+:::
 ## Related types
 
 <ApiType name="PluginUiButtonVariant" />

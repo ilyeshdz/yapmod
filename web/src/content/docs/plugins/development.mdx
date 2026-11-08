@@ -1,13 +1,8 @@
 ---
 title: Development setup
-group: Overview
-order: 3
-area: plugins
-eyebrow: Plugins
 description: The local edit, import, inspect and reload loop for plugin work.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 There is no plugin compiler, CLI or package manager command. A plugin is the files in its folder. Development is the loop of editing those files, importing the folder into yapmod, and inspecting the result in the page.
 
@@ -32,10 +27,9 @@ When you import a folder, yapmod copies `manifest.json`, `plugin.css` and the op
 
 You normally do not need to open this folder. Use **View files** on an installed plugin card to inspect exactly what yapmod loaded, and **Open folder** in the Plugins settings to locate the installed copies.
 
-<Callout type="warning" title="Import copies, it does not link">
+:::caution[Import copies, it does not link]
 Editing the source folder after import does not update the installed plugin. To iterate, edit the installed copy (use **Open folder** or **View files**), then choose **Reload** on the plugin card. Reload re-reads its files and re-enables it if it was running; changed files ask for consent again because consent is bound to a content hash.
-</Callout>
-
+:::
 ## The edit and test loop
 
 1. Edit `manifest.json`, `plugin.css` or `plugin.js` in the installed copy.

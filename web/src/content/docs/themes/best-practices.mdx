@@ -1,13 +1,8 @@
 ---
 title: Best practices
-group: Guides
-order: 7
-area: themes
-eyebrow: Guide
 description: Patterns for themes that stay readable, portable and safe to remove.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A theme is a stylesheet, so the quality bar is mostly about restraint: few selectors, predictable tokens, and both modes treated as first-class.
 
@@ -94,6 +89,6 @@ Before opening a pull request:
 - run the Community build with `pnpm check:web`;
 - read [Submit a theme](/yapmod/docs/submit-a-theme) for the repository rules.
 
-<Callout type="tip" title="Small beats clever">
+:::tip[Small beats clever]
 A theme with twenty well-chosen token overrides is easier to review, easier to maintain and more likely to keep working than one with two hundred component selectors. If a rule fights the app, check whether a token already covers the case.
-</Callout>
+:::

@@ -1,14 +1,9 @@
 ---
 title: Core context
-group: API reference
-order: 2
-area: plugins
-eyebrow: API
 description: Identity, manifest access, logging, cleanup registration and the activation contract.
 ---
 
-import ApiType from "../../../../components/docs/ApiType.astro";
-import Callout from "../../../../components/docs/Callout.astro";
+import ApiType from "../../components/ApiType.astro";
 
 ## `api.apiVersion`
 
@@ -116,10 +111,9 @@ The only method yapmod calls on the default export.
 
 Activation may be asynchronous. A rejected promise leaves the plugin disabled and records an activation diagnostic. Return a cleanup function only if you need a single teardown closure; otherwise use `api.onCleanup()`.
 
-<Callout type="tip" title="Activation is repeatable">
+:::tip[Activation is repeatable]
 Enable, disable and enable again in every test pass. Do not cache state in module-level variables that only work on the first activation unless you explicitly reset it during cleanup.
-</Callout>
-
+:::
 ## Related types
 
 <ApiType name="PluginActivation" />

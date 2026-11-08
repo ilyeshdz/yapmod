@@ -1,13 +1,8 @@
 ---
 title: Working with network traffic
-group: Guides
-order: 3
-area: plugins
-eyebrow: Guide
 description: Practical patterns for observing and safely modifying fetch and WebSocket traffic.
 ---
 
-import Callout from "../../../../components/docs/Callout.astro";
 
 Network access is powerful and global. Start by observing. Add an interceptor only when the plugin genuinely needs to change traffic, and remove every subscription when the plugin is disabled.
 
@@ -124,6 +119,6 @@ Before shipping:
 - Confirm the plugin does not capture or retain data after disable.
 - Confirm the plugin only touches the endpoints it documents.
 
-<Callout type="warning" title="Interceptors affect every matching call">
+:::caution[Interceptors affect every matching call]
 An interceptor is registered for the whole page, not just your plugin's UI. A broad URL match can rewrite unrelated application traffic. Match narrowly and always return `undefined` for requests you do not intend to change.
-</Callout>
+:::

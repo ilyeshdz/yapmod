@@ -1,14 +1,9 @@
 ---
 title: API reference
-group: API reference
-order: 1
-area: plugins
-eyebrow: Reference
 description: The plugin context object, its lifecycle contract and every supported namespace.
 ---
 
-import ApiType from "../../../components/docs/ApiType.astro";
-import Callout from "../../../components/docs/Callout.astro";
+import ApiType from "../components/ApiType.astro";
 
 Every JavaScript plugin receives one frozen `api` object when `activate(api)` runs. The object is scoped to that plugin: its id, manifest, storage and settings are already resolved, and it cannot be reassigned or extended by the plugin.
 
@@ -55,10 +50,9 @@ export default {
 
 The module is imported as an ES module. Named exports are allowed but ignored by yapmod. There is no `deactivate` export to implement; cleanup is either the return value of `activate` or a callback registered through `api.onCleanup()`.
 
-<Callout type="warning" title="No users or account API">
+:::caution[No users or account API]
 The plugin API does not expose a separate users, account or permission namespace. If the page itself makes user data available, a plugin can see it as trusted page code. Do not infer a permission boundary from the shape of this API.
-</Callout>
-
+:::
 ## Errors and availability
 
 - A method that receives an unknown setting id throws.

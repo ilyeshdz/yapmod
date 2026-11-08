@@ -1,13 +1,8 @@
 ---
 title: Getting started
-group: Overview
-order: 2
-area: plugins
-eyebrow: Plugins
 description: Build and import a working plugin package from an empty folder.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 This guide creates a complete plugin with two files, imports it into yapmod, and then adds an optional script. The API in this guide is the current `api: 1` surface.
 
@@ -78,10 +73,9 @@ A package with no script is valid. Stop here, import it, and you have a working 
 
 If the plugin is imported but not enabled, use **Enable** on its card. Use **View files** to confirm yapmod copied the manifest and stylesheet you expect. Use **Disable** to check that the effect disappears.
 
-<Callout type="tip" title="Fast iteration">
+:::tip[Fast iteration]
 After changing the package, edit the installed copy and choose **Reload** on its card. Reload re-reads the files and re-enables the plugin if it was running. Import is always a copy, not a live link to your working folder.
-</Callout>
-
+:::
 ## 5. Add behavior
 
 Add `"script": "plugin.js"` to the manifest and create `plugin.js`:

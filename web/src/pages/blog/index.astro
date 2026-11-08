@@ -1,59 +1,71 @@
 ---
-import { getCollection } from "astro:content";
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import logo from "../../assets/yapmod-logo.png";
 import Nav from "../../components/Nav.astro";
 import Footer from "../../components/Footer.astro";
-import "../../styles/blog.css";
+import "../../styles/global.css";
 
 const base = import.meta.env.BASE_URL.replace(/\/+$/, "");
+const favicon = new URL(`${base}/favicon.svg`, import.meta.env.SITE);
 
-const posts = (await getCollection("blog")).sort((a, b) =>
-  b.data.date.localeCompare(a.data.date)
-);
+// Blog is not part of the Starlight docs collection, so we keep a simple
+// custom page for now. The blog collection is defined in content.config.ts.
 ---
 
-<BaseLayout
-  title="Blog — yapmod"
-  description="News, updates, and stories from the yapmod team."
->
-  <div class="wrap">
-    <Nav />
-  </div>
+<!doctype html>
+<html lang="en" style={`--logo: url("${logo.src}");`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Blog — yapmod</title>
+    <meta name="description" content="News, updates, and stories from the yapmod team." />
+    <link rel="icon" type="image/svg+xml" href={favicon} />
 
-  <main id="main">
-    <section class="sec blog-section">
-      <div class="wrap">
-        <h1>Blog</h1>
-        <p class="sub">News, updates, and stories from the yapmod team.</p>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Pixel&family=Geist:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
 
-        {posts.length > 0 ? (
-          <div class="blog-list">
-            {posts.map((post) => {
-              const date = new Date(post.data.date);
-              const formattedDate = date.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              });
+    <script is:inline>
+      (() => {
+        try {
+          const stored = localStorage.getItem("yapmod-theme");
+          if (stored === "light" || stored === "dark") {
+            document.documentElement.dataset.theme = stored;
+          }
+        } catch {}
+      })();
+    </script>
+    <style>
+      .blog-section { padding: 90px 0; }
+      .blog-list { display: grid; gap: 16px; margin-top: 40px; }
+      .blog-card { background: var(--s); border: 1.5px solid var(--line); border-radius: 18px; padding: 28px 32px; text-decoration: none; color: inherit; transition: border-color 0.15s ease; }
+      .blog-card:hover { border-color: var(--accent); }
+      .blog-card a { text-decoration: none; color: inherit; }
+      .blog-card time { font-size: 14px; color: var(--m); }
+      .blog-card h2 { font-size: 22px; margin: 6px 0; font-family: "Geist Pixel", monospace; }
+      .blog-card p { color: var(--m); margin: 0; font-size: 15px; }
+      .blog-card .author { font-size: 14px; color: var(--m); margin-top: 4px; display: block; }
+      .empty-blog { color: var(--m); margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="wrap">
+      <Nav />
+    </div>
 
-              return (
-                <article class="blog-card">
-                  <a href={`${base}/blog/${post.id}`}>
-                    <time datetime={post.data.date}>{formattedDate}</time>
-                    <h2>{post.data.title}</h2>
-                    {post.data.description && <p>{post.data.description}</p>}
-                    {post.data.author && <span class="author">by {post.data.author}</span>}
-                  </a>
-                </article>
-              );
-            })}
-          </div>
-        ) : (
+    <main id="main">
+      <section class="blog-section">
+        <div class="wrap">
+          <h1>Blog</h1>
+          <p class="sub">News, updates, and stories from the yapmod team.</p>
           <p class="empty-blog">No posts yet. Check back soon!</p>
-        )}
-      </div>
-    </section>
-  </main>
+        </div>
+      </section>
+    </main>
 
-  <Footer />
-</BaseLayout>
+    <Footer />
+  </body>
+</html>

@@ -1,14 +1,9 @@
 ---
 title: Styling and tokens
-group: Guides
-order: 3
-area: themes
-eyebrow: Reference
 description: The generated token table, plain CSS, assets, and what a theme can override.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
-import ThemeTokens from "../../../components/docs/ThemeTokens.astro";
+import ThemeTokens from "../components/ThemeTokens.astro";
 
 A theme is ordinary CSS that yapmod inserts after the app's own styles. The stable way to change the look is to set `--ym-*` tokens; plain component CSS is also allowed when a token does not cover what you need.
 
@@ -59,10 +54,9 @@ Two extra mappings follow from existing tokens:
 
 Only tokens you actually set are mapped. The rest keep the app's value, so a theme can change the accent without taking ownership of every surface.
 
-<Callout type="note" title="Two names, one result">
+:::note[Two names, one result]
 `--ym-bg-main: #101014` is the portable form. `--bg-main: #101014` sets the app variable directly and is respected, but it is less portable across app versions. Prefer the `--ym-*` name unless you deliberately need to bypass the mapping.
-</Callout>
-
+:::
 ## A token-only theme
 
 A complete stylesheet can be just two blocks:
@@ -119,10 +113,9 @@ A local theme is plain CSS, so relative URLs resolve against the Yapper page, no
 - A remote asset is a network request made by the page. A theme can load its own fonts and backgrounds, but it should not depend on a server that may disappear.
 - The Community build allows `url()`, `@import`, and other standard CSS constructs. For a remote font, prefer a direct `woff2` URL in `@font-face`; the Yapper page allows `https://fonts.gstatic.com` and `data:` fonts. See [Recipes](/yapmod/docs/themes/recipes#custom-fonts) for a JetBrains Mono example.
 
-<Callout type="warning" title="A theme is trusted CSS">
+:::caution[A theme is trusted CSS]
 Local themes are not sandboxed and are not restricted to a fixed property list. A theme can hide, move or imitate interface elements. Only install a theme whose source you trust, and review a Community theme before installing it.
-</Callout>
-
+:::
 ## Quantities and units
 
 Token values are copied as written, so any valid CSS value works for the property the app uses:

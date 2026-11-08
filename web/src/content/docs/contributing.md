@@ -1,8 +1,5 @@
 ---
 title: Contributing
-group: Contributing
-order: 2
-eyebrow: Contributing
 description: How to help build and improve yapmod.
 ---
 

@@ -1,8 +1,5 @@
 ---
 title: About yapmod
-group: Start
-order: 1
-eyebrow: Start here
 description: An unofficial desktop app for Yapper.
 ---
 

@@ -1,8 +1,5 @@
 ---
 title: Installing plugins
-group: Start
-order: 4
-eyebrow: Start here
 description: Import a local package or install a Community package.
 ---
 

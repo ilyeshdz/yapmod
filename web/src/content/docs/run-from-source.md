@@ -1,8 +1,5 @@
 ---
 title: Run from source
-group: Contributing
-order: 1
-eyebrow: Contributing
 description: Set up a local development environment and build yapmod yourself.
 ---
 

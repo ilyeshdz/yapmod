@@ -1,13 +1,8 @@
 ---
 title: Debugging themes
-group: Guides
-order: 6
-area: themes
-eyebrow: Guide
 description: Find out why a theme is not applied, why it looks wrong, and how to inspect it.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 Themes fail in two different ways: the theme is not loaded at all, or it loads and its CSS does the wrong thing. Check which one you have before editing colours.
 
@@ -126,6 +121,6 @@ When a theme fails in a way you cannot explain, include:
 - the resolved `data-yapmod-mode` value;
 - your yapmod version and platform.
 
-<Callout type="note" title="The CSS is always the suspect">
+:::note[The CSS is always the suspect]
 There is no theme script, no theme API and no background runtime. A behaviour that looks like code is either the app, a plugin, or a CSS rule such as an animation, a transition or a remote asset request.
-</Callout>
+:::

@@ -1,8 +1,5 @@
 ---
 title: Web extension
-group: Start
-order: 5
-eyebrow: Start here
 description: What the browser build supports today and how to load it.
 ---
 

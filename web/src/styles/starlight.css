@@ -1,0 +1,204 @@
+/* ---------------------------------------------------------------------------
+   Starlight custom theme for yapmod
+   Applies the project's coral/peach color palette and Geist fonts.
+   --------------------------------------------------------------------------- */
+
+/* Fonts — Geist Pixel for headings, Geist for body */
+:root {
+  --__sl-font-heading: "Geist Pixel", monospace;
+  --__sl-font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Dark mode colors (default) */
+:root,
+::backdrop {
+  /* Background colors */
+  --__sl-color-bg: #130e18;
+  --__sl-color-bg-nav: #1c1524;
+  --__sl-color-bg-top-nav: #1c1524;
+
+  /* Text colors */
+  --__sl-color-text: #fbf1f0;
+  --__sl-color-text-accent: #f67567;
+  --__sl-color-text-inverse: #1a0f16;
+
+  /* Content colors */
+  --__sl-color-content-fade: #b3a3b4;
+  --__sl-color-border: #2e2438;
+  --__sl-color-border-strong: #3e3048;
+
+  /* Accent colors — coral gradient */
+  --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
+  --__sl-color-accent: #f67567;
+  --__sl-color-accent-high: #ff8a70;
+
+  /* Brand gradient */
+  --sl-brand-gradient: linear-gradient(135deg, #f67567 0%, #ff8a70 55%, #ffb25f 100%);
+
+  /* Links */
+  --__sl-color-link: #ff8a70;
+
+  /* Buttons */
+  --__sl-button-on-page-bg: #f67567;
+  --__sl-button-on-page-hover-bg: #ff8a70;
+
+  /* Code */
+  --__sl-color-code: #ffb25f;
+  --__sl-color-code-bg: #1c1524;
+
+  /* Inline code */
+  --__sl-color-inline-code-bg: #1c1524;
+
+  /* Selection */
+  --__sl-color-hairline-shade: rgba(246, 117, 103, 0.2);
+
+  /* Cards */
+  --__sl-card-border-color: #2e2438;
+  --__sl-card-hover-border-color: #f67567;
+
+  /* Search */
+  --__sl-color-backdrop: rgba(19, 14, 24, 0.85);
+
+  /* Focus ring */
+  --__sl-color-focus: #f67567;
+
+  /* Sidebar */
+  --__sl-color-sidebar-active: #f67567;
+
+  /* Content padding */
+  --sl-content-pad-horizontal: 2rem;
+}
+
+/* Light mode colors */
+:root[data-theme="light"],
+[data-theme="light"] ::backdrop {
+  --__sl-color-bg: #fff7f5;
+  --__sl-color-bg-nav: #fff;
+  --__sl-color-bg-top-nav: #fff;
+
+  --__sl-color-text: #25141c;
+  --__sl-color-text-accent: #d9485f;
+  --__sl-color-text-inverse: #fff7f5;
+
+  --__sl-color-content-fade: #7a6068;
+  --__sl-color-border: #f1d9d4;
+  --__sl-color-border-strong: #e0c4bd;
+
+  --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
+  --__sl-color-accent: #d9485f;
+  --__sl-color-accent-high: #f67567;
+
+  --__sl-color-link: #d9485f;
+
+  --__sl-button-on-page-bg: #d9485f;
+  --__sl-button-on-page-hover-bg: #f67567;
+
+  --__sl-color-code: #f67567;
+  --__sl-color-code-bg: #fff;
+
+  --__sl-color-inline-code-bg: #fff0ed;
+
+  --__sl-color-hairline-shade: rgba(246, 117, 103, 0.15);
+
+  --__sl-card-border-color: #f1d9d4;
+  --__sl-card-hover-border-color: #d9485f;
+
+  --__sl-color-backdrop: rgba(255, 247, 245, 0.85);
+
+  --__sl-color-focus: #d9485f;
+
+  --__sl-color-sidebar-active: #d9485f;
+}
+
+/* Heading styles — Geist Pixel for a pixel-art feel */
+:root {
+  --__sl-text-h1: 2.4rem;
+  --__sl-text-h2: 1.8rem;
+  --__sl-text-h3: 1.5rem;
+  --__sl-text-h4: 1.25rem;
+  --__sl-text-h5: 1.125rem;
+}
+
+/* Smooth transitions for theme switching */
+:root {
+  color-scheme: light dark;
+}
+
+/* Brand logo styling */
+.sl-nav-logo {
+  padding: 0;
+}
+
+.sl-nav-logo img,
+.sl-nav-logo svg {
+  height: 2.5rem;
+}
+
+/* Gradient accent for headings with the brand gradient */
+.sl-markdown-content h1 {
+  background: var(--sl-brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card hover effects */
+.sl-card-list .sl-card {
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.sl-card-list .sl-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Sidebar active indicator */
+.sidebar-pane .sidebar-active > a {
+  border-left-color: var(--__sl-color-sidebar-active);
+}
+
+/* Nav bar styling */
+.top-nav {
+  border-bottom: 1.5px solid var(--__sl-color-border);
+}
+
+/* Footer styling */
+.footer {
+  border-top: 1.5px solid var(--__sl-color-border);
+}
+
+/* Code block styling */
+.sl-markdown-content pre {
+  border-radius: 0.75rem;
+  border: 1px solid var(--__sl-color-border);
+}
+
+/* Blockquote / callout styling */
+.sl-markdown-content blockquote {
+  border-inline-start-color: var(--__sl-color-accent);
+  border-radius: 0.5rem;
+}
+
+/* Table styling */
+.sl-markdown-content table {
+  border-radius: 0.5rem;
+}
+
+.sl-markdown-content thead th {
+  background-color: var(--__sl-color-bg-nav);
+}
+
+/* Skip link */
+.skip-to-content {
+  background: var(--sl-brand-gradient);
+  color: var(--__sl-color-text-inverse);
+  border-radius: 0 0.75rem 0 0;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 80em) {
+  :root {
+    --sl-content-pad-horizontal: 1.5rem;
+  }
+}

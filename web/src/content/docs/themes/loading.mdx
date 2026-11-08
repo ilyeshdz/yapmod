@@ -1,13 +1,8 @@
 ---
 title: Loading and modes
-group: Guides
-order: 4
-area: themes
-eyebrow: Themes
 description: How the selected theme reaches the page, how mode is resolved, and when styles are remounted.
 ---
 
-import Callout from "../../../components/docs/Callout.astro";
 
 A theme is not loaded by a request from the page. The desktop shell resolves the selected theme at startup and hands the whole bundle to the page's initialization script. That is why the correct colours are present on the first frame instead of flashing after the app renders.
 
@@ -96,6 +91,6 @@ Use this order:
 
 More checks are in [Debugging themes](/yapmod/docs/themes/debugging).
 
-<Callout type="note" title="Removing a theme never needs a restart">
+:::note[Removing a theme never needs a restart]
 A theme contains only CSS. Picking another theme replaces the stylesheet, and removing one stops it from being read at the next start. There is no background process to stop.
-</Callout>
+:::
