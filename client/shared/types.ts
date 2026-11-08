@@ -331,7 +331,7 @@ export type YapmodPluginStorageApi = {
 /**
  * A settings panel contributed by a plugin.
  *
- * Panels appear in the sidebar of the Yapper settings dialog, next to
+ * Panels appear in the sidebar of the Yapin settings dialog, next to
  * yapmod's own sections. Register one with `api.settings.registerPanel()`
  * while the plugin is active; the registration is removed automatically when
  * the plugin is disabled.
@@ -518,7 +518,7 @@ export type YapmodPluginSettingsApi = {
    */
   onChange(id: string, listener: (value: PluginSettingValue) => void): () => void;
   /**
-   * Registers a settings panel in the Yapper settings sidebar.
+   * Registers a settings panel in the Yapin settings sidebar.
    *
    * Registering the same panel id again replaces the previous panel. Returns
    * an unregister function; the panel is also removed when the plugin is
@@ -567,7 +567,7 @@ export type YapmodPluginApi = {
   onCleanup(cleanup: PluginCleanup): void;
   banner(message: string): void;
   /**
-   * Opens modal dialogs in the Yapper window.
+   * Opens modal dialogs in the Yapin window.
    * Plugins can create consent dialogs, settings forms, or any other UI
    * that requires user interaction.
    */
@@ -965,5 +965,5 @@ export type YapmodScope = typeof globalThis & {
   /**
    * The bridge the host app uses to talk to the desktop shell.
    */
-  yapperDesktop?: DesktopBridge;
+  yapinDesktop?: DesktopBridge;
 };

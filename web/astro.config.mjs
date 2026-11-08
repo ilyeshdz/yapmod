@@ -4,7 +4,6 @@ import starlight from "@astrojs/starlight";
 import mdx from "@astrojs/mdx";
 import preact from "@astrojs/preact";
 import starlightTypeDoc from "starlight-typedoc";
-import starlightBlog from "starlight-blog";
 // https://astro.build/config
 export default defineConfig({
   site: "https://ilyeshdz.github.io",
@@ -96,12 +95,6 @@ export default defineConfig({
             { label: "Contributing Guide", slug: "contributing" },
           ],
         },
-        {
-          label: "Blog",
-          items: [
-            { label: "Blog", link: "/blog/" },
-          ],
-        },
       ],
       plugins: [
         starlightTypeDoc({
@@ -115,10 +108,6 @@ export default defineConfig({
             label: "API Reference",
             collapsed: true,
           },
-        }),
-        starlightBlog({
-          title: "Blog",
-          navigation: "none",
         }),
       ],
       pagefind: true,
