@@ -1,7 +1,7 @@
 ---
 /**
- * Custom SiteTitle that renders the logo as a gradient-filled mask div,
- * matching the landing page's branding instead of a plain <img> tag.
+ * Custom SiteTitle that renders the logo as a gradient-filled mask div
+ * with visible text next to it, matching the landing page's .brand styling.
  */
 // @ts-ignore — Starlight virtual module
 import config from "virtual:starlight/user-config";
@@ -14,21 +14,28 @@ const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
   {config.logo && (
     <div class="logo" role="img" aria-label={config.logo.alt} style={`-webkit-mask: url(${logoImg.src}) center / contain no-repeat; mask: url(${logoImg.src}) center / contain no-repeat;`} />
   )}
-  <span class:list={{ 'sr-only': config.logo?.replacesTitle }} translate="no">{siteTitle}</span>
+  <span class="title-text" translate="no">{siteTitle}</span>
 </a>
 
 <style>
   .site-title {
     align-items: center;
-    gap: var(--sl-nav-gap);
-    font-size: var(--sl-text-h4);
-    font-weight: 600;
-    color: var(--sl-color-text-accent);
+    gap: 12px;
+    font: 800 22px "Geist Pixel", monospace;
+    color: var(--sl-color-text);
     text-decoration: none;
     white-space: nowrap;
     min-width: 0;
+    letter-spacing: -0.04em;
   }
-  span {
+  .logo {
+    display: block;
+    width: 38px;
+    height: auto;
+    aspect-ratio: 829 / 606;
+    background: var(--sl-g);
+  }
+  .title-text {
     overflow: hidden;
   }
 </style>

@@ -209,23 +209,8 @@
   padding-bottom: 0.6rem;
 }
 
-/* Logo — match landing page: gradient mask at 38px */
-.site-title,
-.sl-nav-logo {
-  padding: 0;
-}
-
-/* The logo is rendered as a gradient mask div by the custom SiteTitle component.
-   Style it to match the landing page's .brand .logo at 38px.
-   The mask URL is set inline in the component. */
-.site-title .logo,
-.sl-nav-logo .logo {
-  display: block;
-  width: 38px;
-  height: auto;
-  aspect-ratio: 829 / 606;
-  background: var(--sl-g);
-}
+/* Logo and title text are styled in the custom SiteTitle.astro component
+   to match the landing page's .brand: gradient mask at 38px + Geist Pixel text. */
 
 /* Nav links */
 .top-nav a[part="link"] {
