@@ -248,6 +248,31 @@ function SettingsItemView(
 }
 
 /**
+ * Splits items into consecutive runs that share a group heading.
+ *
+ * A new group starts whenever the `group` value changes, which keeps the
+ * order the caller declared instead of sorting options by name.
+ */
+function groupSettingsItems(
+  items: SettingsItem[],
+): { label: string | null; items: SettingsItem[] }[] {
+  const groups: { label: string | null; items: SettingsItem[] }[] = [];
+
+  for (const item of items) {
+    const label = item.group?.trim() || null;
+    const current = groups[groups.length - 1];
+
+    if (!current || current.label !== label) {
+      groups.push({ label, items: [item] });
+    } else {
+      current.items.push(item);
+    }
+  }
+
+  return groups;
+}
+
+/**
  * Renders the declared settings items into a host element.
  *
  * Returns the dispose function of the Solid root; the caller owns the host
@@ -260,8 +285,19 @@ export function mountSettingsItems(
 ): () => void {
   return render(
     () => (
-      <For each={items}>
-        {(item) => <SettingsItemView item={item} context={context} />}
+      <For each={groupSettingsItems(items)}>
+        {(group) => (
+          <>
+            <Show when={group.label}>
+              <h3 class="yapmod-settings-group-title">{group.label}</h3>
+            </Show>
+            <For each={group.items}>
+              {(item) => (
+                <SettingsItemView item={item} context={context} />
+              )}
+            </For>
+          </>
+        )}
       </For>
     ),
     host,

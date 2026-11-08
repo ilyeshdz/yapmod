@@ -28,6 +28,7 @@ function createToggle(
     id: string;
     label: string;
     description: string;
+    group?: string;
     fallback: boolean;
     disabled?: boolean;
     onChange?: (value: boolean) => void;
@@ -40,6 +41,7 @@ function createToggle(
     id: options.id,
     label: options.label,
     description: options.description,
+    group: options.group,
     value: store?.get(options.id, options.fallback) ?? options.fallback,
     disabled: options.disabled,
     onChange: (value) => {
@@ -66,6 +68,7 @@ function createSlider(
     id: string;
     label: string;
     description: string;
+    group?: string;
     fallback: number;
     min: number;
     max: number;
@@ -81,6 +84,7 @@ function createSlider(
     id: options.id,
     label: options.label,
     description: options.description,
+    group: options.group,
     value: store?.get(options.id, options.fallback) ?? options.fallback,
     min: options.min,
     max: options.max,
@@ -182,6 +186,7 @@ export function installDefaultSettings(): void {
         label: "Use native titlebar",
         description:
           "Show the standard macOS titlebar instead of the overlay. Takes effect after a restart.",
+        group: "Window",
         fallback: false,
       }),
     );
@@ -193,6 +198,7 @@ export function installDefaultSettings(): void {
         id: "start_maximized",
         label: "Start maximized",
         description: "Open yapmod maximized. Takes effect after a restart.",
+        group: "Window",
         fallback: false,
       }),
     );
@@ -206,6 +212,7 @@ export function installDefaultSettings(): void {
         description: desktop
           ? "Look for yapmod app and client updates when the app starts and show update prompts."
           : "Look for signed client updates when the page loads and show update prompts.",
+        group: "Updates",
         fallback: true,
       }),
     );
@@ -219,6 +226,7 @@ export function installDefaultSettings(): void {
         description: desktop
           ? "Show a notification in the notification center when a message arrives while the window is in the background."
           : "Show a browser notification when a message arrives while the Yapper tab is in the background.",
+        group: "Notifications",
         fallback: true,
         onChange: (value) => {
           if (value) {
@@ -236,6 +244,7 @@ export function installDefaultSettings(): void {
         label: "Show the unread badge",
         description:
           "Put the number of unread messages on the dock or taskbar icon.",
+        group: "Notifications",
         fallback: true,
       }),
     );
@@ -253,6 +262,7 @@ export function installDefaultSettings(): void {
           yapmod.os === "macos"
             ? "Show an icon in the menu bar and keep yapmod running when you close the window, so notifications keep arriving. Quit from the menu bar."
             : "Show an icon in the system tray and keep yapmod running when you close the window, so notifications keep arriving. Quit from the tray menu.",
+        group: "Window",
         fallback: true,
       }),
     );
@@ -270,6 +280,7 @@ export function installDefaultSettings(): void {
         description: transparencySupported
           ? "Use the system's frosted-glass effect behind the window. Changes apply immediately."
           : "Window transparency is not supported on this platform.",
+        group: "Window",
         fallback: false,
         disabled: !transparencySupported,
       }),
@@ -282,6 +293,7 @@ export function installDefaultSettings(): void {
           label: "Force theme transparency",
           description:
             "Make the active theme's panels translucent when window transparency is on, even if the theme uses opaque backgrounds.",
+          group: "Window",
           fallback: false,
         }),
       );
@@ -292,6 +304,7 @@ export function installDefaultSettings(): void {
           label: "Transparency level",
           description:
             "Adjust how transparent the theme panels appear when force transparency is enabled. Lower values are more transparent, higher values are more opaque.",
+          group: "Window",
           fallback: 30,
           min: 5,
           max: 80,
@@ -306,9 +319,18 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "report_bug",
       label: "Report a bug",
+      group: "About",
       onClick: () => openBugReport(),
     });
   }
+
+  // Keep related options together, in a predictable order that does not
+  // depend on which platform added them first.
+  const groupOrder = ["Window", "Notifications", "Updates", "About"];
+  items.sort(
+    (left, right) =>
+      groupOrder.indexOf(left.group ?? "") - groupOrder.indexOf(right.group ?? ""),
+  );
 
   const section: SettingsSection = {
     id: SECTION_ID,

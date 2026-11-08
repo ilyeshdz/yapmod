@@ -124,7 +124,7 @@ export type SettingOption = {
   label: string;
 };
 
-export type SettingsItem =
+export type SettingsItem = (
   | {
       type: "toggle";
       id: string;
@@ -195,7 +195,16 @@ export type SettingsItem =
         host: HTMLElement,
         context: SettingsContext,
       ) => void | (() => void);
-    };
+    }
+) & {
+  /**
+   * Optional heading that groups consecutive items in a settings panel.
+   *
+   * Items with the same group are rendered under one heading; a change of
+   * group starts a new subsection. Leave it out for a flat list.
+   */
+  group?: string;
+};
 
 export type SettingsSection = {
   id: string;
