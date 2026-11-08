@@ -9,7 +9,6 @@ import {
   mountDialogContent,
   PluginConsent,
   PluginSettingsForm,
-  PluginSourceViewer,
 } from "./plugin-modals";
 import type {
   PluginBundle,
@@ -213,24 +212,6 @@ function showPluginSettings(entry: InstalledEntry): void {
         },
       },
     ],
-    onClose: () => content.dispose(),
-  });
-}
-
-function showPluginFiles(entry: InstalledEntry): void {
-  const modalApi = getYapmod().modal;
-  if (!modalApi) return;
-
-  const content = mountDialogContent(() => (
-    <PluginSourceViewer bundle={entry.bundle} />
-  ));
-
-  modalApi.show({
-    title: `${entry.bundle.manifest.name} files`,
-    description: "Review the installed package source.",
-    content: content.element,
-    size: "xl",
-    buttons: [{ label: "Close", variant: "secondary" }],
     onClose: () => content.dispose(),
   });
 }
@@ -838,16 +819,7 @@ function openPluginSettings(id: string): void {
   }
 }
 
-/** Opens the files of an installed plugin, by id. */
-function openPluginFiles(id: string): void {
-  const entry = registry.get(id);
-
-  if (entry) {
-    showPluginFiles(entry);
-  }
-}
-
-/** Registers the Installed / Community plugin gallery in settings. */
+/** Registers the unified plugin gallery in settings. */
 export function installPluginSettings(): void {
   const yapmod = getYapmod();
   const plugins = yapmod.plugins;
@@ -871,7 +843,6 @@ export function installPluginSettings(): void {
           <PluginGallery
             plugins={plugins}
             onOpenSettings={openPluginSettings}
-            onOpenFiles={openPluginFiles}
           />
         ),
         host,

@@ -10,29 +10,95 @@ import {
 
 import type {
   CommunityPlugin,
+  PluginManifest,
   YapmodPluginInfo,
   YapmodPluginsApi,
 } from "../../shared/types";
+import type { DropdownOption } from "../../components/dropdown";
+import { PackageToolbar } from "../../components/package-toolbar";
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
-import {
-  CommunityPluginCard,
-  InstalledPluginCard,
-} from "./plugins-card";
+import { PluginCard, type PluginEntry } from "./plugins-card";
 
-type View = "installed" | "community";
+type Filter = "all" | "installed" | "available";
+
+const FILTER_OPTIONS: DropdownOption[] = [
+  { value: "all", label: "All plugins" },
+  { value: "installed", label: "Installed" },
+  { value: "available", label: "Not installed" },
+];
 
 export type PluginGalleryProps = {
   plugins: YapmodPluginsApi;
   onOpenSettings: (id: string) => void;
-  onOpenFiles: (id: string) => void;
 };
 
+function buildEntries(
+  installed: YapmodPluginInfo[],
+  community: CommunityPlugin[],
+): PluginEntry[] {
+  const communityById = new Map(community.map((plugin) => [plugin.id, plugin]));
+  const entries = new Map<string, PluginEntry>();
+
+  for (const plugin of installed) {
+    const catalogPlugin = communityById.get(plugin.manifest.id);
+
+    entries.set(plugin.manifest.id, {
+      id: plugin.manifest.id,
+      manifest: plugin.manifest,
+      source: catalogPlugin || plugin.verified ? "community" : "local",
+      verified: plugin.verified,
+      installed: plugin,
+      community: catalogPlugin ?? null,
+    });
+  }
+
+  for (const plugin of community) {
+    if (entries.has(plugin.id)) {
+      continue;
+    }
+
+    entries.set(plugin.id, {
+      id: plugin.id,
+      manifest: plugin,
+      source: "community",
+      verified: plugin.verified,
+      installed: null,
+      community: plugin,
+    });
+  }
+
+  return [...entries.values()].sort((left, right) => {
+    const installedOrder =
+      Number(left.installed === null) - Number(right.installed === null);
+
+    if (installedOrder !== 0) {
+      return installedOrder;
+    }
+
+    return left.manifest.name.localeCompare(right.manifest.name, undefined, {
+      sensitivity: "base",
+    });
+  });
+}
+
+function matchesQuery(entry: PluginEntry, query: string): boolean {
+  if (!query) {
+    return true;
+  }
+
+  const manifest: PluginManifest = entry.manifest;
+
+  return [manifest.name, manifest.author, manifest.description, ...(manifest.tags ?? [])]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .some((value) => value.toLowerCase().includes(query));
+}
+
 /**
- * The Installed / Community plugin gallery.
+ * The unified plugin gallery.
  *
- * State lives in signals; the plugin registry stays the source of truth and
- * notifies this component when plugins change from somewhere else.
+ * Community and locally installed plugins share one list. Installation and
+ * activation are independent switches on each card.
  */
 export function PluginGallery(props: PluginGalleryProps): JSX.Element {
   const filesystem = getHost().capabilities.packages === "filesystem";
@@ -42,26 +108,29 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
   const [community, setCommunity] = createSignal<CommunityPlugin[]>([]);
   const [communityLoaded, setCommunityLoaded] = createSignal(false);
   const [communityLoading, setCommunityLoading] = createSignal(false);
-  const [view, setView] = createSignal<View>("installed");
+  const [filter, setFilter] = createSignal<Filter>("all");
   const [query, setQuery] = createSignal("");
   const [status, setStatus] = createSignal({ message: "", error: false });
 
-  const installedIds = createMemo(
-    () => new Set(installed().map((plugin) => plugin.manifest.id)),
-  );
+  const entries = createMemo(() => buildEntries(installed(), community()));
 
-  const filteredCommunity = createMemo(() => {
+  const filteredPlugins = createMemo(() => {
     const search = query().trim().toLowerCase();
+    const currentFilter = filter();
 
-    if (!search) {
-      return community();
-    }
+    return entries().filter((entry) => {
+      const isInstalled = entry.installed !== null;
 
-    return community().filter((plugin) =>
-      [plugin.name, plugin.author, plugin.description, ...(plugin.tags ?? [])]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(search)),
-    );
+      if (currentFilter === "installed" && !isInstalled) {
+        return false;
+      }
+
+      if (currentFilter === "available" && isInstalled) {
+        return false;
+      }
+
+      return matchesQuery(entry, search);
+    });
   });
 
   function setMessage(message: string, error = false): void {
@@ -87,19 +156,24 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     }
 
     setCommunityLoading(true);
-    setMessage("Loading community plugins…");
 
     try {
       const entries = await props.plugins.listCommunity();
       setCommunity(entries);
       setCommunityLoaded(true);
-      setMessage(
-        `${entries.length} community plugin${entries.length === 1 ? "" : "s"} available.`,
-      );
     } catch (error) {
       setMessage(`Could not load community plugins: ${String(error)}`, true);
     } finally {
       setCommunityLoading(false);
+    }
+  }
+
+  async function refreshAll(): Promise<void> {
+    setMessage("Refreshing plugins…");
+    await Promise.all([refreshInstalled(), loadCommunity(true)]);
+
+    if (!status().error) {
+      setMessage("");
     }
   }
 
@@ -120,73 +194,63 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     }
   }
 
-  async function installCommunity(plugin: CommunityPlugin): Promise<void> {
-    try {
-      setMessage(`Installing ${plugin.name}…`);
-      await props.plugins.installCommunity(plugin.id);
-      setMessage(`Installed ${plugin.name}.`);
-      await refreshInstalled();
-    } catch (error) {
-      setMessage(`Could not install ${plugin.name}: ${String(error)}`, true);
-    }
-  }
-
-  async function toggle(plugin: YapmodPluginInfo): Promise<void> {
-    const success = await props.plugins.setEnabled(
-      plugin.manifest.id,
-      !plugin.enabled,
-    );
-
-    if (!success && !plugin.enabled) {
-      setMessage(
-        "The plugin was not enabled. Review the warning or check the error on its card.",
-        true,
-      );
-    }
-
-    syncInstalled();
-  }
-
-  async function reload(plugin: YapmodPluginInfo): Promise<void> {
-    try {
-      setMessage(`Reloading ${plugin.manifest.name}…`);
-      const success = await props.plugins.reload(plugin.manifest.id);
-
-      if (!success) {
-        setMessage(`Could not reload ${plugin.manifest.name}. Check the error on its card.`, true);
-        return;
+  async function setInstalledState(
+    entry: PluginEntry,
+    next: boolean,
+  ): Promise<boolean> {
+    if (next) {
+      if (!entry.community || entry.installed) {
+        return true;
       }
 
-      const current = props.plugins.list().find((item) => item.manifest.id === plugin.manifest.id);
-      setMessage(
-        current?.enabled
-          ? `Reloaded ${plugin.manifest.name}.`
-          : `Reloaded ${plugin.manifest.name}. Enable it to apply the new files.`,
-      );
-    } catch (error) {
-      setMessage(`Could not reload plugin: ${String(error)}`, true);
+      try {
+        setMessage(`Installing ${entry.manifest.name}…`);
+        await props.plugins.installCommunity(entry.community.id);
+        setMessage(`Installed ${entry.manifest.name}.`);
+        await refreshInstalled();
+        return true;
+      } catch (error) {
+        const message = String(error);
+
+        if (message.toLowerCase().includes("cancelled")) {
+          setMessage("Plugin installation cancelled.");
+        } else {
+          setMessage(
+            `Could not install ${entry.manifest.name}: ${message}`,
+            true,
+          );
+        }
+
+        return false;
+      }
     }
 
-    syncInstalled();
-  }
+    if (!entry.installed) {
+      return false;
+    }
 
-  async function remove(plugin: YapmodPluginInfo): Promise<void> {
     const modalApi = getYapmod().modal;
     let confirmed = false;
 
     if (!modalApi) {
-      if (!window.confirm(`Remove ${plugin.manifest.name}? Its package files will be deleted.`)) {
-        return;
+      if (
+        !window.confirm(
+          `Uninstall ${entry.manifest.name}? Its package files and stored settings will be deleted.`,
+        )
+      ) {
+        return false;
       }
+
       confirmed = true;
     } else {
       const modal = modalApi.show({
-        title: `Remove ${plugin.manifest.name}?`,
-        description: "Its package and stored settings will be removed from this device.",
+        title: `Uninstall ${entry.manifest.name}?`,
+        description:
+          "Its package and stored settings will be removed from this device.",
         buttons: [
           { label: "Cancel", variant: "secondary" },
           {
-            label: "Remove plugin",
+            label: "Uninstall plugin",
             variant: "danger",
             onClick: () => {
               confirmed = true;
@@ -196,23 +260,82 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
         autoFocus: true,
       });
       await modal.closed;
-      if (!confirmed) return;
+
+      if (!confirmed) {
+        return false;
+      }
     }
 
     try {
-      await props.plugins.remove(plugin.manifest.id);
-      setMessage(`Removed ${plugin.manifest.name}.`);
+      await props.plugins.remove(entry.id);
+      setMessage(`Uninstalled ${entry.manifest.name}.`);
       syncInstalled();
+      return true;
     } catch (error) {
-      setMessage(`Could not remove plugin: ${String(error)}`, true);
+      setMessage(
+        `Could not uninstall ${entry.manifest.name}: ${String(error)}`,
+        true,
+      );
+      return false;
     }
   }
 
-  function show(next: View): void {
-    setView(next);
+  async function setEnabled(
+    entry: PluginEntry,
+    enabled: boolean,
+  ): Promise<boolean> {
+    const info = entry.installed;
 
-    if (next === "community") {
-      void loadCommunity();
+    if (!info) {
+      return false;
+    }
+
+    const success = await props.plugins.setEnabled(info.manifest.id, enabled);
+
+    if (!success) {
+      setMessage(
+        enabled
+          ? `Could not enable ${info.manifest.name}. Review the warning or check the error on its card.`
+          : `Could not disable ${info.manifest.name}. Check the error on its card.`,
+        true,
+      );
+    }
+
+    syncInstalled();
+    return success;
+  }
+
+  async function reload(entry: PluginEntry): Promise<void> {
+    const info = entry.installed;
+
+    if (!info) {
+      return;
+    }
+
+    try {
+      setMessage(`Reloading ${info.manifest.name}…`);
+      const success = await props.plugins.reload(info.manifest.id);
+
+      if (!success) {
+        setMessage(
+          `Could not reload ${info.manifest.name}. Check the error on its card.`,
+          true,
+        );
+        return;
+      }
+
+      const current = props.plugins
+        .list()
+        .find((item) => item.manifest.id === info.manifest.id);
+      setMessage(
+        current?.enabled
+          ? `Reloaded ${info.manifest.name}.`
+          : `Reloaded ${info.manifest.name}. Enable it to apply the new files.`,
+      );
+    } catch (error) {
+      setMessage(`Could not reload plugin: ${String(error)}`, true);
+    } finally {
+      syncInstalled();
     }
   }
 
@@ -220,160 +343,93 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     const unsubscribe = props.plugins.onChange(syncInstalled);
     onCleanup(unsubscribe);
     void refreshInstalled();
+    void loadCommunity();
   });
 
   return (
     <>
-      <div class="yapmod-theme-tabs" role="tablist" aria-label="Plugin collection">
-        <button
-          classList={{
-            btn: true,
-            small: true,
-            ghost: true,
-            "yapmod-theme-tab-active": view() === "installed",
-          }}
-          type="button"
-          role="tab"
-          aria-selected={view() === "installed"}
-          onClick={() => show("installed")}
-        >
-          Installed
+      <PackageToolbar
+        query={query()}
+        onQueryChange={setQuery}
+        filter={filter()}
+        filterOptions={FILTER_OPTIONS}
+        onFilterChange={(value) => setFilter(value as Filter)}
+        placeholder="Search all plugins"
+      >
+        <button class="btn small" type="button" onClick={() => void importLocal()}>
+          Import plugin
         </button>
         <button
-          classList={{
-            btn: true,
-            small: true,
-            ghost: true,
-            "yapmod-theme-tab-active": view() === "community",
-          }}
+          class="btn small ghost"
           type="button"
-          role="tab"
-          aria-selected={view() === "community"}
-          onClick={() => show("community")}
+          onClick={() => void refreshAll()}
+          disabled={communityLoading()}
         >
-          Community
+          Refresh
         </button>
-      </div>
-
-      <Show when={view() === "installed"}>
-        <div class="yapmod-plugin-toolbar">
-          <button class="btn small" type="button" onClick={() => void importLocal()}>
-            Import plugin
-          </button>
+        <Show when={filesystem}>
           <button
             class="btn small ghost"
-            type="button"
-            onClick={() => void refreshInstalled()}
-          >
-            Refresh
-          </button>
-          <Show when={filesystem}>
-            <button
-              class="btn small ghost"
-              type="button"
-              onClick={() =>
-                void props.plugins
-                  .openFolder()
-                  .catch((error: unknown) => setMessage(String(error), true))
-              }
-            >
-              Open folder
-            </button>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={view() === "community"}>
-        <div class="yapmod-plugin-toolbar">
-          <input
-            class="input yapmod-plugin-search"
-            type="search"
-            placeholder="Search community plugins"
-            aria-label="Search community plugins"
-            value={query()}
-            onInput={(event) => setQuery(event.currentTarget.value)}
-          />
-          <button
-            class="btn small ghost"
-            type="button"
-            onClick={() => void loadCommunity(true)}
-            disabled={communityLoading()}
-          >
-            Refresh
-          </button>
-          <button
-            class="btn small"
             type="button"
             onClick={() =>
-              window.open(
-                "https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/",
-                "_blank",
-                "noopener",
-              )
+              void props.plugins
+                .openFolder()
+                .catch((error: unknown) => setMessage(String(error), true))
             }
           >
-            Submit a plugin
+            Open folder
           </button>
-        </div>
-      </Show>
+        </Show>
+        <button
+          class="btn small ghost"
+          type="button"
+          onClick={() =>
+            window.open(
+              "https://ilyeshdz.github.io/yapmod/docs/submit-a-plugin/",
+              "_blank",
+              "noopener",
+            )
+          }
+        >
+          Submit a plugin
+        </button>
+      </PackageToolbar>
 
-      <Show when={view() === "installed"}>
-        <div class="yapmod-plugin-grid">
-          <Show
-            when={installed().length > 0}
-            fallback={
-              <p class="hint">
-                No plugins installed yet. Import a folder or browse Community.
-              </p>
-            }
-          >
-            <For each={installed()}>
-              {(plugin) => (
-                <InstalledPluginCard
-                  plugin={plugin}
-                  onToggle={() => void toggle(plugin)}
-                  onReload={() => void reload(plugin)}
-                  onRemove={() => void remove(plugin)}
-                  onSettings={() => props.onOpenSettings(plugin.manifest.id)}
-                  onInspect={() => props.onOpenFiles(plugin.manifest.id)}
-                />
-              )}
-            </For>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={view() === "community"}>
-        <div class="yapmod-plugin-grid">
-          <Show
-            when={filteredCommunity().length > 0}
-            fallback={
-              <p class="hint">
-                {community().length
-                  ? "No community plugins match this search."
-                  : "No community plugins are published yet."}
-              </p>
-            }
-          >
-            <For each={filteredCommunity()}>
-              {(plugin) => (
-                <CommunityPluginCard
-                  plugin={plugin}
-                  installed={installedIds().has(plugin.id)}
-                  onInstall={() => void installCommunity(plugin)}
-                />
-              )}
-            </For>
-          </Show>
-        </div>
-      </Show>
+      <div class="yapmod-package-grid">
+        <Show
+          when={filteredPlugins().length > 0}
+          fallback={
+            <p class="hint">
+              {query().trim()
+                ? "No plugins match your search."
+                : filter() === "available"
+                  ? communityLoading()
+                    ? "Loading community plugins…"
+                    : "No community plugins are available right now."
+                  : "No plugins installed yet. Import a folder or browse the community catalog."}
+            </p>
+          }
+        >
+          <For each={filteredPlugins()}>
+            {(entry) => (
+              <PluginCard
+                entry={entry}
+                onInstallChange={(next) => setInstalledState(entry, next)}
+                onEnabledChange={(next) => setEnabled(entry, next)}
+                onConfigure={() => props.onOpenSettings(entry.id)}
+                onReload={() => void reload(entry)}
+              />
+            )}
+          </For>
+        </Show>
+      </div>
 
       <Show when={status().message}>
         <p
           classList={{
             hint: true,
-            "yapmod-plugin-status": true,
-            "yapmod-plugin-status-error": status().error,
+            "yapmod-package-status": true,
+            "yapmod-package-status-error": status().error,
           }}
           aria-live="polite"
         >
