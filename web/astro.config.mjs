@@ -8,6 +8,7 @@ export default defineConfig({
   site: "https://ilyeshdz.github.io",
   base: "/yapmod",
   redirects: {
+    "/docs/": "/yapmod/introduction/",
     "/docs/creating-plugins": "/yapmod/docs/plugins/getting-started",
     "/docs/creating-themes": "/yapmod/docs/themes/getting-started",
   },
