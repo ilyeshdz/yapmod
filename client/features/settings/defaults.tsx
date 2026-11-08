@@ -267,7 +267,8 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "export_settings",
       label: "Export settings",
-      group: "Data",
+      variant: "secondary",
+      group: "Actions",
       onClick: () => void handleExport(),
     });
 
@@ -275,7 +276,8 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "import_settings",
       label: "Import settings",
-      group: "Data",
+      variant: "secondary",
+      group: "Actions",
       onClick: () => handleImport(),
     });
 
@@ -283,14 +285,15 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "report_bug",
       label: "Report a bug",
-      group: "About",
+      variant: "secondary",
+      group: "Actions",
       onClick: () => openBugReport(),
     });
   }
 
   // Keep related options together, in a predictable order that does not
   // depend on which platform added them first.
-  const groupOrder = ["Window", "Notifications", "Updates", "Data", "About"];
+  const groupOrder = ["Actions", "Window", "Notifications", "Updates"];
   items.sort(
     (left, right) =>
       groupOrder.indexOf(left.group ?? "") - groupOrder.indexOf(right.group ?? ""),

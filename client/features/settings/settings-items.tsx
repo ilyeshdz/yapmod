@@ -134,23 +134,45 @@ function NumberItem(
 }
 
 function ButtonItem(
-  props: { item: Extract<SettingsItem, { type: "button" }> },
+  props: { item: Extract<SettingsItem, { type: "button" }>; inActionsRow?: boolean },
 ): JSX.Element {
   const variant = props.item.variant ?? "primary";
 
+  if (props.inActionsRow) {
+    return (
+      <button
+        classList={{
+          btn: true,
+          small: true,
+          ghost: variant === "secondary",
+          danger: variant === "danger",
+        }}
+        type="button"
+        onClick={() => props.item.onClick()}
+      >
+        {props.item.label}
+      </button>
+    );
+  }
+
   return (
-    <button
-      classList={{
-        btn: true,
-        small: true,
-        ghost: variant === "secondary",
-        danger: variant === "danger",
-      }}
-      type="button"
-      onClick={() => props.item.onClick()}
-    >
-      {props.item.label}
-    </button>
+    <div class="field">
+      <button
+        classList={{
+          btn: true,
+          small: true,
+          ghost: variant === "secondary",
+          danger: variant === "danger",
+        }}
+        type="button"
+        onClick={() => props.item.onClick()}
+      >
+        {props.item.label}
+      </button>
+      <Show when={props.item.description}>
+        <Hint text={props.item.description!} />
+      </Show>
+    </div>
   );
 }
 
@@ -225,7 +247,7 @@ function CustomItem(
 }
 
 function SettingsItemView(
-  props: { item: SettingsItem; context: SettingsContext },
+  props: { item: SettingsItem; context: SettingsContext; inActionsRow?: boolean },
 ): JSX.Element {
   switch (props.item.type) {
     case "toggle":
@@ -237,7 +259,7 @@ function SettingsItemView(
     case "number":
       return <NumberItem item={props.item} context={props.context} />;
     case "button":
-      return <ButtonItem item={props.item} />;
+      return <ButtonItem item={props.item} inActionsRow={props.inActionsRow} />;
     case "slider":
       return <SliderItem item={props.item} context={props.context} />;
     case "custom":
@@ -283,19 +305,31 @@ export function mountSettingsItems(
   host: HTMLElement,
   context: SettingsContext,
 ): () => void {
+  const isActionsGroup = (label: string | null) => label === "Actions";
+
   return render(
     () => (
       <For each={groupSettingsItems(items)}>
         {(group) => (
           <>
-            <Show when={group.label}>
+            <Show when={group.label && !isActionsGroup(group.label)}>
               <h3 class="yapmod-settings-group-title">{group.label}</h3>
             </Show>
-            <For each={group.items}>
-              {(item) => (
-                <SettingsItemView item={item} context={context} />
-              )}
-            </For>
+            {isActionsGroup(group.label) ? (
+              <div class="yapmod-actions-row">
+                <For each={group.items}>
+                  {(item) => (
+                    <SettingsItemView item={item} context={context} inActionsRow />
+                  )}
+                </For>
+              </div>
+            ) : (
+              <For each={group.items}>
+                {(item) => (
+                  <SettingsItemView item={item} context={context} />
+                )}
+              </For>
+            )}
           </>
         )}
       </For>

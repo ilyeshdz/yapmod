@@ -171,6 +171,7 @@ export type SettingsItem = (
       type: "button";
       id: string;
       label: string;
+      description?: string;
       variant?: "primary" | "secondary" | "danger";
       onClick: () => void;
     }
