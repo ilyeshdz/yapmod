@@ -37,15 +37,19 @@ function describe(theme: ThemeMeta): string {
 export type ThemeCardProps = {
   entry: ThemeEntry;
   active: boolean;
-  onSelect: () => void;
-  /** Returns `false` when the change failed or was cancelled. */
-  onInstallChange: (installed: boolean) => Promise<boolean>;
+  /** Applies or turns off the theme. Returns `false` when the change failed. */
+  onActiveChange: (active: boolean) => Promise<boolean>;
   onReload?: () => void;
 };
 
-/** A theme card with installation and selection controls. */
+/**
+ * A theme card whose switch applies the theme.
+ *
+ * The switch reflects the active theme, not installation: turning it on
+ * installs a community theme in the background when needed, and turning it
+ * off returns to the app's own theme without deleting anything.
+ */
 export function ThemeCard(props: ThemeCardProps): JSX.Element {
-  const installed = () => props.entry.builtin === true || props.entry.installed !== null;
   const meta = () =>
     props.entry.builtin
       ? "the look the app ships with"
@@ -80,33 +84,17 @@ export function ThemeCard(props: ThemeCardProps): JSX.Element {
         ) : undefined
       }
       controls={
-        <>
-          {installed() ? (
-            <button
-              class="btn small ghost"
-              type="button"
-              disabled={props.active}
-              aria-pressed={props.active}
-              onClick={props.onSelect}
-            >
-              {props.active ? "Active" : "Use"}
-            </button>
-          ) : null}
-          {props.entry.builtin ? null : (
-            <label class="yapmod-package-control">
-              <span class="yapmod-package-control-label">Installed</span>
-              <Switch
-                checked={installed()}
-                label={
-                  installed()
-                    ? `Uninstall ${props.entry.name}`
-                    : `Install ${props.entry.name}`
-                }
-                onChange={(next) => props.onInstallChange(next)}
-              />
-            </label>
-          )}
-        </>
+        <label class="yapmod-package-control">
+          <Switch
+            checked={props.active}
+            label={
+              props.active
+                ? `Turn off ${props.entry.name}`
+                : `Apply ${props.entry.name}`
+            }
+            onChange={(next) => props.onActiveChange(next)}
+          />
+        </label>
       }
     />
   );

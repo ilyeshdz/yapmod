@@ -16,7 +16,6 @@ import { Dropdown } from "../../components/dropdown";
 import { PackageToolbar } from "../../components/package-toolbar";
 import { openExternally } from "../../core/links";
 import { getHost } from "../../platform/host";
-import { confirmRemove } from "./picker-preview";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
 import { ThemeCard, type ThemeEntry } from "./theme-card";
@@ -220,48 +219,59 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
     }
   }
 
-  async function setInstalled(entry: ThemeEntry, next: boolean): Promise<boolean> {
-    if (next) {
-      if (!entry.community || entry.installed) {
-        return true;
+  async function setActiveState(
+    entry: ThemeEntry,
+    next: boolean,
+  ): Promise<boolean> {
+    if (!next) {
+      // The app's own theme cannot be turned off, and switching off a theme
+      // that is not active is a no-op. Turning a theme off only stops
+      // applying it; the files stay on disk.
+      if (entry.builtin || activeId() !== entry.id) {
+        return false;
+      }
+
+      select(null);
+      setMessage("");
+      return true;
+    }
+
+    if (entry.builtin) {
+      select(null);
+      setMessage("");
+      return true;
+    }
+
+    if (activeId() === entry.id) {
+      return true;
+    }
+
+    let theme = entry.installed;
+
+    if (!theme) {
+      if (!entry.community) {
+        return false;
       }
 
       try {
         setMessage(`Installing ${entry.name}…`);
         await themeApi.installCommunity(entry.community.id);
-        setInstalledThemes(await themeApi.list());
-        setMessage(`Installed ${entry.name}.`);
-        return true;
+        const themes = await themeApi.list();
+        setInstalledThemes(themes);
+        theme = themes.find((item) => item.id === entry.id) ?? null;
+
+        if (!theme) {
+          throw new Error("the installed theme could not be found");
+        }
       } catch (error) {
-        setMessage(`Could not install ${entry.name}: ${String(error)}`, true);
+        setMessage(`Could not apply ${entry.name}: ${String(error)}`, true);
         return false;
       }
     }
 
-    if (!entry.installed) {
-      return false;
-    }
-
-    if (!(await confirmRemove(entry.name))) {
-      return false;
-    }
-
-    try {
-      await themeApi.remove(entry.id);
-
-      if (activeId() === entry.id) {
-        store.set("theme_id", "");
-        setActiveId("");
-        themeApi.apply(null);
-      }
-
-      setInstalledThemes(await themeApi.list());
-      setMessage(`Uninstalled ${entry.name}.`);
-      return true;
-    } catch (error) {
-      setMessage(`Could not uninstall ${entry.name}: ${String(error)}`, true);
-      return false;
-    }
+    select(theme);
+    setMessage("");
+    return true;
   }
 
   async function importTheme(): Promise<void> {
@@ -382,8 +392,7 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
               <ThemeCard
                 entry={entry}
                 active={activeId() === entry.id}
-                onSelect={() => select(entry.installed)}
-                onInstallChange={(next) => setInstalled(entry, next)}
+                onActiveChange={(next) => setActiveState(entry, next)}
                 onReload={
                   entry.installed
                     ? () => void reloadTheme(entry.installed!)
