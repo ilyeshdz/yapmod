@@ -1,4 +1,10 @@
 import { getYapmod } from "./scope";
+import {
+  copyArrayBuffer,
+  copyArrayBufferView,
+  createUnsubscribe,
+  notifyHandlers,
+} from "../shared/helpers";
 import type {
   BlobSnapshot,
   HTTPInspector,
@@ -19,30 +25,12 @@ const responseInterceptors: HTTPResponseInterceptor[] = [];
 // Marker property on the global fetch to detect re-installation.
 const INSTALLED_MARKER = "__yapmod_http_inspector_installed";
 
-/**
- * Notifies all registered handlers of a new message.
- * A single handler throwing does not prevent the remaining handlers from running.
- */
-function notifyHandlers<T>(handlers: ((msg: T) => void)[], message: T): void {
-  const snapshot = handlers.slice();
-  for (const handler of snapshot) {
-    try {
-      handler(message);
-    } catch (error) {
-      console.error("[yapmod] HTTP inspector handler threw an error", error);
-    }
-  }
-}
 
 /**
  * Extracts headers from a Headers object or Request into an array of [name, value] pairs.
  */
 function extractHeaders(headers: Headers): [string, string][] {
-  const result: [string, string][] = [];
-  headers.forEach((value, key) => {
-    result.push([key, value]);
-  });
-  return result;
+  return [...headers.entries()];
 }
 
 /**
@@ -78,9 +66,7 @@ async function readRequestBody(request: Request): Promise<string | ArrayBuffer |
     if (isTextContentType(request.headers.get("content-type") ?? "")) {
       return new TextDecoder().decode(arrayBuffer);
     }
-    const dest = new ArrayBuffer(arrayBuffer.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(arrayBuffer));
-    return dest;
+    return copyArrayBuffer(arrayBuffer);
   } catch {
     // Body may already be consumed, streamed, or otherwise unreadable.
     return undefined;
@@ -98,14 +84,10 @@ function normalizeBodyData(body: unknown): string | ArrayBuffer | BlobSnapshot |
     return body;
   }
   if (body instanceof ArrayBuffer) {
-    const dest = new ArrayBuffer(body.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(body));
-    return dest;
+    return copyArrayBuffer(body);
   }
   if (ArrayBuffer.isView(body)) {
-    const dest = new ArrayBuffer(body.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(body.buffer, body.byteOffset, body.byteLength));
-    return dest;
+    return copyArrayBufferView(body);
   }
   if (body instanceof Blob) {
     return { __blob: true, type: body.type, size: body.size };
@@ -198,9 +180,7 @@ async function readResponseBody(response: Response): Promise<string | ArrayBuffe
       return undefined;
     }
     // Copy to prevent mutation.
-    const dest = new ArrayBuffer(arrayBuffer.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(arrayBuffer));
-    return dest;
+    return copyArrayBuffer(arrayBuffer);
   } catch {
     // If we fail to read the body, return undefined.
     return undefined;
@@ -464,15 +444,7 @@ export function installHTTPInspector(): void {
        */
       subscribe(handler: HTTPMessageHandler): () => void {
         exchangeHandlers.push(handler);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = exchangeHandlers.indexOf(handler);
-          if (index !== -1) {
-            exchangeHandlers.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(exchangeHandlers, handler);
       },
     },
     outgoing: {
@@ -482,15 +454,7 @@ export function installHTTPInspector(): void {
        */
       subscribe(handler: HTTPOutgoingMessageHandler): () => void {
         outgoingHandlers.push(handler);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = outgoingHandlers.indexOf(handler);
-          if (index !== -1) {
-            outgoingHandlers.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(outgoingHandlers, handler);
       },
       /**
        * Registers an outgoing request interceptor; returns a cleanup function.
@@ -498,15 +462,7 @@ export function installHTTPInspector(): void {
        */
       use(interceptor: HTTPOutgoingInterceptor): () => void {
         outgoingInterceptors.push(interceptor);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = outgoingInterceptors.indexOf(interceptor);
-          if (index !== -1) {
-            outgoingInterceptors.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(outgoingInterceptors, interceptor);
       },
     },
     responses: {
@@ -516,15 +472,7 @@ export function installHTTPInspector(): void {
        */
       use(interceptor: HTTPResponseInterceptor): () => void {
         responseInterceptors.push(interceptor);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = responseInterceptors.indexOf(interceptor);
-          if (index !== -1) {
-            responseInterceptors.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(responseInterceptors, interceptor);
       },
     },
   };

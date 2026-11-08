@@ -17,7 +17,6 @@ export const MAX_MANIFEST_BYTES = 64 * 1024;
 export const MAX_CSS_BYTES = 1024 * 1024;
 export const MAX_PLUGIN_CSS_BYTES = 512 * 1024;
 export const MAX_PLUGIN_SCRIPT_BYTES = 512 * 1024;
-export const PLUGIN_CSS_FILE = "plugin.css";
 
 export const FETCH_MESSAGE = "yapmod:fetch-catalog-text";
 

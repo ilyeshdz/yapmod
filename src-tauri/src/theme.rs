@@ -248,20 +248,13 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, YapmodError>
     Ok(themes)
 }
 
-/// Downloads and installs one theme from the static community catalog.
-#[tauri::command]
-pub async fn install_community_theme(
-    app: AppHandle,
-    id: String,
-) -> Result<ThemeBundle, YapmodError> {
-    if !is_valid_id(&id) {
-        return Err(YapmodError::validation("that is not a valid theme id"));
-    }
-
-    let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
-    let manifest_bytes =
-        fetch_community_asset(&manifest_path, THEME_RULES.max_manifest_bytes).await?;
-    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes).map_err(|error| {
+/// Validates a community theme manifest and returns the parsed manifest,
+/// raw bytes, and the resolved CSS file name.
+fn validate_community_manifest(
+    id: &str,
+    manifest_bytes: &[u8],
+) -> Result<(ThemeManifest, String), YapmodError> {
+    let manifest: ThemeManifest = serde_json::from_slice(manifest_bytes).map_err(|error| {
         YapmodError::validation(format!("the community theme manifest is invalid: {error}"))
     })?;
 
@@ -286,35 +279,67 @@ pub async fn install_community_theme(
         )));
     }
 
-    let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
+    let css_file = manifest
+        .css
+        .as_deref()
+        .unwrap_or(DEFAULT_CSS_FILE)
+        .to_string();
 
-    if !is_valid_community_file_name(css_file) {
+    if !is_valid_community_file_name(&css_file) {
         return Err(YapmodError::validation(
             "the theme manifest points at an unusable stylesheet",
         ));
     }
 
+    Ok((manifest, css_file))
+}
+
+/// Downloads the CSS for a community theme and installs it into the target
+/// folder. Shared by install and update commands.
+async fn download_and_install_community_theme(
+    app: &AppHandle,
+    id: &str,
+    manifest_bytes: &[u8],
+    css_file: &str,
+) -> Result<ThemeBundle, YapmodError> {
     let css_path = format!("themes/{id}/{css_file}");
     let css = String::from_utf8(fetch_community_asset(&css_path, THEME_RULES.max_css_bytes).await?)
         .map_err(|_| {
             YapmodError::validation("the community theme stylesheet is not valid UTF-8")
         })?;
 
-    let target = themes_dir(&app)?.join(&id);
+    let target = themes_dir(app)?.join(id);
+    install_theme_folder(&target, |target| {
+        fs::write(target.join(MANIFEST_FILE), manifest_bytes)
+            .map_err(|e| YapmodError::io(e.to_string()))?;
+        fs::write(target.join(css_file), css).map_err(|e| YapmodError::io(e.to_string()))?;
+        Ok(())
+    })
+}
 
+/// Downloads and installs one theme from the static community catalog.
+#[tauri::command]
+pub async fn install_community_theme(
+    app: AppHandle,
+    id: String,
+) -> Result<ThemeBundle, YapmodError> {
+    if !is_valid_id(&id) {
+        return Err(YapmodError::validation("that is not a valid theme id"));
+    }
+
+    let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
+    let manifest_bytes =
+        fetch_community_asset(&manifest_path, THEME_RULES.max_manifest_bytes).await?;
+    let (_manifest, css_file) = validate_community_manifest(&id, &manifest_bytes)?;
+
+    let target = themes_dir(&app)?.join(&id);
     if target.exists() {
         return Err(YapmodError::already_exists(
             "a theme with this id is already installed; remove it first",
         ));
     }
 
-    install_theme_folder(&target, |target| {
-        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)
-            .map_err(|e| YapmodError::io(e.to_string()))?;
-        fs::write(target.join(css_file), css).map_err(|e| YapmodError::io(e.to_string()))?;
-
-        Ok(())
-    })
+    download_and_install_community_theme(&app, &id, &manifest_bytes, &css_file).await
 }
 
 /// The mode a theme asks for, with everything unknown treated as dark.
@@ -658,48 +683,10 @@ pub async fn update_community_theme(
         return Err(YapmodError::validation("that is not a valid theme id"));
     }
 
-    // Fetch the latest manifest from the catalog
     let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
     let manifest_bytes =
         fetch_community_asset(&manifest_path, THEME_RULES.max_manifest_bytes).await?;
-    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes).map_err(|error| {
-        YapmodError::validation(format!("the community theme manifest is invalid: {error}"))
-    })?;
-
-    if manifest.id != id {
-        return Err(YapmodError::validation(
-            "the downloaded theme id does not match the catalog",
-        ));
-    }
-
-    if manifest.name.trim().is_empty() {
-        return Err(YapmodError::validation(
-            "the community theme has an invalid name",
-        ));
-    }
-
-    if let Some(api) = manifest.api
-        && api > THEME_RULES.theme_api
-    {
-        return Err(YapmodError::validation(format!(
-            "the theme was written for theme API {api}, this version understands {}",
-            THEME_RULES.theme_api
-        )));
-    }
-
-    let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
-
-    if !is_valid_community_file_name(css_file) {
-        return Err(YapmodError::validation(
-            "the theme manifest points at an unusable stylesheet",
-        ));
-    }
-
-    let css_path = format!("themes/{id}/{css_file}");
-    let css = String::from_utf8(fetch_community_asset(&css_path, THEME_RULES.max_css_bytes).await?)
-        .map_err(|_| {
-            YapmodError::validation("the community theme stylesheet is not valid UTF-8")
-        })?;
+    let (_manifest, css_file) = validate_community_manifest(&id, &manifest_bytes)?;
 
     // Remove the old installation
     let target = themes_dir(&app)?.join(&id);
@@ -715,13 +702,7 @@ pub async fn update_community_theme(
         let _ = Config::save(&app, &config);
     }
 
-    // Install the new version
-    install_theme_folder(&target, |target| {
-        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)
-            .map_err(|e| YapmodError::io(e.to_string()))?;
-        fs::write(target.join(css_file), css).map_err(|e| YapmodError::io(e.to_string()))?;
-        Ok(())
-    })
+    download_and_install_community_theme(&app, &id, &manifest_bytes, &css_file).await
 }
 
 /// Removes an installed theme.

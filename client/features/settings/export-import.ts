@@ -1,18 +1,9 @@
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
+import { isRecord } from "../../shared/helpers";
 
-/**
- * The export file format version. Bump this when the schema changes so older
- * exports can be rejected with a clear message.
- */
 const EXPORT_VERSION = 1;
 
-/**
- * The shape of the exported JSON file.
- *
- * Only settings values, plugin/theme identifiers, and the active theme are
- * included. Plugin/theme files themselves are not bundled.
- */
 export type ExportData = {
   version: number;
   settings: Record<string, unknown>;
@@ -20,14 +11,8 @@ export type ExportData = {
   activeTheme: { id: string; version: string | null } | null;
 };
 
-/**
- * Validates an object looks like a valid export file.
- *
- * Returns `null` when the data is valid, or an error message describing what
- * went wrong.
- */
 export function validateExportData(raw: unknown): ExportData | string {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return "Invalid export file: expected a JSON object.";
   }
 
@@ -37,7 +22,7 @@ export function validateExportData(raw: unknown): ExportData | string {
     return `Invalid export file: unsupported version ${obj.version ?? "unknown"} (expected ${EXPORT_VERSION}).`;
   }
 
-  if (typeof obj.settings !== "object" || obj.settings === null || Array.isArray(obj.settings)) {
+  if (!isRecord(obj.settings)) {
     return "Invalid export file: missing or invalid settings.";
   }
 
@@ -46,68 +31,36 @@ export function validateExportData(raw: unknown): ExportData | string {
   }
 
   for (const entry of obj.plugins) {
-    if (!entry || typeof entry !== "object" || typeof (entry as any).id !== "string") {
+    if (!isRecord(entry) || typeof (entry as any).id !== "string") {
       return "Invalid export file: each plugin entry must have an id.";
     }
   }
 
   const theme = obj.activeTheme;
-  if (theme !== null && (typeof theme !== "object" || typeof (theme as any).id !== "string")) {
+  if (theme !== null && (!isRecord(theme) || typeof (theme as any).id !== "string")) {
     return "Invalid export file: active theme must have an id.";
   }
 
   return obj as ExportData;
 }
 
-/**
- * Gathers all user-configurable state into an export snapshot.
- *
- * Includes:
- * - All key/value settings from the store.
- * - The list of installed plugins with their versions.
- * - The currently active theme (id and version).
- */
 export async function exportSettings(): Promise<ExportData> {
   const yapmod = getYapmod();
-  const store = yapmod.store;
-  const plugins = yapmod.plugins;
-  const theme = yapmod.theme;
+  const settings = yapmod.store?.all() ?? {};
 
-  const settings = store?.all() ?? {};
+  const plugins = yapmod.plugins?.list().map((info) => ({
+    id: info.manifest.id,
+    version: info.manifest.version ?? null,
+  })) ?? [];
 
-  const pluginList: { id: string; version: string | null }[] = [];
-  if (plugins) {
-    for (const info of plugins.list()) {
-      pluginList.push({
-        id: info.manifest.id,
-        version: info.manifest.version ?? null,
-      });
-    }
-  }
+  const active = yapmod.theme?.active;
+  const activeTheme = active
+    ? { id: active.id, version: active.version ?? null }
+    : null;
 
-  let activeTheme: { id: string; version: string | null } | null = null;
-  if (theme) {
-    const active = theme.active;
-    if (active) {
-      activeTheme = {
-        id: active.id,
-        version: active.version ?? null,
-      };
-    }
-  }
-
-  return {
-    version: EXPORT_VERSION,
-    settings,
-    plugins: pluginList,
-    activeTheme,
-  };
+  return { version: EXPORT_VERSION, settings, plugins, activeTheme };
 }
 
-/**
- * Triggers a file download with the exported JSON data using a blob link.
- * This is the fallback for environments without a native save dialog.
- */
 export function downloadExport(data: ExportData): void {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -127,10 +80,6 @@ export function downloadExport(data: ExportData): void {
   }, 1000);
 }
 
-/**
- * Saves the exported JSON data using the native Tauri save dialog.
- * Returns true if the user saved the file, false if they cancelled.
- */
 async function saveExportDesktop(data: ExportData): Promise<boolean> {
   const host = getHost();
   if (host.id !== "desktop" || !host.invoke) {
@@ -146,53 +95,21 @@ async function saveExportDesktop(data: ExportData): Promise<boolean> {
   }
 }
 
-/**
- * Restores settings from an export snapshot.
- *
- * Only the settings key/value pairs and the active theme are restored.
- * Installed plugins are informational only — the import does not install
- * missing plugins because the files are not bundled in the export.
- *
- * Returns a summary of what was restored, or an error message.
- */
 export function importSettings(data: ExportData): string {
-  const yapmod = getYapmod();
-  const store = yapmod.store;
-  const theme = yapmod.theme;
-
+  const store = getYapmod().store;
   if (!store) {
     return "Cannot import: settings store is not available.";
   }
 
-  let restoredCount = 0;
-
-  // Restore all settings key/value pairs.
   for (const [key, value] of Object.entries(data.settings)) {
     store.set(key, value);
-    restoredCount++;
   }
 
-  // Attempt to restore the active theme if it is still installed.
-  if (data.activeTheme && theme) {
-    const active = theme.active;
-    if (active?.id !== data.activeTheme.id) {
-      // The theme API does not expose a direct "apply by id" method from
-      // the repository, so we check whether the theme is still available.
-      // If the active theme matches, no action is needed.
-      // Otherwise, the user will need to re-select the theme from settings.
-    }
-  }
-
-  return `Restored ${restoredCount} setting${restoredCount === 1 ? "" : "s"} from export.`;
+  const count = Object.keys(data.settings).length;
+  return `Restored ${count} setting${count === 1 ? "" : "s"} from export.`;
 }
 
-/**
- * Opens a file picker and imports the selected JSON file.
- * Shows the result (success or error) in a modal dialog.
- */
 export function handleImport(): void {
-  // Use a hidden file input element to let the user pick the export file.
-  // This works across all targets (desktop and web extension).
   const input = document.createElement("input");
   input.type = "file";
   input.accept = ".json";
@@ -239,25 +156,21 @@ export function handleImport(): void {
   input.click();
 }
 
-/**
- * Exports all settings and saves the file.
- * On desktop, uses the native Tauri save dialog so the user can choose
- * the file name and location. On web, falls back to a blob download.
- * Shows a confirmation message after export.
- */
 export async function handleExport(): Promise<void> {
   const data = await exportSettings();
+  const count = Object.keys(data.settings).length;
+  const message = `Exported ${count} setting${count === 1 ? "" : "s"} to file.`;
 
   // Try the native save dialog first (desktop only).
   const saved = await saveExportDesktop(data);
   if (saved) {
-    showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
+    showResult(message, false);
     return;
   }
 
-  // Fallback: blob download for web or if the dialog was cancelled/failed.
+  // Fallback: blob download for web extension target.
   downloadExport(data);
-  showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
+  showResult(message, false);
 }
 
 /**
