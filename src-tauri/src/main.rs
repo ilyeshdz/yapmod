@@ -5,6 +5,7 @@ use tauri::{
     Manager, WebviewUrl, WebviewWindowBuilder,
     webview::{PageLoadEvent, PermissionKind, PermissionResponse},
 };
+use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_opener::OpenerExt;
 
 mod badge;
@@ -26,6 +27,10 @@ mod window;
 
 fn main() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -165,6 +170,7 @@ fn main() {
             let win = win.build()?;
             window::install_close_handler(&win);
             tray::install(app.handle(), &config);
+            config::manage_autostart(app.handle());
 
             // Apply the effect before showing the window, so the first frame is
             // already transparent instead of flashing an opaque background.

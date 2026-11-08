@@ -45,7 +45,10 @@
     "allow-install-community-plugin",
     "allow-reload-plugin",
     "allow-open-plugins-folder",
-    "allow-remove-plugin"
+    "allow-remove-plugin",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ],
   "remote": {
     "urls": ["https://yapin.gg", "https://www.yapin.gg"]
