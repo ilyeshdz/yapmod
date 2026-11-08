@@ -96,6 +96,11 @@
   display: none !important;
 }
 
+/* Keep the host settings dialog from stretching across very wide screens. */
+.modal.bare.wide:has(.settings-nav [data-yapmod-section]) {
+  max-width: 1040px;
+}
+
 .yapmod-settings-panel .yapmod-settings {
   display: flex;
   flex-direction: column;
@@ -158,6 +163,7 @@
   flex-direction: column;
   gap: 10px;
   margin-bottom: 16px;
+  padding-inline: 2px;
 }
 
 .yapmod-package-toolbar-search {
@@ -167,20 +173,24 @@
 }
 
 .yapmod-package-search {
-  flex: 1 1 auto;
+  flex: 1 1 240px;
   min-width: 0;
+  padding-inline: 12px;
 }
 
 .yapmod-package-filter {
-  flex: 0 0 auto;
+  flex: 1 1 150px;
   width: auto;
-  min-width: 150px;
+  min-width: 130px;
+  max-width: 180px;
+  padding-inline: 10px;
 }
 
 .yapmod-package-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -193,6 +203,7 @@
   .yapmod-package-filter {
     flex: 1 1 100%;
     width: 100%;
+    max-width: none;
   }
 
   .yapmod-package-toolbar-actions .btn {
@@ -266,21 +277,6 @@
 .yapmod-package-card-description {
   font-size: 0.88em;
   line-height: 1.4;
-}
-
-.yapmod-package-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 1px;
-}
-
-.yapmod-package-tag {
-  padding: 3px 6px;
-  border-radius: 5px;
-  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
-  font-size: 0.68em;
-  opacity: 0.78;
 }
 
 .yapmod-package-error {
