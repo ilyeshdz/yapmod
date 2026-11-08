@@ -306,24 +306,25 @@ pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(
 /// they cancelled the dialog.
 #[tauri::command]
 pub async fn save_export_file(app: AppHandle, content: String) -> Result<bool, YapmodError> {
-    let app_clone = app.clone();
-    let selected = tauri::async_runtime::spawn_blocking(move || {
-        app_clone
-            .dialog()
-            .file()
-            .set_title("Save settings export")
-            .set_file_name("yapmod-settings-export.json")
-            .add_filter("JSON", &["json"])
-            .blocking_save_file()
-    })
-    .await
-    .map_err(|e| YapmodError::io(e.to_string()))?;
+    // The dialog API is callback-based and must run on the main thread.
+    // Bridge the callback to an async context using a oneshot channel.
+    let (tx, rx) = tokio::sync::oneshot::channel::<Option<String>>();
 
-    let Some(selected_path) = selected else {
+    app.dialog()
+        .file()
+        .set_title("Save settings export")
+        .set_file_name("yapmod-settings-export.json")
+        .add_filter("JSON", &["json"])
+        .save_file(move |selected| {
+            let path = selected.map(|p| p.to_string());
+            let _ = tx.send(path);
+        });
+
+    let Some(selected_path) = rx.await.map_err(|e| YapmodError::io(e.to_string()))? else {
         return Ok(false);
     };
 
-    let path = PathBuf::from(selected_path.to_string());
+    let path = PathBuf::from(selected_path);
 
     // Ensure the parent directory exists.
     if let Some(parent) = path.parent() {
