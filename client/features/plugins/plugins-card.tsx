@@ -51,7 +51,6 @@ export function PluginCard(props: PluginCardProps): JSX.Element {
       name={manifest.name}
       meta={meta()}
       description={manifest.description ?? "No description provided."}
-      tags={manifest.tags}
       source={props.entry.source}
       sourceNoun="plugin"
       verified={props.entry.verified}
@@ -100,11 +99,6 @@ export function PluginCard(props: PluginCardProps): JSX.Element {
         </label>
       }
     >
-      <Show when={manifest.script}>
-        <p class="yapmod-package-card-meta">
-          Trusted JavaScript plugin — runs in the Yapper page.
-        </p>
-      </Show>
       <Show when={props.entry.installed?.error}>
         <p class="yapmod-package-error">{props.entry.installed?.error}</p>
       </Show>

@@ -1,4 +1,4 @@
-import { For, Show, JSX } from "solid-js";
+import { Show, JSX } from "solid-js";
 import { Indicator } from "./indicator";
 import {
   SourceIndicator,
@@ -9,7 +9,6 @@ export type PackageCardProps = {
   name: string;
   meta?: string | null;
   description?: string | null;
-  tags?: string[];
   source?: PackageSource;
   /** The package kind, used by the source tooltip ("theme" or "plugin"). */
   sourceNoun?: string;
@@ -62,13 +61,6 @@ export function PackageCard(props: PackageCardProps): JSX.Element {
         </Show>
         <Show when={props.description}>
           <p class="yapmod-package-card-description">{props.description}</p>
-        </Show>
-        <Show when={(props.tags?.length ?? 0) > 0}>
-          <div class="yapmod-package-tags">
-            <For each={props.tags}>
-              {(tag) => <span class="yapmod-package-tag">{tag}</span>}
-            </For>
-          </div>
         </Show>
         {props.children}
       </div>

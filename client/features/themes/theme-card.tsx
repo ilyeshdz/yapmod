@@ -65,7 +65,6 @@ export function ThemeCard(props: ThemeCardProps): JSX.Element {
           ? "The app's own palette, typography and spacing."
           : "No description provided.")
       }
-      tags={props.entry.tags}
       source={props.entry.source}
       sourceNoun="theme"
       active={props.active}
