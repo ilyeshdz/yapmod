@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use ts_rs::TS;
 
+use crate::error::YapmodError;
 use crate::{channel::UpdateChannel, http, version::is_newer};
 
 const RELEASES_API: &str = "https://api.github.com/repos/ilyeshdz/yapmod/releases/latest";
@@ -52,26 +53,34 @@ struct NightlyVersion {
     app_version: String,
 }
 
-fn parse_nightly_version(bytes: &[u8]) -> Result<String, String> {
-    let version: NightlyVersion =
-        serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
+fn parse_nightly_version(bytes: &[u8]) -> Result<String, YapmodError> {
+    let version: NightlyVersion = serde_json::from_slice(bytes).map_err(|error| {
+        YapmodError::validation(format!("the nightly version metadata is invalid: {error}"))
+    })?;
     if version.channel != UpdateChannel::Nightly {
-        return Err("the nightly version metadata belongs to another channel".to_string());
+        return Err(YapmodError::validation(
+            "the nightly version metadata belongs to another channel",
+        ));
     }
     if semver::Version::parse(&version.app_version).is_err() {
-        return Err("the nightly version metadata is invalid".to_string());
+        return Err(YapmodError::validation(
+            "the nightly version metadata is invalid",
+        ));
     }
 
     Ok(version.app_version)
 }
 
-async fn latest_stable_release() -> Result<(String, String), String> {
-    let release: GithubRelease =
-        http::fetch_json(RELEASES_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT).await?;
+async fn latest_stable_release() -> Result<(String, String), YapmodError> {
+    let release: GithubRelease = http::fetch_json(RELEASES_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT)
+        .await
+        .map_err(YapmodError::network)?;
 
     let version = release.tag_name.trim_start_matches('v').to_owned();
     if semver::Version::parse(&version).is_err() {
-        return Err("the published stable version is invalid".to_string());
+        return Err(YapmodError::validation(
+            "the published stable version is invalid",
+        ));
     }
 
     let url = release
@@ -81,13 +90,16 @@ async fn latest_stable_release() -> Result<(String, String), String> {
     Ok((version, url))
 }
 
-async fn latest_nightly_version() -> Result<Option<String>, String> {
-    let Some(bytes) = http::fetch(NIGHTLY_RELEASE_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT).await?
+async fn latest_nightly_version() -> Result<Option<String>, YapmodError> {
+    let Some(bytes) = http::fetch(NIGHTLY_RELEASE_API, MAX_RELEASE_SIZE, REQUEST_TIMEOUT)
+        .await
+        .map_err(YapmodError::network)?
     else {
         return Ok(None);
     };
-    let release: GithubRelease =
-        serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+    let release: GithubRelease = serde_json::from_slice(&bytes).map_err(|error| {
+        YapmodError::validation(format!("the nightly release metadata is invalid: {error}"))
+    })?;
 
     let Some(asset) = release
         .assets
@@ -105,9 +117,12 @@ async fn latest_nightly_version() -> Result<Option<String>, String> {
         MAX_VERSION_ASSET_SIZE,
         REQUEST_TIMEOUT,
     )
-    .await?
+    .await
+    .map_err(YapmodError::network)?
     else {
-        return Err("the nightly version metadata is missing".to_string());
+        return Err(YapmodError::not_found(
+            "the nightly version metadata is missing",
+        ));
     };
 
     parse_nightly_version(&bytes).map(Some)
@@ -118,7 +133,7 @@ async fn latest_nightly_version() -> Result<Option<String>, String> {
 /// yapmod never updates itself, so this only tells the user that a newer
 /// version exists and where to get it.
 #[tauri::command]
-pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, String> {
+pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, YapmodError> {
     let current_version = app.package_info().version.to_string();
     let channel = UpdateChannel::active();
 

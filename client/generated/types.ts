@@ -111,3 +111,12 @@ channel: UpdateChannel,
  * Where the user can download the update.
  */
 release_url: string, };
+
+/**
+ * Structured error type returned by Tauri commands.
+ *
+ * Each variant represents a distinct error category so the client can
+ * distinguish between transient failures (network), permanent failures
+ * (validation), and recoverable conditions (already exists).
+ */
+export type YapmodError = { "type": "not_found", message: string, } | { "type": "validation", message: string, } | { "type": "io", message: string, } | { "type": "network", message: string, } | { "type": "already_exists", message: string, } | { "type": "system", message: string, };

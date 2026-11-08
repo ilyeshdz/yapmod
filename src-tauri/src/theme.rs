@@ -12,6 +12,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use ts_rs::TS;
 
+use crate::error::YapmodError;
 use crate::{config::Config, http};
 
 const MANIFEST_FILE: &str = "manifest.json";
@@ -137,8 +138,12 @@ struct ThemeCatalogEntry {
 }
 
 /// The folder the themes live in.
-fn themes_dir(app: &AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    Ok(app.path().app_config_dir()?.join("themes"))
+fn themes_dir(app: &AppHandle) -> Result<PathBuf, YapmodError> {
+    Ok(app
+        .path()
+        .app_config_dir()
+        .map_err(|e| YapmodError::io(e.to_string()))?
+        .join("themes"))
 }
 
 /// A theme id ends up in a path, so it is kept boring on purpose.
@@ -173,26 +178,29 @@ fn is_valid_community_file_name(name: &str) -> bool {
 }
 
 /// Downloads one file from the fixed static theme host with a size limit.
-async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
+async fn fetch_community_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, YapmodError> {
     let url = format!("{COMMUNITY_THEMES_BASE}/{path}");
     http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
-        .map_err(|error| format!("could not download the community theme: {error}"))?
-        .ok_or_else(|| "the community theme file was not found".to_string())
+        .map_err(|error| {
+            YapmodError::network(format!("could not download the community theme: {error}"))
+        })?
+        .ok_or_else(|| YapmodError::not_found("the community theme file was not found"))
 }
 
 /// Loads the static catalog used by the community theme browser.
 #[tauri::command]
-pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
+pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, YapmodError> {
     let bytes = fetch_community_asset("index.json", THEME_RULES.max_catalog_bytes).await?;
-    let catalog: ThemeCatalog = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("the community theme catalog is invalid: {error}"))?;
+    let catalog: ThemeCatalog = serde_json::from_slice(&bytes).map_err(|error| {
+        YapmodError::validation(format!("the community theme catalog is invalid: {error}"))
+    })?;
 
     if catalog.api > THEME_RULES.theme_api {
-        return Err(format!(
+        return Err(YapmodError::validation(format!(
             "the community catalog needs theme API {}, this version understands {}",
             catalog.api, THEME_RULES.theme_api
-        ));
+        )));
     }
 
     let mut ids = HashSet::new();
@@ -200,9 +208,9 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
 
     for theme in catalog.themes {
         if !is_valid_id(&theme.id) || !ids.insert(theme.id.clone()) {
-            return Err(
-                "the community theme catalog contains an invalid or duplicate id".to_string(),
-            );
+            return Err(YapmodError::validation(
+                "the community theme catalog contains an invalid or duplicate id",
+            ));
         }
 
         if theme.api > THEME_RULES.theme_api {
@@ -210,10 +218,10 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
         }
 
         if theme.name.trim().is_empty() {
-            return Err(format!(
+            return Err(YapmodError::validation(format!(
                 "community theme `{}` has an invalid name",
                 theme.id
-            ));
+            )));
         }
 
         themes.push(CommunityTheme {
@@ -240,59 +248,71 @@ pub async fn list_community_themes() -> Result<Vec<CommunityTheme>, String> {
 
 /// Downloads and installs one theme from the static community catalog.
 #[tauri::command]
-pub async fn install_community_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
+pub async fn install_community_theme(
+    app: AppHandle,
+    id: String,
+) -> Result<ThemeBundle, YapmodError> {
     if !is_valid_id(&id) {
-        return Err("that is not a valid theme id".to_string());
+        return Err(YapmodError::validation("that is not a valid theme id"));
     }
 
     let manifest_path = format!("themes/{id}/{MANIFEST_FILE}");
     let manifest_bytes =
         fetch_community_asset(&manifest_path, THEME_RULES.max_manifest_bytes).await?;
-    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|error| format!("the community theme manifest is invalid: {error}"))?;
+    let manifest: ThemeManifest = serde_json::from_slice(&manifest_bytes).map_err(|error| {
+        YapmodError::validation(format!("the community theme manifest is invalid: {error}"))
+    })?;
 
     if manifest.id != id {
-        return Err("the downloaded theme id does not match the catalog".to_string());
+        return Err(YapmodError::validation(
+            "the downloaded theme id does not match the catalog",
+        ));
     }
 
     if manifest.name.trim().is_empty() {
-        return Err("the community theme has an invalid name".to_string());
+        return Err(YapmodError::validation(
+            "the community theme has an invalid name",
+        ));
     }
 
     if let Some(api) = manifest.api
         && api > THEME_RULES.theme_api
     {
-        return Err(format!(
+        return Err(YapmodError::validation(format!(
             "the theme was written for theme API {api}, this version understands {}",
             THEME_RULES.theme_api
-        ));
+        )));
     }
 
     let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
 
     if !is_valid_community_file_name(css_file) {
-        return Err("the theme manifest points at an unusable stylesheet".to_string());
+        return Err(YapmodError::validation(
+            "the theme manifest points at an unusable stylesheet",
+        ));
     }
 
     let css_path = format!("themes/{id}/{css_file}");
     let css = String::from_utf8(fetch_community_asset(&css_path, THEME_RULES.max_css_bytes).await?)
-        .map_err(|_| "the community theme stylesheet is not valid UTF-8".to_string())?;
+        .map_err(|_| {
+            YapmodError::validation("the community theme stylesheet is not valid UTF-8")
+        })?;
 
-    let target = themes_dir(&app)
-        .map_err(|error| error.to_string())?
-        .join(&id);
+    let target = themes_dir(&app)?.join(&id);
 
     if target.exists() {
-        return Err("a theme with this id is already installed; remove it first".to_string());
+        return Err(YapmodError::already_exists(
+            "a theme with this id is already installed; remove it first",
+        ));
     }
 
     install_theme_folder(&target, |target| {
-        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)?;
-        fs::write(target.join(css_file), css)?;
+        fs::write(target.join(MANIFEST_FILE), &manifest_bytes)
+            .map_err(|e| YapmodError::io(e.to_string()))?;
+        fs::write(target.join(css_file), css).map_err(|e| YapmodError::io(e.to_string()))?;
 
         Ok(())
     })
-    .map_err(|error| error.to_string())
 }
 
 /// The mode a theme asks for, with everything unknown treated as dark.
@@ -338,24 +358,29 @@ fn read_bundle(folder: &Path) -> Option<ThemeBundle> {
 }
 
 /// Copies a folder, so a theme can be installed from anywhere.
-fn copy_folder(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    fs::create_dir_all(target)?;
+fn copy_folder(source: &Path, target: &Path) -> Result<(), YapmodError> {
+    fs::create_dir_all(target).map_err(|e| YapmodError::io(e.to_string()))?;
 
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
+    for entry in fs::read_dir(source).map_err(|e| YapmodError::io(e.to_string()))? {
+        let entry = entry.map_err(|e| YapmodError::io(e.to_string()))?;
         let path = entry.path();
         let destination = target.join(entry.file_name());
 
-        if fs::symlink_metadata(&path)?.file_type().is_symlink() {
-            return Err(
-                format!("theme folder contains a symbolic link: {}", path.display()).into(),
-            );
+        if fs::symlink_metadata(&path)
+            .map_err(|e| YapmodError::io(e.to_string()))?
+            .file_type()
+            .is_symlink()
+        {
+            return Err(YapmodError::validation(format!(
+                "theme folder contains a symbolic link: {}",
+                path.display()
+            )));
         }
 
         if path.is_dir() {
             copy_folder(&path, &destination)?;
         } else {
-            fs::copy(&path, &destination)?;
+            fs::copy(&path, &destination).map_err(|e| YapmodError::io(e.to_string()))?;
         }
     }
 
@@ -366,21 +391,18 @@ fn copy_folder(source: &Path, target: &Path) -> Result<(), Box<dyn std::error::E
 /// if copying, writing, or reading the theme back fails.
 fn install_theme_folder(
     target: &Path,
-    populate: impl FnOnce(&Path) -> Result<(), Box<dyn std::error::Error>>,
-) -> Result<ThemeBundle, Box<dyn std::error::Error>> {
+    populate: impl FnOnce(&Path) -> Result<(), YapmodError>,
+) -> Result<ThemeBundle, YapmodError> {
     let parent = target
         .parent()
-        .ok_or_else(|| std::io::Error::other("the theme folder has no parent"))?;
-    fs::create_dir_all(parent)?;
-    fs::create_dir(target)?;
+        .ok_or_else(|| YapmodError::io("the theme folder has no parent"))?;
+    fs::create_dir_all(parent).map_err(|e| YapmodError::io(e.to_string()))?;
+    fs::create_dir(target).map_err(|e| YapmodError::io(e.to_string()))?;
 
     let install_result = (|| {
         populate(target)?;
-        read_bundle(target).ok_or_else(|| {
-            Box::<dyn std::error::Error>::from(std::io::Error::other(
-                "the theme could not be read back",
-            ))
-        })
+        read_bundle(target)
+            .ok_or_else(|| YapmodError::io("the theme could not be read back".to_string()))
     })();
 
     if install_result.is_err() {
@@ -440,25 +462,25 @@ pub fn active_theme(app: &AppHandle, config: &Config) -> Option<ThemeBundle> {
 /// Reads an installed theme again so local edits can be picked up without
 /// reinstalling. The id is validated before it is joined into a path.
 #[tauri::command]
-pub fn reload_theme(app: AppHandle, id: String) -> Result<ThemeBundle, String> {
+pub fn reload_theme(app: AppHandle, id: String) -> Result<ThemeBundle, YapmodError> {
     if !is_valid_id(&id) {
-        return Err("that is not a valid theme id".to_string());
+        return Err(YapmodError::validation("that is not a valid theme id"));
     }
-    let folder = themes_dir(&app)
-        .map_err(|error| error.to_string())?
-        .join(&id);
-    let bundle =
-        read_bundle(&folder).ok_or_else(|| "the theme files could not be read".to_string())?;
+    let folder = themes_dir(&app)?.join(&id);
+    let bundle = read_bundle(&folder)
+        .ok_or_else(|| YapmodError::not_found("the theme files could not be read"))?;
     if bundle.id != id {
-        return Err("the theme folder declares a different id".to_string());
+        return Err(YapmodError::validation(
+            "the theme folder declares a different id",
+        ));
     }
     Ok(bundle)
 }
 
 /// Every theme that is installed.
 #[tauri::command]
-pub fn list_themes(app: AppHandle) -> Result<Vec<ThemeBundle>, String> {
-    let folder = themes_dir(&app).map_err(|error| error.to_string())?;
+pub fn list_themes(app: AppHandle) -> Result<Vec<ThemeBundle>, YapmodError> {
+    let folder = themes_dir(&app)?;
     let mut themes = Vec::new();
 
     let entries = match fs::read_dir(&folder) {
@@ -490,24 +512,24 @@ pub fn list_themes(app: AppHandle) -> Result<Vec<ThemeBundle>, String> {
 
 /// The folder the themes live in, so the user can put themes there.
 #[tauri::command]
-pub fn themes_folder(app: AppHandle) -> Result<String, String> {
-    let folder = themes_dir(&app).map_err(|error| error.to_string())?;
+pub fn themes_folder(app: AppHandle) -> Result<String, YapmodError> {
+    let folder = themes_dir(&app)?;
 
-    fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
 
     Ok(folder.to_string_lossy().to_string())
 }
 
 /// Opens the theme folder in the file manager.
 #[tauri::command]
-pub fn open_themes_folder(app: AppHandle) -> Result<(), String> {
-    let folder = themes_dir(&app).map_err(|error| error.to_string())?;
+pub fn open_themes_folder(app: AppHandle) -> Result<(), YapmodError> {
+    let folder = themes_dir(&app)?;
 
-    fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
 
     app.opener()
         .open_path(folder.to_string_lossy().to_string(), None::<&str>)
-        .map_err(|error| error.to_string())
+        .map_err(|error| YapmodError::system(error.to_string()))
 }
 
 /// Opens the folder picker, so the user can choose a theme to install.
@@ -515,10 +537,10 @@ pub fn open_themes_folder(app: AppHandle) -> Result<(), String> {
 /// The picker starts in the themes folder, and returns nothing when the
 /// user closes it.
 #[tauri::command]
-pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, String> {
-    let folder = themes_dir(&app).map_err(|error| error.to_string())?;
+pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, YapmodError> {
+    let folder = themes_dir(&app)?;
 
-    fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
 
     let selected = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
@@ -529,104 +551,109 @@ pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, String>
             .map(|path| path.to_string())
     })
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(|e| YapmodError::io(e.to_string()))?;
 
     let canonical = selected
         .as_deref()
         .and_then(|path| expand_home(path).canonicalize().ok());
     *PICKED_THEME_FOLDER
         .lock()
-        .map_err(|_| "theme folder selection is unavailable".to_string())? = canonical;
+        .map_err(|_| YapmodError::system("theme folder selection is unavailable"))? = canonical;
 
     Ok(selected)
 }
 
 /// Installs a theme from a folder somewhere else on the disk.
 #[tauri::command]
-pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, String> {
+pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, YapmodError> {
     let source = expand_home(&source)
         .canonicalize()
-        .map_err(|error| error.to_string())?;
+        .map_err(|e| YapmodError::io(e.to_string()))?;
 
     let picked = PICKED_THEME_FOLDER
         .lock()
-        .map_err(|_| "theme folder selection is unavailable".to_string())?
+        .map_err(|_| YapmodError::system("theme folder selection is unavailable"))?
         .take()
-        .ok_or_else(|| "choose a theme folder using the native picker first".to_string())?;
+        .ok_or_else(|| {
+            YapmodError::validation("choose a theme folder using the native picker first")
+        })?;
 
     if source != picked {
-        return Err("the selected theme folder does not match the native picker".to_string());
-    }
-
-    if !source.is_dir() {
-        return Err(format!(
-            "`{}` is not a folder that holds a theme",
-            source.to_string_lossy()
+        return Err(YapmodError::validation(
+            "the selected theme folder does not match the native picker",
         ));
     }
 
+    if !source.is_dir() {
+        return Err(YapmodError::validation(format!(
+            "`{}` is not a folder that holds a theme",
+            source.to_string_lossy()
+        )));
+    }
+
     let contents = fs::read_to_string(source.join(MANIFEST_FILE))
-        .map_err(|_| "the folder has no manifest.json".to_string())?;
+        .map_err(|_| YapmodError::not_found("the folder has no manifest.json"))?;
 
     let manifest: ThemeManifest = serde_json::from_str(&contents)
-        .map_err(|error| format!("the manifest is not valid: {error}"))?;
+        .map_err(|error| YapmodError::validation(format!("the manifest is not valid: {error}")))?;
 
     if !is_valid_id(&manifest.id) {
-        return Err("the manifest has no usable id".to_string());
+        return Err(YapmodError::validation("the manifest has no usable id"));
     }
 
     if let Some(api) = manifest.api
         && api > THEME_RULES.theme_api
     {
-        return Err(format!(
+        return Err(YapmodError::validation(format!(
             "the theme was written for theme API {api}, this version understands {}",
             THEME_RULES.theme_api
-        ));
+        )));
     }
 
     let css_file = manifest.css.as_deref().unwrap_or(DEFAULT_CSS_FILE);
 
     if !is_valid_file_name(css_file) {
-        return Err("the manifest points at an unusable stylesheet".to_string());
+        return Err(YapmodError::validation(
+            "the manifest points at an unusable stylesheet",
+        ));
     }
 
     if !source.join(css_file).is_file() {
-        return Err(format!("the folder has no `{css_file}`"));
+        return Err(YapmodError::not_found(format!(
+            "the folder has no `{css_file}`"
+        )));
     }
 
-    let target = themes_dir(&app)
-        .map_err(|error| error.to_string())?
-        .join(&manifest.id);
+    let target = themes_dir(&app)?.join(&manifest.id);
 
     if target.exists() {
-        return Err("a theme with this id is already installed; remove it first".to_string());
+        return Err(YapmodError::already_exists(
+            "a theme with this id is already installed; remove it first",
+        ));
     }
 
     install_theme_folder(&target, |target| copy_folder(&source, target))
-        .map_err(|error| error.to_string())
 }
 
 /// Removes an installed theme.
 #[tauri::command]
-pub fn remove_theme(app: AppHandle, id: String) -> Result<(), String> {
+pub fn remove_theme(app: AppHandle, id: String) -> Result<(), YapmodError> {
     if !is_valid_id(&id) {
-        return Err("that is not a valid theme id".to_string());
+        return Err(YapmodError::validation("that is not a valid theme id"));
     }
 
-    let folder = themes_dir(&app)
-        .map_err(|error| error.to_string())?
-        .join(&id);
+    let folder = themes_dir(&app)?.join(&id);
 
     if folder.exists() {
-        fs::remove_dir_all(&folder).map_err(|error| error.to_string())?;
+        fs::remove_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
     }
 
     // A removed theme cannot stay selected.
-    let mut config = Config::load(&app).map_err(|error| error.to_string())?;
+    let mut config = Config::load(&app).map_err(|e| YapmodError::io(e.to_string()))?;
 
     if config.setting_str("theme_id") == Some(id.as_str()) {
         config.settings.remove("theme_id");
-        Config::save(&app, &config).map_err(|error| error.to_string())?;
+        Config::save(&app, &config).map_err(|e| YapmodError::io(e.to_string()))?;
     }
 
     Ok(())

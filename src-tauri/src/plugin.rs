@@ -11,6 +11,7 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+use crate::error::YapmodError;
 use crate::http;
 
 const MANIFEST_FILE: &str = "manifest.json";
@@ -168,11 +169,11 @@ fn default_stylesheet() -> String {
     CSS_FILE.to_string()
 }
 
-fn plugins_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn plugins_dir(app: &AppHandle) -> Result<PathBuf, YapmodError> {
     app.path()
         .app_config_dir()
         .map(|path| path.join("plugins"))
-        .map_err(|error| error.to_string())
+        .map_err(|e| YapmodError::io(e.to_string()))
 }
 
 fn valid_id(id: &str) -> bool {
@@ -187,28 +188,34 @@ fn valid_id(id: &str) -> bool {
             .all(|character| character.is_ascii_alphanumeric() || "-_".contains(character))
 }
 
-fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
+fn validate_manifest(manifest: &PluginManifest) -> Result<(), YapmodError> {
     if !valid_id(&manifest.id) {
-        return Err("the plugin id must be 1–24 letters, numbers, underscores, or hyphens".into());
-    }
-    if manifest.name.trim().is_empty() {
-        return Err("the plugin name is empty".into());
-    }
-    if manifest.api != PLUGIN_RULES.plugin_api {
-        return Err(format!(
-            "the plugin requires API {}, this version supports API {}",
-            manifest.api, PLUGIN_RULES.plugin_api
+        return Err(YapmodError::validation(
+            "the plugin id must be 1–24 letters, numbers, underscores, or hyphens",
         ));
     }
+    if manifest.name.trim().is_empty() {
+        return Err(YapmodError::validation("the plugin name is empty"));
+    }
+    if manifest.api != PLUGIN_RULES.plugin_api {
+        return Err(YapmodError::validation(format!(
+            "the plugin requires API {}, this version supports API {}",
+            manifest.api, PLUGIN_RULES.plugin_api
+        )));
+    }
     if manifest.stylesheet != CSS_FILE {
-        return Err(format!("the plugin stylesheet must be named {CSS_FILE}"));
+        return Err(YapmodError::validation(format!(
+            "the plugin stylesheet must be named {CSS_FILE}"
+        )));
     }
     if manifest
         .script
         .as_deref()
         .is_some_and(|script| script != SCRIPT_FILE)
     {
-        return Err(format!("the plugin script must be named {SCRIPT_FILE}"));
+        return Err(YapmodError::validation(format!(
+            "the plugin script must be named {SCRIPT_FILE}"
+        )));
     }
     let mut setting_ids = HashSet::new();
     for setting in &manifest.settings {
@@ -217,25 +224,31 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
             || setting.label.trim().is_empty()
             || !valid_setting_type(&setting.setting_type)
         {
-            return Err("the plugin contains an invalid or duplicate setting".into());
+            return Err(YapmodError::validation(
+                "the plugin contains an invalid or duplicate setting",
+            ));
         }
         // Validate default value matches the setting type
         match setting.setting_type.as_str() {
             "toggle" => {
                 if !setting.default.is_boolean() {
-                    return Err("toggle settings must have a boolean default".into());
+                    return Err(YapmodError::validation(
+                        "toggle settings must have a boolean default",
+                    ));
                 }
             }
             "text" | "file" | "color" => {
                 if !setting.default.is_string() && !setting.default.is_null() {
-                    return Err(format!(
+                    return Err(YapmodError::validation(format!(
                         "{} settings must have a string or null default",
                         setting.setting_type
-                    ));
+                    )));
                 }
             }
             _ => {
-                return Err("the plugin contains an invalid or duplicate setting".into());
+                return Err(YapmodError::validation(
+                    "the plugin contains an invalid or duplicate setting",
+                ));
             }
         }
     }
@@ -243,39 +256,46 @@ fn validate_manifest(manifest: &PluginManifest) -> Result<(), String> {
 }
 
 /// Rejects stylesheets that exceed the configured size limit.
-fn validate_css(css: &str) -> Result<(), String> {
+fn validate_css(css: &str) -> Result<(), YapmodError> {
     if css.len() > PLUGIN_RULES.max_css_bytes {
-        return Err("the plugin stylesheet is larger than the allowed size".into());
+        return Err(YapmodError::validation(
+            "the plugin stylesheet is larger than the allowed size",
+        ));
     }
     Ok(())
 }
 
-fn read_regular_file(path: &Path, limit: usize, label: &str) -> Result<Vec<u8>, String> {
-    let metadata = fs::symlink_metadata(path).map_err(|_| format!("the plugin has no {label}"))?;
+fn read_regular_file(path: &Path, limit: usize, label: &str) -> Result<Vec<u8>, YapmodError> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|_| YapmodError::not_found(format!("the plugin has no {label}")))?;
     if !metadata.is_file() || metadata.file_type().is_symlink() {
-        return Err(format!("the plugin {label} is not a regular file"));
+        return Err(YapmodError::validation(format!(
+            "the plugin {label} is not a regular file"
+        )));
     }
     if metadata.len() > limit as u64 {
-        return Err(format!(
+        return Err(YapmodError::validation(format!(
             "the plugin {label} is larger than the allowed size"
-        ));
+        )));
     }
-    fs::read(path).map_err(|error| format!("could not read the plugin {label}: {error}"))
+    fs::read(path)
+        .map_err(|error| YapmodError::io(format!("could not read the plugin {label}: {error}")))
 }
 
-fn read_manifest(folder: &Path) -> Result<(PluginManifest, Vec<u8>), String> {
+fn read_manifest(folder: &Path) -> Result<(PluginManifest, Vec<u8>), YapmodError> {
     let bytes = read_regular_file(
         &folder.join(MANIFEST_FILE),
         PLUGIN_RULES.max_manifest_bytes,
         MANIFEST_FILE,
     )?;
-    let manifest: PluginManifest = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("the plugin manifest is invalid: {error}"))?;
+    let manifest: PluginManifest = serde_json::from_slice(&bytes).map_err(|error| {
+        YapmodError::validation(format!("the plugin manifest is invalid: {error}"))
+    })?;
     validate_manifest(&manifest)?;
     Ok((manifest, bytes))
 }
 
-fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
+fn read_bundle(folder: &Path) -> Result<PluginBundle, YapmodError> {
     let (manifest, _) = read_manifest(folder)?;
     let css_bytes = read_regular_file(
         &folder.join(&manifest.stylesheet),
@@ -283,7 +303,7 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
         &manifest.stylesheet,
     )?;
     let css = String::from_utf8(css_bytes)
-        .map_err(|_| "the plugin stylesheet is not valid UTF-8".to_string())?;
+        .map_err(|_| YapmodError::validation("the plugin stylesheet is not valid UTF-8"))?;
     validate_css(&css)?;
     let script = match manifest.script.as_deref() {
         Some(script_file) => Some(
@@ -292,7 +312,7 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
                 PLUGIN_RULES.max_script_bytes,
                 script_file,
             )?)
-            .map_err(|_| "the plugin script is not valid UTF-8".to_string())?,
+            .map_err(|_| YapmodError::validation("the plugin script is not valid UTF-8"))?,
         ),
         None => None,
     };
@@ -304,52 +324,66 @@ fn read_bundle(folder: &Path) -> Result<PluginBundle, String> {
     })
 }
 
-async fn fetch_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
+async fn fetch_asset(path: &str, max_bytes: usize) -> Result<Vec<u8>, YapmodError> {
     let url = format!("{COMMUNITY_PLUGINS_BASE}/{path}");
     http::fetch(&url, max_bytes, Duration::from_secs(20))
         .await
-        .map_err(|error| format!("could not download the community plugin: {error}"))?
-        .ok_or_else(|| "the community plugin file was not found".to_string())
+        .map_err(|error| {
+            YapmodError::network(format!("could not download the community plugin: {error}"))
+        })?
+        .ok_or_else(|| YapmodError::not_found("the community plugin file was not found"))
 }
 
-async fn community_catalog() -> Result<PluginCatalog, String> {
+async fn community_catalog() -> Result<PluginCatalog, YapmodError> {
     let bytes = fetch_asset("index.json", PLUGIN_RULES.max_catalog_bytes).await?;
-    let catalog: PluginCatalog = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("the community plugin catalog is invalid: {error}"))?;
+    let catalog: PluginCatalog = serde_json::from_slice(&bytes).map_err(|error| {
+        YapmodError::validation(format!("the community plugin catalog is invalid: {error}"))
+    })?;
     if catalog.api > PLUGIN_RULES.plugin_api {
-        return Err("the community plugin catalog needs a newer version of Yapmod".into());
+        return Err(YapmodError::validation(
+            "the community plugin catalog needs a newer version of Yapmod",
+        ));
     }
     let mut ids = HashSet::new();
     for plugin in &catalog.plugins {
         if !valid_id(&plugin.manifest.id) || !ids.insert(&plugin.manifest.id) {
-            return Err("the community plugin catalog contains an invalid or duplicate id".into());
+            return Err(YapmodError::validation(
+                "the community plugin catalog contains an invalid or duplicate id",
+            ));
         }
     }
     Ok(catalog)
 }
 
-async fn fetch_community_manifest(id: &str) -> Result<(PluginManifest, Vec<u8>, bool), String> {
+async fn fetch_community_manifest(
+    id: &str,
+) -> Result<(PluginManifest, Vec<u8>, bool), YapmodError> {
     if !valid_id(id) {
-        return Err("that is not a valid plugin id".into());
+        return Err(YapmodError::validation("that is not a valid plugin id"));
     }
     let catalog = community_catalog().await?;
     let entry = catalog
         .plugins
         .iter()
         .find(|entry| entry.manifest.id == id)
-        .ok_or_else(|| "that plugin is not in the community catalog".to_string())?;
+        .ok_or_else(|| YapmodError::not_found("that plugin is not in the community catalog"))?;
     if entry.manifest.api != PLUGIN_RULES.plugin_api {
-        return Err("that plugin requires a newer version of Yapmod".into());
+        return Err(YapmodError::validation(
+            "that plugin requires a newer version of Yapmod",
+        ));
     }
     let bytes = fetch_asset(
         &format!("plugins/{id}/{MANIFEST_FILE}"),
         PLUGIN_RULES.max_manifest_bytes,
     )
     .await?;
-    let manifest: PluginManifest = serde_json::from_slice(&bytes)
-        .map_err(|error| format!("the community plugin manifest is invalid: {error}"))?;
+    let manifest: PluginManifest = serde_json::from_slice(&bytes).map_err(|error| {
+        YapmodError::validation(format!("the community plugin manifest is invalid: {error}"))
+    })?;
     if manifest.id != id || manifest != entry.manifest {
-        return Err("the community plugin id does not match the catalog".into());
+        return Err(YapmodError::validation(
+            "the community plugin id does not match the catalog",
+        ));
     }
     validate_manifest(&manifest)?;
     Ok((manifest, bytes, entry.verified))
@@ -361,26 +395,31 @@ fn install_bundle(
     css: &[u8],
     script: Option<&[u8]>,
     verified: bool,
-) -> Result<PluginBundle, String> {
+) -> Result<PluginBundle, YapmodError> {
     let parent = target
         .parent()
-        .ok_or_else(|| "the plugin folder has no parent".to_string())?;
-    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        .ok_or_else(|| YapmodError::io("the plugin folder has no parent"))?;
+    fs::create_dir_all(parent).map_err(|e| YapmodError::io(e.to_string()))?;
     fs::create_dir(target).map_err(|error| {
         if error.kind() == std::io::ErrorKind::AlreadyExists {
-            "a plugin with this id is already installed; remove it first".to_string()
+            YapmodError::already_exists(
+                "a plugin with this id is already installed; remove it first",
+            )
         } else {
-            error.to_string()
+            YapmodError::io(error.to_string())
         }
     })?;
     let result = (|| {
-        fs::write(target.join(MANIFEST_FILE), manifest_bytes).map_err(|error| error.to_string())?;
-        fs::write(target.join(CSS_FILE), css).map_err(|error| error.to_string())?;
+        fs::write(target.join(MANIFEST_FILE), manifest_bytes)
+            .map_err(|e| YapmodError::io(e.to_string()))?;
+        fs::write(target.join(CSS_FILE), css).map_err(|e| YapmodError::io(e.to_string()))?;
         if let Some(script) = script {
-            fs::write(target.join(SCRIPT_FILE), script).map_err(|error| error.to_string())?;
+            fs::write(target.join(SCRIPT_FILE), script)
+                .map_err(|e| YapmodError::io(e.to_string()))?;
         }
         if verified {
-            fs::write(target.join(VERIFIED_FILE), b"1").map_err(|error| error.to_string())?;
+            fs::write(target.join(VERIFIED_FILE), b"1")
+                .map_err(|e| YapmodError::io(e.to_string()))?;
         }
         read_bundle(target)
     })();
@@ -425,7 +464,7 @@ fn extensions_for_accept(accept: Option<&str>) -> Option<Vec<&'static str>> {
 pub async fn pick_plugin_file(
     app: AppHandle,
     accept: Option<String>,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>, YapmodError> {
     let extensions = extensions_for_accept(accept.as_deref());
     let selected = tauri::async_runtime::spawn_blocking(move || {
         let dialog = app.dialog().file().set_title("Select a file");
@@ -437,21 +476,25 @@ pub async fn pick_plugin_file(
         }
     })
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(|e| YapmodError::io(e.to_string()))?;
     let Some(path) = selected else {
         return Ok(None);
     };
     let path = PathBuf::from(path.to_string());
     if path.is_symlink() {
-        return Err(format!(
+        return Err(YapmodError::validation(format!(
             "Symbolic links are not allowed: {}",
             path.display()
-        ));
+        )));
     }
     if !path.is_file() {
-        return Err(format!("Not a file: {}", path.display()));
+        return Err(YapmodError::validation(format!(
+            "Not a file: {}",
+            path.display()
+        )));
     }
-    let bytes = fs::read(&path).map_err(|error| format!("Failed to read file: {}", error))?;
+    let bytes = fs::read(&path)
+        .map_err(|error| YapmodError::io(format!("Failed to read file: {error}")))?;
 
     // Detect MIME type from extension
     let ext = path
@@ -465,12 +508,12 @@ pub async fn pick_plugin_file(
 
 /// Opens a native folder picker and returns validated metadata for consent.
 #[tauri::command]
-pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>, String> {
+pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>, YapmodError> {
     *PICKED_PLUGIN_FOLDER
         .lock()
-        .map_err(|_| "plugin folder selection is unavailable".to_string())? = None;
+        .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))? = None;
     let folder = plugins_dir(&app)?;
-    fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
     let selected = tauri::async_runtime::spawn_blocking(move || {
         app.dialog()
             .file()
@@ -480,24 +523,29 @@ pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>
             .map(|path| PathBuf::from(path.to_string()))
     })
     .await
-    .map_err(|error| error.to_string())?;
+    .map_err(|e| YapmodError::io(e.to_string()))?;
     let Some(selected) = selected else {
         *PICKED_PLUGIN_FOLDER
             .lock()
-            .map_err(|_| "plugin folder selection is unavailable".to_string())? = None;
+            .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))? = None;
         return Ok(None);
     };
-    let selected = selected
-        .canonicalize()
-        .map_err(|error| format!("could not open the selected plugin folder: {error}"))?;
+    let selected = selected.canonicalize().map_err(|error| {
+        YapmodError::io(format!(
+            "could not open the selected plugin folder: {error}"
+        ))
+    })?;
     if !selected.is_dir() {
-        return Err("the selected plugin is not a folder".into());
+        return Err(YapmodError::validation(
+            "the selected plugin is not a folder",
+        ));
     }
     let (manifest, _) = read_manifest(&selected)?;
     let _ = read_bundle(&selected)?;
     *PICKED_PLUGIN_FOLDER
         .lock()
-        .map_err(|_| "plugin folder selection is unavailable".to_string())? = Some(selected);
+        .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))? =
+        Some(selected);
     Ok(Some(manifest))
 }
 
@@ -507,18 +555,24 @@ pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>
 pub fn install_picked_plugin(
     app: AppHandle,
     expected_manifest: PluginManifest,
-) -> Result<PluginBundle, String> {
+) -> Result<PluginBundle, YapmodError> {
     let selected = PICKED_PLUGIN_FOLDER
         .lock()
-        .map_err(|_| "plugin folder selection is unavailable".to_string())?
+        .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))?
         .take()
-        .ok_or_else(|| "choose a plugin folder with the native picker first".to_string())?;
-    let selected = selected
-        .canonicalize()
-        .map_err(|error| format!("the selected plugin folder is unavailable: {error}"))?;
+        .ok_or_else(|| {
+            YapmodError::validation("choose a plugin folder with the native picker first")
+        })?;
+    let selected = selected.canonicalize().map_err(|error| {
+        YapmodError::io(format!(
+            "the selected plugin folder is unavailable: {error}"
+        ))
+    })?;
     let (manifest, manifest_bytes) = read_manifest(&selected)?;
     if manifest != expected_manifest {
-        return Err("the plugin changed after you reviewed its import warning".into());
+        return Err(YapmodError::validation(
+            "the plugin changed after you reviewed its import warning",
+        ));
     }
     let bundle = read_bundle(&selected)?;
     let css_bytes = bundle.css.as_bytes();
@@ -534,38 +588,40 @@ pub fn install_picked_plugin(
 /// Reads an installed plugin again so local edits can be picked up without
 /// reinstalling. The folder id is validated before it is joined into a path.
 #[tauri::command]
-pub fn reload_plugin(app: AppHandle, id: String) -> Result<PluginBundle, String> {
+pub fn reload_plugin(app: AppHandle, id: String) -> Result<PluginBundle, YapmodError> {
     if !valid_id(&id) {
-        return Err("that is not a valid plugin id".into());
+        return Err(YapmodError::validation("that is not a valid plugin id"));
     }
     let bundle = read_bundle(&plugins_dir(&app)?.join(&id))?;
     if bundle.manifest.id != id {
-        return Err("the plugin folder declares a different id".into());
+        return Err(YapmodError::validation(
+            "the plugin folder declares a different id",
+        ));
     }
     Ok(bundle)
 }
 
 #[tauri::command]
-pub fn list_plugins(app: AppHandle) -> Result<Vec<PluginBundle>, String> {
+pub fn list_plugins(app: AppHandle) -> Result<Vec<PluginBundle>, YapmodError> {
     let folder = plugins_dir(&app)?;
     let entries = match fs::read_dir(&folder) {
         Ok(entries) => entries,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(error.to_string()),
+        Err(error) => return Err(YapmodError::io(error.to_string())),
     };
     let mut plugins = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|error| error.to_string())?;
+        let entry = entry.map_err(|e| YapmodError::io(e.to_string()))?;
         if entry
             .file_type()
-            .map_err(|error| error.to_string())?
+            .map_err(|e| YapmodError::io(e.to_string()))?
             .is_symlink()
         {
             continue;
         }
         if !entry
             .file_type()
-            .map_err(|error| error.to_string())?
+            .map_err(|e| YapmodError::io(e.to_string()))?
             .is_dir()
         {
             continue;
@@ -584,7 +640,7 @@ pub fn list_plugins(app: AppHandle) -> Result<Vec<PluginBundle>, String> {
 }
 
 #[tauri::command]
-pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, String> {
+pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, YapmodError> {
     let catalog = community_catalog().await?;
     let mut result = Vec::new();
     for entry in catalog.plugins {
@@ -601,7 +657,7 @@ pub async fn list_community_plugins() -> Result<Vec<CommunityPlugin>, String> {
 }
 
 #[tauri::command]
-pub async fn preview_community_plugin(id: String) -> Result<PluginManifest, String> {
+pub async fn preview_community_plugin(id: String) -> Result<PluginManifest, YapmodError> {
     fetch_community_manifest(&id)
         .await
         .map(|(manifest, _, _)| manifest)
@@ -612,18 +668,21 @@ pub async fn install_community_plugin(
     app: AppHandle,
     id: String,
     expected_manifest: PluginManifest,
-) -> Result<PluginBundle, String> {
+) -> Result<PluginBundle, YapmodError> {
     let (manifest, manifest_bytes, verified) = fetch_community_manifest(&id).await?;
     if manifest != expected_manifest {
-        return Err("the community plugin changed after you reviewed its import warning".into());
+        return Err(YapmodError::validation(
+            "the community plugin changed after you reviewed its import warning",
+        ));
     }
     let css = fetch_asset(
         &format!("plugins/{id}/{}", manifest.stylesheet),
         PLUGIN_RULES.max_css_bytes,
     )
     .await?;
-    let css_text = String::from_utf8(css.clone())
-        .map_err(|_| "the community plugin stylesheet is not valid UTF-8".to_string())?;
+    let css_text = String::from_utf8(css.clone()).map_err(|_| {
+        YapmodError::validation("the community plugin stylesheet is not valid UTF-8")
+    })?;
     validate_css(&css_text)?;
     let script = match manifest.script.as_deref() {
         Some(script_file) => Some(
@@ -643,33 +702,37 @@ pub async fn install_community_plugin(
         verified,
     )?;
     if installed.manifest != expected_manifest {
-        return Err("the installed plugin differs from the reviewed manifest".into());
+        return Err(YapmodError::validation(
+            "the installed plugin differs from the reviewed manifest",
+        ));
     }
     Ok(installed)
 }
 
 #[tauri::command]
-pub fn open_plugins_folder(app: AppHandle) -> Result<(), String> {
+pub fn open_plugins_folder(app: AppHandle) -> Result<(), YapmodError> {
     let folder = plugins_dir(&app)?;
-    fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
     app.opener()
         .open_path(folder.to_string_lossy().to_string(), None::<&str>)
-        .map_err(|error| error.to_string())
+        .map_err(|error| YapmodError::system(error.to_string()))
 }
 
 #[tauri::command]
-pub fn remove_plugin(app: AppHandle, id: String) -> Result<(), String> {
+pub fn remove_plugin(app: AppHandle, id: String) -> Result<(), YapmodError> {
     if !valid_id(&id) {
-        return Err("that is not a valid plugin id".into());
+        return Err(YapmodError::validation("that is not a valid plugin id"));
     }
     let folder = plugins_dir(&app)?.join(&id);
     if let Ok(metadata) = fs::symlink_metadata(&folder) {
         if metadata.file_type().is_symlink() || !metadata.is_dir() {
-            return Err("the plugin install path is not a regular folder".into());
+            return Err(YapmodError::validation(
+                "the plugin install path is not a regular folder",
+            ));
         }
-        fs::remove_dir_all(&folder).map_err(|error| error.to_string())?;
+        fs::remove_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
     }
-    crate::config::remove_plugin_data(&app, &id).map_err(|error| error.to_string())?;
+    crate::config::remove_plugin_data(&app, &id).map_err(|e| YapmodError::io(e.to_string()))?;
     Ok(())
 }
 
