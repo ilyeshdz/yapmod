@@ -220,3 +220,36 @@ export async function removePlugin(id: string): Promise<void> {
   );
   await removeStoredPluginData(id);
 }
+
+/** Removes an installed plugin and installs the latest version from the catalog. */
+export async function updateCommunityPlugin(id: string): Promise<PluginBundle> {
+  if (!isValidId(id)) {
+    throw new Error("that is not a valid plugin id");
+  }
+
+  // Remove the old version first
+  const installed = await readStoredPlugins();
+  await writeStoredPlugins(
+    installed.filter((plugin) => plugin.manifest.id !== id),
+  );
+  await removeStoredPluginData(id);
+
+  // Fetch the latest manifest and install
+  const { manifest, verified } = await fetchCommunityManifest(id);
+  const css = await fetchCatalogText(
+    `${PLUGIN_CATALOG_BASE}/plugins/${id}/${manifest.stylesheet ?? CSS_FILE}`,
+    MAX_PLUGIN_CSS_BYTES,
+  );
+  const script = manifest.script
+    ? await fetchCatalogText(
+        `${PLUGIN_CATALOG_BASE}/plugins/${id}/${manifest.script}`,
+        MAX_PLUGIN_SCRIPT_BYTES,
+      )
+    : null;
+  const bundle: PluginBundle = { manifest, css, script, verified };
+
+  validatePluginBundle(bundle);
+  await writeStoredPlugins([bundle]);
+
+  return bundle;
+}

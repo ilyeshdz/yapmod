@@ -37,6 +37,7 @@
     "allow-install-community-theme",
     "allow-reload-theme",
     "allow-remove-theme",
+    "allow-update-community-theme",
     "allow-pick-plugin-file",
     "allow-pick-plugin-folder",
     "allow-install-picked-plugin",
@@ -47,6 +48,7 @@
     "allow-reload-plugin",
     "allow-open-plugins-folder",
     "allow-remove-plugin",
+    "allow-update-community-plugin",
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled"

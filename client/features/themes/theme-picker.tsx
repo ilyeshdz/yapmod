@@ -19,6 +19,7 @@ import { getHost } from "../../platform/host";
 import { ensureStyle } from "../../shared/ui";
 import themeCSS from "../../styles/themes.css";
 import { ThemeCard, type ThemeEntry } from "./theme-card";
+import { isNewerVersion } from "../../shared/version";
 
 const UI_STYLE_ID = "yapmod-theme-ui-styles";
 
@@ -57,6 +58,9 @@ function buildEntries(
       source: catalogTheme ? "community" : "local",
       installed: theme,
       community: catalogTheme ?? null,
+      updateAvailable:
+        catalogTheme != null &&
+        isNewerVersion(theme.version, catalogTheme.version),
     });
   }
 
@@ -77,6 +81,7 @@ function buildEntries(
       source: "community",
       installed: null,
       community: theme,
+      updateAvailable: false,
     });
   }
 
@@ -108,6 +113,7 @@ function buildEntries(
       installed: null,
       community: null,
       builtin: true,
+      updateAvailable: false,
     },
     ...rest,
   ];
@@ -307,6 +313,21 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
     }
   }
 
+  async function updateTheme(entry: ThemeEntry): Promise<void> {
+    if (!entry.installed || !entry.community) {
+      return;
+    }
+
+    try {
+      setMessage(`Updating ${entry.name}…`);
+      await themeApi.updateCommunity(entry.id);
+      setInstalledThemes(await themeApi.list());
+      setMessage(`Updated ${entry.name}.`);
+    } catch (error) {
+      setMessage(`Could not update ${entry.name}: ${String(error)}`, true);
+    }
+  }
+
   onMount(() => {
     ensureStyle(UI_STYLE_ID, themeCSS);
     void refresh();
@@ -396,6 +417,11 @@ export function ThemePicker(props: ThemePickerProps): JSX.Element {
                 onReload={
                   entry.installed
                     ? () => void reloadTheme(entry.installed!)
+                    : undefined
+                }
+                onUpdate={
+                  entry.updateAvailable
+                    ? () => void updateTheme(entry)
                     : undefined
                 }
               />

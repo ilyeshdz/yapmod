@@ -22,6 +22,7 @@ import {
   reloadPlugin,
   removePlugin,
   storeImportedPlugin,
+  updateCommunityPlugin,
 } from "./plugins";
 import {
   installCommunityTheme,
@@ -29,6 +30,7 @@ import {
   reloadTheme,
   removeTheme,
   storeImportedTheme,
+  updateCommunityTheme,
 } from "./themes";
 import {
   readStoredSettings,
@@ -176,6 +178,8 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
 
     return null;
   },
+  "themes:updateCommunity": (params) =>
+    updateCommunityTheme(stringField(record(params), "id")),
 
   "plugins:list": () => listInstalledPlugins(),
   "plugins:listCommunity": () => listCommunityPlugins(),
@@ -198,6 +202,8 @@ const handlers: Record<string, (params: unknown) => Promise<unknown>> = {
 
     return null;
   },
+  "plugins:updateCommunity": (params) =>
+    updateCommunityPlugin(stringField(record(params), "id")),
 
   "updates:check": (params) =>
     checkForClientUpdate(

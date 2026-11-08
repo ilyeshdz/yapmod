@@ -195,3 +195,12 @@ export async function removeTheme(id: string): Promise<void> {
 
   await writeStoredThemes(installed.filter((theme) => theme.id !== id));
 }
+
+/** Removes an installed theme and installs the latest version from the catalog. */
+export async function updateCommunityTheme(id: string): Promise<ThemeBundle> {
+  // Remove the old version first
+  const installed = await readStoredThemes();
+  await writeStoredThemes(installed.filter((theme) => theme.id !== id));
+  // Install the new version
+  return installCommunityTheme(id);
+}

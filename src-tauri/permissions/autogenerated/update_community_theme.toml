@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-update-community-theme"
+description = "Enables the update_community_theme command without any pre-configured scope."
+commands.allow = ["update_community_theme"]
+
+[[permission]]
+identifier = "deny-update-community-theme"
+description = "Denies the update_community_theme command without any pre-configured scope."
+commands.deny = ["update_community_theme"]

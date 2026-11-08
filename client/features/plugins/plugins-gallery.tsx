@@ -19,6 +19,7 @@ import { PackageToolbar } from "../../components/package-toolbar";
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { PluginCard, type PluginEntry } from "./plugins-card";
+import { isNewerVersion } from "../../shared/version";
 
 type Filter = "all" | "installed" | "available";
 
@@ -50,6 +51,9 @@ function buildEntries(
       verified: plugin.verified,
       installed: plugin,
       community: catalogPlugin ?? null,
+      updateAvailable:
+        catalogPlugin != null &&
+        isNewerVersion(plugin.manifest.version, catalogPlugin.version),
     });
   }
 
@@ -65,6 +69,7 @@ function buildEntries(
       verified: plugin.verified,
       installed: null,
       community: plugin,
+      updateAvailable: false,
     });
   }
 
@@ -363,6 +368,21 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
     }
   }
 
+  async function updatePlugin(entry: PluginEntry): Promise<void> {
+    if (!entry.installed || !entry.community) {
+      return;
+    }
+
+    try {
+      setMessage(`Updating ${entry.manifest.name}…`);
+      await props.plugins.updateCommunity(entry.id);
+      syncInstalled();
+      setMessage(`Updated ${entry.manifest.name}.`);
+    } catch (error) {
+      setMessage(`Could not update ${entry.manifest.name}: ${String(error)}`, true);
+    }
+  }
+
   onMount(() => {
     const unsubscribe = props.plugins.onChange(syncInstalled);
     onCleanup(unsubscribe);
@@ -442,6 +462,7 @@ export function PluginGallery(props: PluginGalleryProps): JSX.Element {
                 onToggle={(next) => toggle(entry, next)}
                 onConfigure={() => props.onOpenSettings(entry.id)}
                 onReload={() => void reload(entry)}
+                onUpdate={entry.updateAvailable ? () => void updatePlugin(entry) : undefined}
               />
             )}
           </For>

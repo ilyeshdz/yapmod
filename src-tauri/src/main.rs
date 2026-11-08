@@ -59,6 +59,7 @@ fn main() {
             theme::install_community_theme,
             theme::reload_theme,
             theme::remove_theme,
+            theme::update_community_theme,
             plugin::pick_plugin_file,
             plugin::pick_plugin_folder,
             plugin::install_picked_plugin,
@@ -69,6 +70,7 @@ fn main() {
             plugin::reload_plugin,
             plugin::open_plugins_folder,
             plugin::remove_plugin,
+            plugin::update_community_plugin,
         ])
         .setup(|app| {
             let version = app.package_info().version.to_string();
