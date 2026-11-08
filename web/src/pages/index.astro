@@ -42,9 +42,13 @@ const favicon = new URL(`${base}/favicon.svg`, Astro.site);
     <script is:inline>
       (() => {
         try {
-          const stored = localStorage.getItem("yapmod-theme");
+          const stored = localStorage.getItem("starlight-theme");
           if (stored === "light" || stored === "dark") {
             document.documentElement.dataset.theme = stored;
+          } else if (stored === "" || stored === null) {
+            // Auto mode or no preference: use system preference
+            const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+            document.documentElement.dataset.theme = prefersLight ? "light" : "dark";
           }
         } catch {}
       })();
