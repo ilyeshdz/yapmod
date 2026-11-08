@@ -15,8 +15,16 @@
  *   TAURI_UPDATER_PUBLIC_KEY        - Base64-encoded public key (for verification)
  */
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import {
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 
 const PLATFORMS = [
   {
@@ -49,7 +57,6 @@ function sha256File(filePath) {
 
 /** Find a file matching any of the patterns in the given directory. */
 function findArtifact(dir, patterns) {
-  const { readdirSync } = await import("node:fs");
   const files = readdirSync(dir);
   for (const file of files) {
     for (const pattern of patterns) {
@@ -92,30 +99,25 @@ export function generate(version, artifactsDir, outputDir) {
     }
 
     const artifactPath = join(artifactsDir, artifactName);
-    const checksum = sha256File(artifactPath);
-    const size = readFileSync(artifactPath).length;
 
-    // Tauri updater manifest format
+    // Tauri v2 updater manifest format: platforms is an object keyed by OS-ARCH
+    const osKey = platform.target.includes("darwin")
+      ? "darwin"
+      : platform.target.includes("windows")
+        ? "windows"
+        : "linux";
+    const archKey = platform.target.split("-")[0];
+    const platformKey = `${osKey}-${archKey}`;
+
     const manifest = {
-      version: version,
+      version: `v${version}`,
       notes: `Update to yapmod ${version}`,
       pub_date: new Date().toISOString(),
-      platforms: [
-        {
-          arch: platform.target.split("-")[0],
-          distro: platform.target.includes("darwin")
-            ? "macos"
-            : platform.target.includes("windows")
-              ? "windows"
-              : "linux",
-          family: platform.target.split("-")[1],
-          builder_meta: {
-            checksum,
-            size,
-          },
+      platforms: {
+        [platformKey]: {
           url: `https://github.com/ilyeshdz/yapmod/releases/download/v${version}/${artifactName}`,
         },
-      ],
+      },
     };
 
     // Write the manifest
@@ -132,12 +134,11 @@ export function generate(version, artifactsDir, outputDir) {
     manifests.push({
       platform: platform.target,
       artifact: artifactName,
-      checksum,
       manifest: manifestPath,
     });
 
     console.log(
-      `Generated manifest for ${platform.target}: ${artifactName} (${checksum.slice(0, 16)}...)`
+      `Generated manifest for ${platform.target}: ${artifactName}`
     );
   }
 
@@ -151,14 +152,10 @@ export function generate(version, artifactsDir, outputDir) {
 }
 
 /**
- * Sign a manifest using the Ed25519 private key.
- * Returns the base64-encoded signature.
+ * Sign a manifest using the Ed25519 private key and embed the signature
+ * in the manifest's platform entries. Returns the base64-encoded signature.
  */
 export function signManifest(manifestPath, privateKeyPem, password) {
-  const { execSync } = await import("node:child_process");
-  const { writeFileSync, readFileSync, rmSync } = await import("node:fs");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
 
   const keyFile = join(tmpdir(), `tauri-signer-key-${process.pid}.pem`);
   const sigFile = join(tmpdir(), `tauri-signer-sig-${process.pid}.sig`);
@@ -167,8 +164,7 @@ export function signManifest(manifestPath, privateKeyPem, password) {
     // Write the private key to a temporary file
     writeFileSync(keyFile, privateKeyPem, { mode: 0o600 });
 
-    // Sign using openssl (Ed25519)
-    const manifestContent = readFileSync(manifestPath);
+    // Sign the manifest JSON using openssl (Ed25519)
     const sigBuffer = execSync(
       `openssl pkeyutl -sign -rawin -inkey ${keyFile}${password ? ` -passin pass:${password}` : ""} -in ${manifestPath} -out ${sigFile} && cat ${sigFile}`
     );
@@ -176,8 +172,15 @@ export function signManifest(manifestPath, privateKeyPem, password) {
     // Base64 encode the signature
     const signature = Buffer.from(sigBuffer).toString("base64");
 
-    // Write the signature next to the manifest
+    // Write the signature file next to the manifest
     writeFileSync(manifestPath + ".sig", signature);
+
+    // Embed the signature in the manifest's platform entries (Tauri v2 requirement)
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+    for (const platformKey of Object.keys(manifest.platforms)) {
+      manifest.platforms[platformKey].signature = signature;
+    }
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
     return signature;
   } finally {

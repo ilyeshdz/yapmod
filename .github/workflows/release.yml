@@ -455,7 +455,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: write
       pages: write
@@ -538,6 +537,12 @@ jobs:
           prerelease: true
           make_latest: false
 
+      - name: Checkout the stable website
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
       - name: Setup Node for updater manifests
         uses: actions/setup-node@v4
         with:
@@ -579,7 +584,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
       pages: write

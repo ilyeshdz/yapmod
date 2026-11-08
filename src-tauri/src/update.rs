@@ -181,35 +181,33 @@ pub async fn install_app_update(app: AppHandle) -> Result<(), String> {
 
 /// Spawns a background task that checks for app updates periodically.
 ///
-/// Checks every 6 hours with exponential backoff on failure. Stops after
-/// 24+ hours of consecutive failures until the next app launch.
+/// Starts with a 6-hour interval and doubles on each consecutive failure
+/// (exponential backoff) up to 24 hours. Resets on success. Stops after
+/// reaching the maximum interval until the next app launch.
 pub fn spawn_update_checker(app: AppHandle) {
-    let interval = Duration::from_secs(6 * 60 * 60);
-    let max_failures = 4u32; // 4 * 6h = 24h
+    let base_interval = Duration::from_secs(6 * 60 * 60);
+    let max_interval = Duration::from_secs(24 * 60 * 60);
 
     tokio::spawn(async move {
-        let mut consecutive_failures = 0u32;
+        let mut current_interval = base_interval;
 
         loop {
-            tokio::time::sleep(interval).await;
+            tokio::time::sleep(current_interval).await;
 
             match check_for_update(app.clone()).await {
                 Ok(info) => {
                     if info.available {
                         eprintln!("background check: update {} available", info.latest_version);
                     }
-                    consecutive_failures = 0;
+                    current_interval = base_interval;
                 }
                 Err(error) => {
-                    consecutive_failures = consecutive_failures.saturating_add(1);
-                    eprintln!(
-                        "background update check failed ({}/{}): {}",
-                        consecutive_failures, max_failures, error
-                    );
-                    if consecutive_failures >= max_failures {
+                    eprintln!("background update check failed: {}", error);
+                    current_interval = (current_interval * 2).min(max_interval);
+                    if current_interval >= max_interval {
                         eprintln!(
-                            "stopping background update checker after {} consecutive failures",
-                            consecutive_failures
+                            "stopping background update checker after reaching max interval ({:?})",
+                            max_interval
                         );
                         break;
                     }
