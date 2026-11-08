@@ -1,5 +1,6 @@
 use tauri::{AppHandle, Manager};
 
+use crate::error::YapmodError;
 use crate::window::MAIN_WINDOW;
 
 /// The biggest number the badge shows.
@@ -14,7 +15,7 @@ const MAX_COUNT: i64 = 99;
 /// the system. Windows has no badge, so the number is drawn into an image
 /// that replaces the taskbar icon.
 #[tauri::command]
-pub fn set_badge_count(app: AppHandle, count: Option<i64>) -> Result<(), String> {
+pub fn set_badge_count(app: AppHandle, count: Option<i64>) -> Result<(), YapmodError> {
     apply(&app, badge_target(count))
 }
 
@@ -24,14 +25,14 @@ pub fn set_badge_count(app: AppHandle, count: Option<i64>) -> Result<(), String>
 /// the system. Windows has no badge, so the number is drawn into an image
 /// that takes the place of the icon.
 #[cfg(not(target_os = "windows"))]
-fn apply(app: &AppHandle, count: Option<i64>) -> Result<(), String> {
+fn apply(app: &AppHandle, count: Option<i64>) -> Result<(), YapmodError> {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return Ok(());
     };
 
     window
         .set_badge_count(count)
-        .map_err(|error| error.to_string())
+        .map_err(|error| YapmodError::system(error.to_string()))
 }
 
 /// Puts the count on the icon of the window.
@@ -39,14 +40,14 @@ fn apply(app: &AppHandle, count: Option<i64>) -> Result<(), String> {
 /// Windows has no badge, so the number is drawn into an image that takes the
 /// place of the icon.
 #[cfg(target_os = "windows")]
-fn apply(app: &AppHandle, count: Option<i64>) -> Result<(), String> {
+fn apply(app: &AppHandle, count: Option<i64>) -> Result<(), YapmodError> {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return Ok(());
     };
 
     window
         .set_overlay_icon(count.map(overlay::render))
-        .map_err(|error| error.to_string())
+        .map_err(|error| YapmodError::system(error.to_string()))
 }
 
 /// Turns the count the host app sends into the value the badge takes.

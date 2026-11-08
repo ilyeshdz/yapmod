@@ -10,6 +10,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
+use crate::error::YapmodError;
 use crate::{channel::UpdateChannel, http, injection::ClientBundle};
 
 const UPDATES_BASE_URL: &str = "https://ilyeshdz.github.io/yapmod/client-updates";
@@ -61,12 +62,12 @@ pub struct LaunchSelection {
     pub status: ClientUpdateLaunchStatus,
 }
 
-fn updates_dir(app: &AppHandle, channel: UpdateChannel) -> Result<PathBuf, String> {
+fn updates_dir(app: &AppHandle, channel: UpdateChannel) -> Result<PathBuf, YapmodError> {
     let base = app
         .path()
         .app_config_dir()
         .map(|path| path.join("client-updates"))
-        .map_err(|error| error.to_string())?;
+        .map_err(|e| YapmodError::io(e.to_string()))?;
     let dir = base.join(channel.directory());
 
     if channel == UpdateChannel::Stable {
@@ -160,31 +161,31 @@ fn read_state(dir: &Path) -> State {
     State::default()
 }
 
-fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), YapmodError> {
     let temporary = path.with_extension(format!("{}.tmp", std::process::id()));
-    fs::write(&temporary, bytes).map_err(|error| error.to_string())?;
+    fs::write(&temporary, bytes).map_err(|e| YapmodError::io(e.to_string()))?;
 
     // State and bundles are replaced only after a complete temporary file is
     // present. Windows does not replace an existing destination on rename.
     if path.exists() {
         let backup = path.with_extension("old");
         let _ = fs::remove_file(&backup);
-        fs::rename(path, &backup).map_err(|error| error.to_string())?;
+        fs::rename(path, &backup).map_err(|e| YapmodError::io(e.to_string()))?;
         if let Err(error) = fs::rename(&temporary, path) {
             let _ = fs::rename(&backup, path);
             let _ = fs::remove_file(&temporary);
-            return Err(error.to_string());
+            return Err(YapmodError::io(error.to_string()));
         }
         let _ = fs::remove_file(backup);
     } else {
-        fs::rename(&temporary, path).map_err(|error| error.to_string())?;
+        fs::rename(&temporary, path).map_err(|e| YapmodError::io(e.to_string()))?;
     }
 
     Ok(())
 }
 
-fn write_state(dir: &Path, state: &State) -> Result<(), String> {
-    let bytes = serde_json::to_vec(state).map_err(|error| error.to_string())?;
+fn write_state(dir: &Path, state: &State) -> Result<(), YapmodError> {
+    let bytes = serde_json::to_vec(state).map_err(|error| YapmodError::io(error.to_string()))?;
     write_atomic(&state_path(dir), &bytes)
 }
 
@@ -236,35 +237,49 @@ fn validate_manifest(
     app_version: &str,
     now: u64,
     channel: UpdateChannel,
-) -> Result<(), String> {
+) -> Result<(), YapmodError> {
     if manifest.channel != channel {
-        return Err("the client update belongs to another channel".to_string());
+        return Err(YapmodError::validation(
+            "the client update belongs to another channel",
+        ));
     }
     if manifest.client_version.is_empty() || manifest.client_version.len() > 64 {
-        return Err("the client update version is invalid".to_string());
+        return Err(YapmodError::validation(
+            "the client update version is invalid",
+        ));
     }
     if Version::parse(&manifest.client_version).is_err() {
-        return Err("the client update version is not a semantic version".to_string());
+        return Err(YapmodError::validation(
+            "the client update version is not a semantic version",
+        ));
     }
     if manifest.expires_at <= now {
-        return Err("the client update manifest has expired".to_string());
+        return Err(YapmodError::validation(
+            "the client update manifest has expired",
+        ));
     }
     if manifest.expires_at.saturating_sub(now) > MAX_MANIFEST_LIFETIME {
-        return Err("the client update manifest expiry is too far in the future".to_string());
+        return Err(YapmodError::validation(
+            "the client update manifest expiry is too far in the future",
+        ));
     }
     if manifest.release_sequence <= highest_sequence {
-        return Err("the client update manifest is stale".to_string());
+        return Err(YapmodError::validation(
+            "the client update manifest is stale",
+        ));
     }
 
     let minimum_app = Version::parse(&manifest.min_app_version)
-        .map_err(|_| "the client update minimum app version is invalid".to_string())?;
+        .map_err(|_| YapmodError::validation("the client update minimum app version is invalid"))?;
     let current_app = Version::parse(app_version)
-        .map_err(|_| "the installed app version is invalid".to_string())?;
+        .map_err(|_| YapmodError::validation("the installed app version is invalid"))?;
     if current_app < minimum_app || manifest.bridge_api_version != BRIDGE_API_VERSION {
-        return Err("the client update is incompatible with this app".to_string());
+        return Err(YapmodError::validation(
+            "the client update is incompatible with this app",
+        ));
     }
     if hex_digest(&manifest.bundle_sha256).is_none() {
-        return Err("the client update hash is invalid".to_string());
+        return Err(YapmodError::validation("the client update hash is invalid"));
     }
 
     Ok(())
@@ -371,7 +386,7 @@ pub fn get_client_update_launch_status(
 
 /// Called only after postinject has completed on an approved Yapin origin.
 #[tauri::command]
-pub fn confirm_client_update(app: AppHandle) -> Result<(), String> {
+pub fn confirm_client_update(app: AppHandle) -> Result<(), YapmodError> {
     let channel = UpdateChannel::active();
     let dir = updates_dir(&app, channel)?;
     let mut state = read_state(&dir);
@@ -388,7 +403,9 @@ pub fn confirm_client_update(app: AppHandle) -> Result<(), String> {
     // fallback for a later app version.
     let app_version = app.package_info().version.to_string();
     if read_bundle(&dir, sequence, &app_version, channel).is_none() {
-        return Err("the trial client bundle is no longer compatible".to_string());
+        return Err(YapmodError::validation(
+            "the trial client bundle is no longer compatible",
+        ));
     }
 
     state.last_good_sequence = Some(sequence);
@@ -426,20 +443,25 @@ fn verify_manifest(bytes: &[u8], signature_bytes: &[u8], public_key: &[u8]) -> b
 
 /// Checks the channel's static feed and stores a compatible bundle for next
 /// launch. All downloaded bytes are authenticated before they are persisted.
-pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Result<(), String> {
+pub async fn check_for_client_update(
+    app: AppHandle,
+    app_version: String,
+) -> Result<(), YapmodError> {
     let channel = UpdateChannel::active();
     let Some(encoded_key) = CLIENT_UPDATE_PUBLIC_KEY.filter(|key| !key.trim().is_empty()) else {
         return Ok(());
     };
-    let public_key = STANDARD
-        .decode(encoded_key.trim())
-        .map_err(|_| "the configured client update public key is invalid".to_string())?;
+    let public_key = STANDARD.decode(encoded_key.trim()).map_err(|_| {
+        YapmodError::validation("the configured client update public key is invalid")
+    })?;
     if public_key.len() != 32 {
-        return Err("the configured client update public key is invalid".to_string());
+        return Err(YapmodError::validation(
+            "the configured client update public key is invalid",
+        ));
     }
 
     let dir = updates_dir(&app, channel)?;
-    fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| YapmodError::io(e.to_string()))?;
     let state = read_state(&dir);
     if state.pending_sequence.is_some() {
         return Ok(());
@@ -452,7 +474,8 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         MAX_MANIFEST_SIZE,
         REQUEST_TIMEOUT,
     )
-    .await?
+    .await
+    .map_err(YapmodError::network)?
     else {
         return Ok(());
     };
@@ -463,19 +486,23 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
                 MAX_SIGNATURE_SIZE,
                 REQUEST_TIMEOUT,
             )
-            .await?
-            .ok_or_else(|| "the client update signature is missing".to_string())?,
+            .await
+            .map_err(YapmodError::network)?
+            .ok_or_else(|| YapmodError::not_found("the client update signature is missing"))?,
         )
-        .map_err(|_| "the client update signature is not valid base64".to_string())?;
+        .map_err(|_| YapmodError::validation("the client update signature is not valid base64"))?;
     if !verify_manifest(&manifest_bytes, &signature_bytes, &public_key) {
-        return Err("the client update manifest signature is invalid".to_string());
+        return Err(YapmodError::validation(
+            "the client update manifest signature is invalid",
+        ));
     }
 
-    let manifest: Manifest =
-        serde_json::from_slice(&manifest_bytes).map_err(|error| error.to_string())?;
+    let manifest: Manifest = serde_json::from_slice(&manifest_bytes).map_err(|error| {
+        YapmodError::validation(format!("the client update manifest is invalid: {error}"))
+    })?;
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|error| error.to_string())?
+        .map_err(|error| YapmodError::io(error.to_string()))?
         .as_secs();
     validate_manifest(
         &manifest,
@@ -490,8 +517,9 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
         MAX_BUNDLE_SIZE,
         REQUEST_TIMEOUT,
     )
-    .await?
-    .ok_or_else(|| "the client update bundle is missing".to_string())?;
+    .await
+    .map_err(YapmodError::network)?
+    .ok_or_else(|| YapmodError::not_found("the client update bundle is missing"))?;
     if verified_bundle(
         &manifest_bytes,
         &signature_bytes,
@@ -502,7 +530,9 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
     )
     .is_none()
     {
-        return Err("the client update bundle failed verification".to_string());
+        return Err(YapmodError::validation(
+            "the client update bundle failed verification",
+        ));
     }
 
     let bundle_path = bundle_path(&dir, manifest.release_sequence);
@@ -541,7 +571,7 @@ pub async fn check_for_client_update(app: AppHandle, app_version: String) -> Res
 pub async fn prepare_client_update(
     app: AppHandle,
     current_client_version: String,
-) -> Result<Option<ClientUpdateInfo>, String> {
+) -> Result<Option<ClientUpdateInfo>, YapmodError> {
     #[cfg(debug_assertions)]
     if std::env::var_os("YAPMOD_TEST_CLIENT_UPDATE").is_some() {
         return Ok(Some(ClientUpdateInfo {
@@ -561,7 +591,7 @@ pub async fn prepare_client_update(
         return Ok(None);
     };
     let bundle = read_bundle(&dir, sequence, &app_version, channel)
-        .ok_or_else(|| "the staged client update could not be verified".to_string())?;
+        .ok_or_else(|| YapmodError::validation("the staged client update could not be verified"))?;
 
     Ok(Some(ClientUpdateInfo {
         current_version: current_client_version,

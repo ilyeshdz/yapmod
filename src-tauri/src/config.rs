@@ -5,6 +5,8 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager};
 use ts_rs::TS;
 
+use crate::error::YapmodError;
+
 static CONFIG_CACHE: RwLock<Option<Config>> = RwLock::new(None);
 
 pub type ConfigResult<T> = Result<T, Box<dyn std::error::Error>>;
@@ -268,22 +270,24 @@ fn valid_setting(key: &str, value: &Value) -> bool {
 }
 
 #[tauri::command]
-pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(), String> {
+pub fn set_settings(app: AppHandle, values: BTreeMap<String, Value>) -> Result<(), YapmodError> {
     if values.len() > 32 {
-        return Err("too many settings were provided".to_string());
+        return Err(YapmodError::validation("too many settings were provided"));
     }
 
-    let mut config = Config::load(&app).map_err(|error| error.to_string())?;
+    let mut config = Config::load(&app).map_err(|e| YapmodError::io(e.to_string()))?;
 
     for (key, value) in values {
         if !valid_setting(&key, &value) {
-            return Err(format!("unsupported or invalid setting `{key}`"));
+            return Err(YapmodError::validation(format!(
+                "unsupported or invalid setting `{key}`"
+            )));
         }
 
         config.settings.insert(key, value);
     }
 
-    Config::save(&app, &config).map_err(|error| error.to_string())?;
+    Config::save(&app, &config).map_err(|e| YapmodError::io(e.to_string()))?;
 
     // The tray is part of the settings, so it is created or removed right
     // away instead of waiting for a restart.

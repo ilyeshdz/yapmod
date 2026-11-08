@@ -11,6 +11,7 @@ mod badge;
 mod channel;
 mod client_update;
 mod config;
+mod error;
 mod hosts;
 mod http;
 mod injection;
@@ -74,8 +75,9 @@ fn main() {
             let (config, first_run, previous_version) =
                 config::Config::init(app.handle(), &version)?;
 
-            notify::listen(app.handle())
-                .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
+            notify::listen(app.handle()).map_err(|error| -> Box<dyn std::error::Error> {
+                Box::new(std::io::Error::other(error.to_string()))
+            })?;
 
             let url = WebviewUrl::External("https://www.yapin.gg/?auth=in".parse()?);
             let title = format!("Yapmod - v{}", app.package_info().version);

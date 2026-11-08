@@ -2,6 +2,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
+use crate::error::YapmodError;
 use crate::theme::{ThemeBundle, ThemeMode};
 use crate::window::MAIN_WINDOW;
 
@@ -63,9 +64,11 @@ pub async fn set_transparency(
     app: AppHandle,
     enabled: bool,
     dark: Option<bool>,
-) -> Result<TransparencyStatus, String> {
+) -> Result<TransparencyStatus, YapmodError> {
     if !supported() {
-        return Err("window transparency is not supported on this platform".to_string());
+        return Err(YapmodError::system(
+            "window transparency is not supported on this platform",
+        ));
     }
 
     let handle = app.clone();
@@ -74,9 +77,11 @@ pub async fn set_transparency(
     app.run_on_main_thread(move || {
         let _ = sender.send(set_effect(&handle, enabled, dark));
     })
-    .map_err(|error| error.to_string())?;
+    .map_err(|error| YapmodError::system(error.to_string()))?;
 
-    let effect = receiver.await.map_err(|error| error.to_string())??;
+    let effect = receiver
+        .await
+        .map_err(|error| YapmodError::system(error.to_string()))??;
 
     Ok(TransparencyStatus {
         supported: true,
@@ -89,9 +94,9 @@ fn set_effect(
     app: &AppHandle,
     enabled: bool,
     dark: Option<bool>,
-) -> Result<Option<&'static str>, String> {
+) -> Result<Option<&'static str>, YapmodError> {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
-        return Err("the main window is not available".to_string());
+        return Err(YapmodError::system("the main window is not available"));
     };
 
     clear_effect(&window);
@@ -107,7 +112,7 @@ fn set_effect(
 fn apply_effect(
     window: &tauri::WebviewWindow,
     _dark: Option<bool>,
-) -> Result<&'static str, String> {
+) -> Result<&'static str, YapmodError> {
     use window_vibrancy::{NSVisualEffectMaterial, NSVisualEffectState, apply_vibrancy};
 
     apply_vibrancy(
@@ -116,13 +121,16 @@ fn apply_effect(
         Some(NSVisualEffectState::FollowsWindowActiveState),
         Some(10.0),
     )
-    .map_err(|error| error.to_string())?;
+    .map_err(|error| YapmodError::system(error.to_string()))?;
 
     Ok("vibrancy")
 }
 
 #[cfg(target_os = "windows")]
-fn apply_effect(window: &tauri::WebviewWindow, dark: Option<bool>) -> Result<&'static str, String> {
+fn apply_effect(
+    window: &tauri::WebviewWindow,
+    dark: Option<bool>,
+) -> Result<&'static str, YapmodError> {
     use window_vibrancy::{apply_acrylic, apply_blur, apply_mica};
 
     // Mica is the cheapest and most native effect, but it only exists on
@@ -139,15 +147,19 @@ fn apply_effect(window: &tauri::WebviewWindow, dark: Option<bool>) -> Result<&'s
         return Ok("blur");
     }
 
-    Err("no supported window effect is available".to_string())
+    Err(YapmodError::system(
+        "no supported window effect is available",
+    ))
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn apply_effect(
     _window: &tauri::WebviewWindow,
     _dark: Option<bool>,
-) -> Result<&'static str, String> {
-    Err("window transparency is not supported on this platform".to_string())
+) -> Result<&'static str, YapmodError> {
+    Err(YapmodError::system(
+        "window transparency is not supported on this platform",
+    ))
 }
 
 #[cfg(target_os = "macos")]

@@ -1,6 +1,8 @@
 use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::{ActionPerformed, NotificationExt};
 
+use crate::error::YapmodError;
+
 /// The key the tag of a notification is stored under.
 ///
 /// The tag tells us which message a notification belongs to, so the click on
@@ -21,12 +23,14 @@ pub async fn notify(
     body: Option<String>,
     tag: Option<String>,
     silent: Option<bool>,
-) -> Result<(), String> {
+) -> Result<(), YapmodError> {
     if title.len() > 256
         || body.as_ref().is_some_and(|body| body.len() > 4096)
         || tag.as_ref().is_some_and(|tag| tag.len() > 256)
     {
-        return Err("notification content exceeds the permitted size".to_string());
+        return Err(YapmodError::validation(
+            "notification content exceeds the permitted size",
+        ));
     }
 
     let mut builder = app.notification().builder().title(&title);
@@ -43,7 +47,9 @@ pub async fn notify(
         builder = builder.extra(TAG_KEY, tag);
     }
 
-    builder.show().map_err(|error| error.to_string())?;
+    builder
+        .show()
+        .map_err(|error| YapmodError::system(error.to_string()))?;
 
     Ok(())
 }
@@ -53,24 +59,24 @@ pub async fn notify(
 /// Desktop systems do not ask for it up front, so this only reports what
 /// the system knows.
 #[tauri::command]
-pub fn request_notification_permission(app: AppHandle) -> Result<String, String> {
+pub fn request_notification_permission(app: AppHandle) -> Result<String, YapmodError> {
     let state = app
         .notification()
         .request_permission()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| YapmodError::system(error.to_string()))?;
 
     Ok(state.to_string())
 }
 
 /// Watches for the notifications the user clicks.
-pub fn listen(app: &AppHandle) -> Result<(), String> {
+pub fn listen(app: &AppHandle) -> Result<(), YapmodError> {
     let handle = app.clone();
 
     app.notification()
         .on_action(move |action| {
             on_action(&handle, action);
         })
-        .map_err(|error| error.to_string())
+        .map_err(|error| YapmodError::system(error.to_string()))
 }
 
 /// Brings the app back when the user clicks a notification.
