@@ -10,7 +10,6 @@ const SECTION_ID = "yapmod";
 const GROUP_LABEL = "Yapmod";
 
 type ToggleItem = Extract<SettingsItem, { type: "toggle" }>;
-type SliderItem = Extract<SettingsItem, { type: "slider" }>;
 
 /**
  * Builds a toggle that keeps itself in sync with the store, so a re-render
@@ -46,52 +45,6 @@ function createToggle(
 
   store?.onChange(options.id, (value: unknown) => {
     if (typeof value === "boolean") {
-      item.value = value;
-    }
-  });
-
-  return item;
-}
-
-/**
- * Builds a slider that keeps itself in sync with the store.
- */
-function createSlider(
-  options: {
-    id: string;
-    label: string;
-    description: string;
-    group?: string;
-    fallback: number;
-    min: number;
-    max: number;
-    step?: number;
-    disabled?: boolean;
-    onChange?: (value: number) => void;
-  },
-): SliderItem {
-  const store = getYapmod().store;
-
-  const item: SliderItem = {
-    type: "slider",
-    id: options.id,
-    label: options.label,
-    description: options.description,
-    group: options.group,
-    value: store?.get(options.id, options.fallback) ?? options.fallback,
-    min: options.min,
-    max: options.max,
-    step: options.step,
-    disabled: options.disabled,
-    onChange: (value) => {
-      item.value = value;
-      store?.set(options.id, value);
-      options.onChange?.(value);
-    },
-  };
-
-  store?.onChange(options.id, (value: unknown) => {
-    if (typeof value === "number") {
       item.value = value;
     }
   });
@@ -231,20 +184,6 @@ export function installDefaultSettings(): void {
             "Make the active theme's panels translucent when window transparency is on, even if the theme uses opaque backgrounds.",
           group: "Window",
           fallback: false,
-        }),
-      );
-
-      items.push(
-        createSlider({
-          id: "transparency_level",
-          label: "Transparency level",
-          description:
-            "Adjust how transparent the theme panels appear when force transparency is enabled. Lower values are more transparent, higher values are more opaque.",
-          group: "Window",
-          fallback: 30,
-          min: 5,
-          max: 80,
-          step: 1,
         }),
       );
     }
