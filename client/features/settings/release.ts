@@ -17,23 +17,3 @@ export async function getChangelog(): Promise<ReleaseEntry[]> {
   return changelogCache;
 }
 
-/** Formats an ISO date (YYYY-MM-DD) as a human readable date. */
-export function formatReleaseDate(
-  date: string | null | undefined,
-): string | null {
-  if (!date) {
-    return null;
-  }
-
-  const parsed = new Date(`${date}T00:00:00`);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return date;
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
