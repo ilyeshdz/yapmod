@@ -1,19 +1,12 @@
 import { render } from "solid-js/web";
 
-import type {
-  ReleaseEntry,
-  SettingsItem,
-  SettingsSection,
-} from "../../shared/types";
-import { getChangelog } from "./release";
+import type { SettingsItem, SettingsSection } from "../../shared/types";
 import { getYapmod } from "../../core/scope";
 import { getHost } from "../../platform/host";
 import { requestNotificationPermission } from "../../core/notify";
-import { ChangelogList } from "./changelog";
 import { openBugReport } from "../bug-report/api";
 
 const SECTION_ID = "yapmod";
-const CHANGELOG_SECTION_ID = "yapmod-changelog";
 const GROUP_LABEL = "Yapmod";
 
 type ToggleItem = Extract<SettingsItem, { type: "toggle" }>;
@@ -104,63 +97,6 @@ function createSlider(
   });
 
   return item;
-}
-
-function mountChangelog(
-  host: HTMLElement,
-  releases: ReleaseEntry[],
-  installedVersion: string | undefined,
-): () => void {
-  return render(
-    () => (
-      <ChangelogList
-        releases={releases}
-        installedVersion={installedVersion}
-      />
-    ),
-    host,
-  );
-}
-
-/**
- * Builds the section that shows the full changelog, one entry per release.
- *
- * The list is fetched when the section is opened, so it never travels with
- * the page.
- */
-function createChangelogSection(): SettingsSection {
-  const yapmod = getYapmod();
-  const installedVersion = yapmod.release?.version;
-
-  return {
-    id: CHANGELOG_SECTION_ID,
-    label: "Changelog",
-    icon: "history",
-    group: GROUP_LABEL,
-    order: 2,
-    description: "Every yapmod release, newest first.",
-    render: (host) => {
-      let cancelled = false;
-      let dispose: (() => void) | null = null;
-
-      void getChangelog()
-        .then((releases) => {
-          if (cancelled) {
-            return;
-          }
-
-          dispose = mountChangelog(host, releases, installedVersion);
-        })
-        .catch((error: unknown) => {
-          console.error("[yapmod] could not load the changelog", error);
-        });
-
-      return () => {
-        cancelled = true;
-        dispose?.();
-      };
-    },
-  };
 }
 
 /**
@@ -360,8 +296,4 @@ export function installDefaultSettings(): void {
   };
 
   yapmod.settings.register(section);
-
-  if (capabilities.releaseNotes && host.release) {
-    yapmod.settings.register(createChangelogSection());
-  }
 }

@@ -172,6 +172,17 @@
   margin-left: auto;
 }
 
+@media (max-width: 560px) {
+  .yapmod-package-toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .yapmod-package-toolbar-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
 .yapmod-package-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -379,128 +390,11 @@
   color: var(--ym-accent, var(--accent, #dd5a8c));
 }
 
-/* Changelog section */
+/* Settings section body */
 
 .yapmod-settings-panel .yapmod-settings-body {
   display: flex;
   flex-direction: column;
-}
-
-.yapmod-changelog-release {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.yapmod-changelog-release:last-child {
-  border-bottom: 0;
-}
-
-.yapmod-changelog-header {
-  margin-bottom: 8px;
-}
-
-.yapmod-changelog-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 2px;
-}
-
-.yapmod-changelog-title {
-  margin: 0 0 6px;
-  font-size: inherit;
-  font-weight: 600;
-}
-
-/* Changelog */
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-summary {
-  margin: 0 0 8px;
-  color: inherit;
-  font-size: inherit;
-  line-height: inherit;
-}
-
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-section + .yapmod-release-section {
-  margin-top: 10px;
-}
-
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-section h3 {
-  margin: 0 0 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
-}
-
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list {
-  display: block;
-  margin: 0;
-  padding-left: 20px;
-  list-style: disc;
-}
-
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list li {
-  padding-left: 0;
-  color: inherit;
-  font-size: inherit;
-  line-height: inherit;
-}
-
-.yapmod-settings-panel .yapmod-changelog-release .yapmod-release-list li::before {
-  content: none;
-}
-
-.yapmod-changelog-empty {
-  color: var(--text-muted);
-}
-
-.yapmod-release-summary {
-  margin: 0 0 14px;
-  color: var(--ym-text-muted, var(--text-dim, rgba(255, 255, 255, 0.72)));
-  font-size: 13px;
-  line-height: 1.55;
-}
-
-.yapmod-release-section + .yapmod-release-section {
-  margin-top: 14px;
-}
-
-.yapmod-release-section h3 {
-  margin: 0 0 6px;
-  color: var(--ym-text-muted, var(--text-dim, rgba(255, 255, 255, 0.62)));
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.yapmod-release-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.yapmod-release-list li {
-  position: relative;
-  padding-left: 15px;
-  color: var(--ym-text, var(--text, #fff));
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.yapmod-release-list li::before {
-  content: "";
-  position: absolute;
-  top: 0.58em;
-  left: 2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--ym-accent, var(--tint-a, #dd5a8c));
 }
 
 /* Update modal */
