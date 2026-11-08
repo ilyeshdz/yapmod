@@ -3,6 +3,8 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import mdx from "@astrojs/mdx";
 import preact from "@astrojs/preact";
+import starlightTypeDoc from "starlight-typedoc";
+import starlightBlog from "starlight-blog";
 // https://astro.build/config
 export default defineConfig({
   site: "https://ilyeshdz.github.io",
@@ -52,19 +54,6 @@ export default defineConfig({
             { label: "Best Practices", slug: "plugins/best-practices" },
             { label: "Examples", slug: "plugins/examples" },
             {
-              label: "API Reference",
-              items: [
-                { label: "Overview", slug: "plugins/api" },
-                { label: "Core", slug: "plugins/api/core" },
-                { label: "Types", slug: "plugins/api/types" },
-                { label: "Interface", slug: "plugins/api/interface" },
-                { label: "Components", slug: "plugins/api/components" },
-                { label: "Network", slug: "plugins/api/network" },
-                { label: "Files", slug: "plugins/api/files" },
-                { label: "Storage & Settings", slug: "plugins/api/storage-settings" },
-              ],
-            },
-            {
               label: "Guides",
               items: [
                 { label: "UI", slug: "plugins/guides/ui" },
@@ -97,6 +86,30 @@ export default defineConfig({
             { label: "Contributing Guide", slug: "contributing" },
           ],
         },
+        {
+          label: "Blog",
+          items: [
+            { label: "Blog", link: "/blog/" },
+          ],
+        },
+      ],
+      plugins: [
+        starlightTypeDoc({
+          entryPoints: [
+            "../client/shared/types.ts",
+            "../client/features/banners/api.tsx",
+            "../client/generated/types.ts",
+          ],
+          tsconfig: "../client/tsconfig.json",
+          sidebar: {
+            label: "API Reference",
+            collapsed: true,
+          },
+        }),
+        starlightBlog({
+          title: "Blog",
+          navigation: "none",
+        }),
       ],
       pagefind: true,
       head: [
