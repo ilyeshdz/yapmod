@@ -1,10 +1,13 @@
 /* ---------------------------------------------------------------------------
-   Starlight custom theme for yapmod
-   Matches the website's coral/peach palette, dark purple backgrounds,
-   Geist fonts, rounded corners, and glow effects.
+   Starlight Rapide custom theme for yapin (yapmod)
+   Overrides Rapide's Vitesse palette with our pink #DD5A8C branding,
+   dark purple backgrounds, Geist fonts, rounded corners, and glow effects.
    --------------------------------------------------------------------------- */
 
-/* Shared design tokens — mirror the website's global.css */
+/* ============================================================================
+   DESIGN TOKENS — our brand palette
+   ============================================================================ */
+
 :root {
   --sl-bg: #130e18;
   --sl-surface: #1c1524;
@@ -23,11 +26,6 @@
   --sl-radius-md: 14px;
   --sl-radius-lg: 22px;
   --sl-radius-xl: 30px;
-
-  /* Fonts — Geist Pixel (headings), Geist (body), Geist Mono (code) */
-  --__sl-font-heading: "Geist Pixel", monospace;
-  --__sl-font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --__sl-font-mono: "Geist Mono", monospace;
 }
 
 /* Light mode tokens */
@@ -44,22 +42,57 @@
   --sl-glow: rgba(221, 90, 140, 0.18);
 }
 
-/* Dark mode Starlight variables */
+/* ============================================================================
+   OVERRIDE RAPIDE COLOR VARIABLES — dark mode
+   These override the oklch values Rapide sets in @layer rapide
+   ============================================================================ */
+
 :root,
 ::backdrop {
+  /* Base hue — shift to our pink/purple tone */
+  --sl-hue-base: 340;
+  --sl-hue-accent: 330;
+
+  /* Grays — dark purple tones */
+  --sl-color-white: var(--sl-text);
+  --sl-color-gray-1: oklch(80% 0.04 var(--sl-hue-base));
+  --sl-color-gray-2: oklch(72% 0.05 var(--sl-hue-base));
+  --sl-color-gray-3: oklch(58% 0.04 var(--sl-hue-base));
+  --sl-color-gray-4: oklch(42% 0.03 var(--sl-hue-base));
+  --sl-color-gray-5: oklch(28% 0.025 var(--sl-hue-base));
+  --sl-color-gray-6: var(--sl-bg);
+  --sl-color-gray-7: var(--sl-bg);
+  --sl-color-black: var(--sl-bg);
+
+  /* Accent — our pink */
+  --sl-color-accent-low: rgba(221, 90, 140, 0.15);
+  --sl-color-accent: var(--sl-accent);
+  --sl-color-accent-high: var(--sl-accent-2);
+
+  /* Semantic colors */
+  --sl-color-bg-nav: var(--sl-bg);
+  --sl-color-bg-sidebar: var(--sl-bg);
+  --sl-color-backdrop-overlay: rgba(19, 14, 24, 0.85);
+
+  /* Rapide UI variables */
+  --sl-rapide-ui-bg-color: var(--sl-bg);
+  --sl-rapide-ui-header-bg-color: rgba(19, 14, 24, 0.85);
+  --sl-rapide-ui-border-color: var(--sl-line);
+
+  /* Rapide Expressive Code markers */
+  --sl-rapide-ec-marker-bg-color: var(--sl-surface);
+  --sl-rapide-ec-marker-border-color: var(--sl-line);
+
+  /* Semantic color aliases (Starlight internal) */
   --__sl-color-bg: var(--sl-bg);
-  --__sl-color-bg-nav: var(--sl-surface);
-  --__sl-color-bg-top-nav: var(--sl-surface);
+  --__sl-color-bg-nav: var(--sl-bg);
+  --__sl-color-bg-top-nav: var(--sl-bg);
   --__sl-color-text: var(--sl-text);
   --__sl-color-text-accent: var(--sl-accent);
   --__sl-color-text-inverse: var(--sl-on);
   --__sl-color-content-fade: var(--sl-muted);
   --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #3e3048;
-  --__sl-color-accent-low: rgba(221, 90, 140, 0.15);
-  --__sl-color-accent: var(--sl-accent);
-  --__sl-color-accent-high: var(--sl-accent-2);
-  --sl-brand-gradient: var(--sl-g);
   --__sl-color-link: var(--sl-accent-2);
   --__sl-button-on-page-bg: var(--sl-accent);
   --__sl-button-on-page-hover-bg: var(--sl-accent-2);
@@ -72,24 +105,51 @@
   --__sl-color-backdrop: rgba(19, 14, 24, 0.85);
   --__sl-color-focus: var(--sl-accent);
   --__sl-color-sidebar-active: var(--sl-accent);
-  --sl-content-pad-horizontal: 2rem;
 }
 
-/* Light mode Starlight variables */
+/* ============================================================================
+   OVERRIDE RAPIDE COLOR VARIABLES — light mode
+   ============================================================================ */
+
 :root[data-theme="light"],
 [data-theme="light"] ::backdrop {
+  --sl-hue-base: 340;
+  --sl-hue-accent: 330;
+
+  --sl-color-white: var(--sl-text);
+  --sl-color-gray-1: oklch(40% 0.04 var(--sl-hue-base));
+  --sl-color-gray-2: oklch(48% 0.04 var(--sl-hue-base));
+  --sl-color-gray-3: oklch(58% 0.03 var(--sl-hue-base));
+  --sl-color-gray-4: oklch(74% 0.02 var(--sl-hue-base));
+  --sl-color-gray-5: oklch(88% 0.015 var(--sl-hue-base));
+  --sl-color-gray-6: oklch(92% 0.01 var(--sl-hue-base));
+  --sl-color-gray-7: var(--sl-bg);
+  --sl-color-black: var(--sl-bg);
+
+  --sl-color-accent-low: rgba(221, 90, 140, 0.12);
+  --sl-color-accent: var(--sl-accent);
+  --sl-color-accent-high: var(--sl-accent-2);
+
+  --sl-color-bg-nav: var(--sl-bg);
+  --sl-color-bg-sidebar: var(--sl-bg);
+  --sl-color-backdrop-overlay: rgba(255, 247, 245, 0.85);
+
+  --sl-rapide-ui-bg-color: var(--sl-bg);
+  --sl-rapide-ui-header-bg-color: rgba(255, 247, 245, 0.85);
+  --sl-rapide-ui-border-color: var(--sl-line);
+
+  --sl-rapide-ec-marker-bg-color: #fff0f5;
+  --sl-rapide-ec-marker-border-color: var(--sl-line);
+
   --__sl-color-bg: var(--sl-bg);
-  --__sl-color-bg-nav: var(--sl-surface);
-  --__sl-color-bg-top-nav: var(--sl-surface);
+  --__sl-color-bg-nav: var(--sl-bg);
+  --__sl-color-bg-top-nav: var(--sl-bg);
   --__sl-color-text: var(--sl-text);
   --__sl-color-text-accent: var(--sl-accent);
   --__sl-color-text-inverse: var(--sl-on);
   --__sl-color-content-fade: var(--sl-muted);
   --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #e0c4bd;
-  --__sl-color-accent-low: rgba(221, 90, 140, 0.15);
-  --__sl-color-accent: var(--sl-accent);
-  --__sl-color-accent-high: var(--sl-accent-2);
   --__sl-color-link: var(--sl-accent);
   --__sl-button-on-page-bg: var(--sl-accent);
   --__sl-button-on-page-hover-bg: var(--sl-accent-2);
@@ -104,8 +164,16 @@
   --__sl-color-sidebar-active: var(--sl-accent);
 }
 
-/* Heading sizes */
+/* ============================================================================
+   FONT OVERRIDES — Geist Pixel (headings), Geist (body), Geist Mono (code)
+   ============================================================================ */
+
 :root {
+  --__sl-font-heading: "Geist Pixel", monospace;
+  --__sl-font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --__sl-font-mono: "Geist Mono", monospace;
+
+  /* Heading sizes */
   --__sl-text-h1: 2.4rem;
   --__sl-text-h2: 1.8rem;
   --__sl-text-h3: 1.5rem;
@@ -118,7 +186,7 @@
   color-scheme: light dark;
 }
 
-/* Smooth theme transitions on all elements */
+/* Smooth theme transitions */
 *,
 *::before,
 *::after {

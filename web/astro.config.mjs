@@ -4,6 +4,7 @@ import starlight from "@astrojs/starlight";
 import mdx from "@astrojs/mdx";
 import preact from "@astrojs/preact";
 import starlightTypeDoc from "starlight-typedoc";
+import starlightThemeRapide from "starlight-theme-rapide";
 // https://astro.build/config
 export default defineConfig({
   site: "https://ilyeshdz.github.io",
@@ -28,16 +29,6 @@ export default defineConfig({
         },
       ],
       customCss: ["./src/styles/starlight.css"],
-      components: {
-        Header: "./src/components/starlight/Header.astro",
-        Footer: "./src/components/starlight/Footer.astro",
-        Sidebar: "./src/components/starlight/Sidebar.astro",
-        TableOfContents: "./src/components/starlight/TableOfContents.astro",
-        Pagination: "./src/components/starlight/Pagination.astro",
-        SocialIcons: "./src/components/starlight/SocialIcons.astro",
-        ThemeSelect: "./src/components/starlight/ThemeSelect.astro",
-        Search: "./src/components/starlight/Search.astro",
-      },
       sidebar: [
         {
           label: "Start",
@@ -97,6 +88,7 @@ export default defineConfig({
         },
       ],
       plugins: [
+        starlightThemeRapide(),
         starlightTypeDoc({
           entryPoints: [
             "../client/shared/types.ts",
