@@ -107,4 +107,4 @@ The website in `web/` is a separate Astro project. Run these commands from that 
 
 ## Where to look next
 
-- [Contributing](/yapmod/docs/contributing) for how to get a change in.
+- [Contributing](/yapmod/contributing) for how to get a change in.

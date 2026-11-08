@@ -14,7 +14,7 @@ While a theme is active, yapmod sets two attributes on `<html>`:
 | Attribute | Value |
 | --- | --- |
 | `data-yapmod-theme` | The theme `id`. Use it to scope rules that should not leak into another theme. |
-| `data-yapmod-mode` | `dark` or `light`, after the [mode is resolved](/yapmod/docs/themes/loading). |
+| `data-yapmod-mode` | `dark` or `light`, after the [mode is resolved](/yapmod/themes/loading). |
 
 ```css
 :root[data-yapmod-theme="midnight-blurple"] .some-component {
@@ -103,7 +103,7 @@ Keep selectors narrow and scope them with `data-yapmod-theme`. Broad rules on th
 - A `mode: "dark"` or `mode: "light"` theme only ever sees one value of `data-yapmod-mode`, so one block is enough.
 - A `mode: "both"` theme should provide both blocks. The last block in the file does not win by itself; the attribute in the selector does.
 - `!important` works, but it makes the theme hard to maintain and hard for a user to override. Prefer lower specificity and theme-scoped selectors.
-- The app's own theme is a separate layer of state. See [Loading and modes](/yapmod/docs/themes/loading) before relying on host selectors.
+- The app's own theme is a separate layer of state. See [Loading and modes](/yapmod/themes/loading) before relying on host selectors.
 
 ## Fonts, images and other assets
 
@@ -111,7 +111,7 @@ A local theme is plain CSS, so relative URLs resolve against the Yapin page, not
 
 - Use a full `https:` URL, or a `data:` URI, for images and fonts.
 - A remote asset is a network request made by the page. A theme can load its own fonts and backgrounds, but it should not depend on a server that may disappear.
-- The Community build allows `url()`, `@import`, and other standard CSS constructs. For a remote font, prefer a direct `woff2` URL in `@font-face`; the Yapin page allows `https://fonts.gstatic.com` and `data:` fonts. See [Recipes](/yapmod/docs/themes/recipes#custom-fonts) for a JetBrains Mono example.
+- The Community build allows `url()`, `@import`, and other standard CSS constructs. For a remote font, prefer a direct `woff2` URL in `@font-face`; the Yapin page allows `https://fonts.gstatic.com` and `data:` fonts. See [Recipes](/yapmod/themes/recipes#custom-fonts) for a JetBrains Mono example.
 
 :::caution[A theme is trusted CSS]
 Local themes are not sandboxed and are not restricted to a fixed property list. A theme can hide, move or imitate interface elements. Only install a theme whose source you trust, and review a Community theme before installing it.
@@ -132,6 +132,6 @@ Keep `--ym-radius` a length, `--ym-shadow` a shadow, and the colour tokens colou
 
 ## Next steps
 
-- See how the resolved mode and stylesheet order are decided in [Loading and modes](/yapmod/docs/themes/loading).
-- Copy a full pattern from [Recipes](/yapmod/docs/themes/recipes).
-- Check contrast and mode coverage with [Debugging themes](/yapmod/docs/themes/debugging).
+- See how the resolved mode and stylesheet order are decided in [Loading and modes](/yapmod/themes/loading).
+- Copy a full pattern from [Recipes](/yapmod/themes/recipes).
+- Check contrast and mode coverage with [Debugging themes](/yapmod/themes/debugging).

@@ -41,4 +41,4 @@ Open **Settings → Yapmod** and choose **Report a bug**. Describe what happened
 
 ## Themes
 
-Manage installed themes in **Settings → Themes**. See [Using themes](/yapmod/docs/using-themes) for installing and removing them, or the [Themes developer documentation](/yapmod/docs/themes) for the theme format.
+Manage installed themes in **Settings → Themes**. See [Using themes](/yapmod/using-themes) for installing and removing them, or the [Themes developer documentation](/yapmod/themes) for the theme format.

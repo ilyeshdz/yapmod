@@ -11,8 +11,11 @@ export default defineConfig({
   base: "/yapmod",
   redirects: {
     "/docs/": "/yapmod/introduction/",
-    "/docs/creating-plugins": "/yapmod/docs/plugins/getting-started",
-    "/docs/creating-themes": "/yapmod/docs/themes/getting-started",
+    "/docs/creating-plugins": "/yapmod/plugins/getting-started",
+    "/docs/creating-themes": "/yapmod/themes/getting-started",
+    "/yapmod/docs/": "/yapmod/introduction/",
+    "/yapmod/docs/plugins/": "/yapmod/plugins/",
+    "/yapmod/docs/themes/": "/yapmod/themes/",
   },
   integrations: [
     starlight({

@@ -7,7 +7,7 @@ Open **Settings → Yapmod → Plugins**. Community and local plugins share one 
 
 - Choose **Import plugin** and select a folder containing `manifest.json`, `plugin.css`, and optionally `plugin.js`.
 - Search the gallery and filter it to installed or not-installed plugins. Each card has one switch: turn it on to install the package when needed and enable it, and turn it off to disable and remove it.
-- Packages reviewed by the Yapmod owners show a small verified check next to their name; this is a review signal, not a security guarantee. See [Consent, verification and trust](/yapmod/docs/plugins/security#consent-verification-and-trust).
+- Packages reviewed by the Yapmod owners show a small verified check next to their name; this is a review signal, not a security guarantee. See [Consent, verification and trust](/yapmod/plugins/security#consent-verification-and-trust).
 - Use the gear button on an installed card to edit that plugin's settings in a modal, then choose **Save** to apply them.
 - Some plugins add their own panel to the settings sidebar. Plugin panels appear under the **Plugins** group, or under a group named by the plugin.
 - Importing a local package shows a warning about running trusted code. Locally imported packages ask for confirmation before their folder is deleted; community packages can be turned off in one click.

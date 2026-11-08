@@ -9,7 +9,7 @@ edit a catalog file.
 
 ## Before you submit
 
-1. Create and test your theme using the format in [Structure and manifest](/yapmod/docs/themes/manifest).
+1. Create and test your theme using the format in [Structure and manifest](/yapmod/themes/manifest).
 2. Keep the stylesheet under 1 MB. Include the theme's license and make sure
    you have permission to share the theme.
 

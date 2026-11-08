@@ -30,7 +30,7 @@ If the attributes exist but the tokens do not, your token block probably has a s
 | Import says the id is already installed | Another folder uses the same `id` | Remove the old theme first; imported ids are folder names. |
 | Import says the folder contains a symbolic link | A link points outside the theme | Replace it with real files. |
 
-A folder with a manifest that cannot be deserialized is skipped by the gallery rather than producing an error, so a typo in an optional field type can make the theme silently disappear. Compare the file with [Structure and manifest](/yapmod/docs/themes/manifest).
+A folder with a manifest that cannot be deserialized is skipped by the gallery rather than producing an error, so a typo in an optional field type can make the theme silently disappear. Compare the file with [Structure and manifest](/yapmod/themes/manifest).
 
 ## Edits are not showing up
 
@@ -65,7 +65,7 @@ If the theme declares `"mode": "both"`, both mode blocks must exist and be selec
 
 ### A token has no effect
 
-- Check the spelling against the [token table](/yapmod/docs/themes/styling). An unknown `--ym-*` name is not mapped.
+- Check the spelling against the [token table](/yapmod/themes/styling). An unknown `--ym-*` name is not mapped.
 - Check that the declaration ends with `;` and sits inside a rule whose selector matches the root.
 - If you also set the app variable directly (for example `--bg-main`), the token mapping deliberately leaves that variable alone.
 - A typo in the value can make the browser drop the declaration. The Computed panel shows the value that was actually accepted.

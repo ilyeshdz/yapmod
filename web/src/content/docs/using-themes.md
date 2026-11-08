@@ -5,7 +5,7 @@ description: Install, apply and remove themes in yapmod.
 
 A theme is a folder containing a manifest and a stylesheet. It can change Yapin, the yapmod settings and dialogs. System notifications keep their normal system look.
 
-Looking for the authoring format? Start with the [Themes developer documentation](/yapmod/docs/themes).
+Looking for the authoring format? Start with the [Themes developer documentation](/yapmod/themes).
 
 ## Where themes live
 
@@ -26,7 +26,7 @@ A theme is a folder. You can install it in either of these ways.
 - **Import it.** Press **Import theme** in the settings and pick the folder of the theme in the file dialog. The folder is copied into the themes folder for you. If a theme with the same id is already installed, remove it first.
 - **Put it in the themes folder.** Copy the folder of the theme into the themes folder, then press **Refresh**. The theme shows up in the gallery right away.
 
-Themes you import yourself are loaded from this folder. Community themes appear in the same gallery; turning on the switch on their card installs and applies them; see [Community themes](/yapmod/docs/community-themes).
+Themes you import yourself are loaded from this folder. Community themes appear in the same gallery; turning on the switch on their card installs and applies them; see [Community themes](/yapmod/community-themes).
 
 ## Using a theme
 
@@ -43,4 +43,4 @@ Use **Import theme**, **Refresh** and **Open folder** to manage the gallery. **M
 
 A theme is plain CSS. If one looks wrong, turn off its switch or turn on **Yapin's theme** in the gallery to return to the normal look.
 
-[Creating a theme](/yapmod/docs/themes/getting-started) covers the format, tokens and a complete example.
+[Creating a theme](/yapmod/themes/getting-started) covers the format, tokens and a complete example.

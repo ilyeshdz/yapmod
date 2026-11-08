@@ -53,7 +53,7 @@ api.log.error("request failed", error);
 
 Messages appear as `[plugin:<your-id>] ...` in the page console. Use `api.log` rather than `console.log` so your output is identifiable.
 
-When activation fails, the plugin card shows an error and stores a diagnostic with the operation that failed (`load`, `activate`, `deactivate` or `cleanup`). The same error is printed to the console. See [Debugging plugins](/yapmod/docs/plugins/debugging).
+When activation fails, the plugin card shows an error and stores a diagnostic with the operation that failed (`load`, `activate`, `deactivate` or `cleanup`). The same error is printed to the console. See [Debugging plugins](/yapmod/plugins/debugging).
 
 ## Testing against the website catalogs
 
@@ -78,7 +78,7 @@ Before publishing, verify:
 - Settings read the declared defaults on first run.
 - Invalid or missing settings fail clearly rather than silently.
 - The plugin never requires a file outside the package.
-- The package stays within the [size and field limits](/yapmod/docs/plugins/manifest#limits).
+- The package stays within the [size and field limits](/yapmod/plugins/manifest#limits).
 - The plugin behaves when another plugin or a theme is also active.
 
 ## Suggested package layout

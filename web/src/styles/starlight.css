@@ -492,13 +492,15 @@
   margin: 0;
 }
 
-/* Starlight admonitions */
+/* Starlight admonitions — minimal, no left border */
 .sl-markdown-content .sl-note,
 .sl-markdown-content .sl-tip,
 .sl-markdown-content .sl-caution,
 .sl-markdown-content .sl-important {
-  border-radius: var(--sl-radius-md) !important;
-  border: 1.5px solid var(--sl-line) !important;
+  border-radius: var(--sl-radius-sm) !important;
+  border: none !important;
+  background: var(--sl-accent-low) !important;
+  padding: 12px 16px !important;
 }
 
 /* ============================================================================

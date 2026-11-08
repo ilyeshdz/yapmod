@@ -57,7 +57,7 @@ Prefer one extra attribute of specificity over `!important`. Avoid styling the t
 - Use a full `https:` address or a `data:` URI.
 - Keep remote assets optional. A font or background that fails to load should not make the theme unusable.
 - `@import` works, but a separate request delays first paint.
-- Keep the stylesheet within the [size limit](/yapmod/docs/themes/manifest#limits).
+- Keep the stylesheet within the [size limit](/yapmod/themes/manifest#limits).
 
 ## Match the manifest to reality
 
@@ -87,7 +87,7 @@ Before opening a pull request:
 - open settings, a dialog and a popover;
 - check both modes (or the one declared mode);
 - run the Community build with `pnpm check:web`;
-- read [Submit a theme](/yapmod/docs/submit-a-theme) for the repository rules.
+- read [Submit a theme](/yapmod/submit-a-theme) for the repository rules.
 
 :::tip[Small beats clever]
 A theme with twenty well-chosen token overrides is easier to review, easier to maintain and more likely to keep working than one with two hundred component selectors. If a rule fights the app, check whether a token already covers the case.
