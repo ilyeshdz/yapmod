@@ -247,17 +247,18 @@ export function handleImport(): void {
  */
 export async function handleExport(): Promise<void> {
   const data = await exportSettings();
+  const count = Object.keys(data.settings).length;
 
   // Try the native save dialog first (desktop only).
   const saved = await saveExportDesktop(data);
   if (saved) {
-    showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
+    showResult(`Exported ${count} setting${count === 1 ? "" : "s"} to file.`, false);
     return;
   }
 
   // Fallback: blob download for web or if the dialog was cancelled/failed.
   downloadExport(data);
-  showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
+  showResult(`Exported ${count} setting${count === 1 ? "" : "s"} to file.`, false);
 }
 
 /**
