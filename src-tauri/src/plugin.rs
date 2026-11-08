@@ -3,7 +3,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     sync::{LazyLock, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
@@ -163,7 +163,10 @@ struct PluginCatalogEntry {
     verified: bool,
 }
 
-static PICKED_PLUGIN_FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
+/// The picked plugin folder and the instant it was selected.
+/// The selection expires after 30 seconds to prevent stale paths.
+const PICKED_FOLDER_TIMEOUT: Duration = Duration::from_secs(30);
+static PICKED_PLUGIN_FOLDER: Mutex<Option<(PathBuf, Instant)>> = Mutex::new(None);
 
 fn default_stylesheet() -> String {
     CSS_FILE.to_string()
@@ -545,7 +548,7 @@ pub async fn pick_plugin_folder(app: AppHandle) -> Result<Option<PluginManifest>
     *PICKED_PLUGIN_FOLDER
         .lock()
         .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))? =
-        Some(selected);
+        Some((selected, Instant::now()));
     Ok(Some(manifest))
 }
 
@@ -556,13 +559,18 @@ pub fn install_picked_plugin(
     app: AppHandle,
     expected_manifest: PluginManifest,
 ) -> Result<PluginBundle, YapmodError> {
-    let selected = PICKED_PLUGIN_FOLDER
+    let (selected, picked_at) = PICKED_PLUGIN_FOLDER
         .lock()
         .map_err(|_| YapmodError::system("plugin folder selection is unavailable"))?
         .take()
         .ok_or_else(|| {
             YapmodError::validation("choose a plugin folder with the native picker first")
         })?;
+    if picked_at.elapsed() > PICKED_FOLDER_TIMEOUT {
+        return Err(YapmodError::validation(
+            "the plugin selection has expired; please choose the folder again",
+        ));
+    }
     let selected = selected.canonicalize().map_err(|error| {
         YapmodError::io(format!(
             "the selected plugin folder is unavailable: {error}"

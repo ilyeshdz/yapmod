@@ -3,7 +3,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     sync::{LazyLock, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,9 @@ static THEME_RULES: LazyLock<ThemeRules> = LazyLock::new(|| {
         .expect("community theme rules must be valid JSON")
 });
 /// A theme folder can only be installed after the native picker selected it.
-static PICKED_THEME_FOLDER: Mutex<Option<PathBuf>> = Mutex::new(None);
+/// The selection expires after 30 seconds to prevent stale paths.
+const PICKED_FOLDER_TIMEOUT: Duration = Duration::from_secs(30);
+static PICKED_THEME_FOLDER: Mutex<Option<(PathBuf, Instant)>> = Mutex::new(None);
 
 /// The `manifest.json` of a theme.
 ///
@@ -538,6 +540,10 @@ pub fn open_themes_folder(app: AppHandle) -> Result<(), YapmodError> {
 /// user closes it.
 #[tauri::command]
 pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, YapmodError> {
+    // Clear any previously stored path so a cancelled picker does not leave a stale value.
+    *PICKED_THEME_FOLDER
+        .lock()
+        .map_err(|_| YapmodError::system("theme folder selection is unavailable"))? = None;
     let folder = themes_dir(&app)?;
 
     fs::create_dir_all(&folder).map_err(|e| YapmodError::io(e.to_string()))?;
@@ -558,7 +564,8 @@ pub async fn pick_theme_folder(app: AppHandle) -> Result<Option<String>, YapmodE
         .and_then(|path| expand_home(path).canonicalize().ok());
     *PICKED_THEME_FOLDER
         .lock()
-        .map_err(|_| YapmodError::system("theme folder selection is unavailable"))? = canonical;
+        .map_err(|_| YapmodError::system("theme folder selection is unavailable"))? =
+        canonical.map(|p| (p, Instant::now()));
 
     Ok(selected)
 }
@@ -570,13 +577,18 @@ pub fn install_theme(app: AppHandle, source: String) -> Result<ThemeBundle, Yapm
         .canonicalize()
         .map_err(|e| YapmodError::io(e.to_string()))?;
 
-    let picked = PICKED_THEME_FOLDER
+    let (picked, picked_at) = PICKED_THEME_FOLDER
         .lock()
         .map_err(|_| YapmodError::system("theme folder selection is unavailable"))?
         .take()
         .ok_or_else(|| {
             YapmodError::validation("choose a theme folder using the native picker first")
         })?;
+    if picked_at.elapsed() > PICKED_FOLDER_TIMEOUT {
+        return Err(YapmodError::validation(
+            "the theme selection has expired; please choose the folder again",
+        ));
+    }
 
     if source != picked {
         return Err(YapmodError::validation(

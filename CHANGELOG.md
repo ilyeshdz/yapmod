@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `tokio-tungstenite` now uses `rustls-tls` instead of `native-tls`, unifying the TLS implementation across the project to a single `rustls` backend (#45).
 
+### Fixed
+
+- Picked plugin and theme folder paths now expire after 30 seconds and are cleared when the picker is cancelled, preventing stale paths from being used on subsequent install operations (#54).
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
