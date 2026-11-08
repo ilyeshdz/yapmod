@@ -325,8 +325,13 @@ pub async fn save_export_file(app: AppHandle, content: String) -> Result<bool, Y
 
     let path = PathBuf::from(selected_path.to_string());
 
-    // Allow the parent directory in the fs sandbox so we can write the file.
+    // Ensure the parent directory exists.
     if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| YapmodError::io(format!("Failed to create directory: {e}")))?;
+        }
+        // Allow the parent directory in the fs sandbox so we can write the file.
         let _ = app.fs_scope().allow_directory(parent, false);
     }
 
