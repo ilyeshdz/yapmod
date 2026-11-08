@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Settings export and import feature. Users can export their settings, installed plugins list, and active theme to a JSON file, and restore them later from the exported file. The import validates the file format and shows clear errors on invalid input (#46).
+- Settings export and import feature. On desktop, export opens a native save dialog so users can choose the file name and location; web falls back to an automatic download. Import validates the file format and shows clear errors on invalid input (#46).
 - Keyboard shortcut API reference page documenting how to register, scope, and clean up keyboard event listeners in plugins (#42).
 - Expanded plugin API documentation with threat model, CSS scoping patterns, plugin interaction model, and additional examples (#42).
 - Plugin and theme update detection from the community catalog. Installed plugins and themes are compared against the catalog on load, and an update button appears on cards when a newer version is available (#44).

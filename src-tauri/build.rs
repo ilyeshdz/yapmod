@@ -16,6 +16,7 @@ fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         tauri_build::AppManifest::new().commands(&[
             "set_settings",
+            "save_export_file",
             "set_badge_count",
             "notify",
             "request_notification_permission",

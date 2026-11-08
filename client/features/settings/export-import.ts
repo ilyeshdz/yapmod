@@ -1,4 +1,5 @@
 import { getYapmod } from "../../core/scope";
+import { getHost } from "../../platform/host";
 
 /**
  * The export file format version. Bump this when the schema changes so older
@@ -104,7 +105,8 @@ export async function exportSettings(): Promise<ExportData> {
 }
 
 /**
- * Triggers a file download with the exported JSON data.
+ * Triggers a file download with the exported JSON data using a blob link.
+ * This is the fallback for environments without a native save dialog.
  */
 export function downloadExport(data: ExportData): void {
   const json = JSON.stringify(data, null, 2);
@@ -123,6 +125,25 @@ export function downloadExport(data: ExportData): void {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 1000);
+}
+
+/**
+ * Saves the exported JSON data using the native Tauri save dialog.
+ * Returns true if the user saved the file, false if they cancelled.
+ */
+async function saveExportDesktop(data: ExportData): Promise<boolean> {
+  const host = getHost();
+  if (host.id !== "desktop" || !host.invoke) {
+    return false;
+  }
+
+  const json = JSON.stringify(data, null, 2);
+  try {
+    const result = await host.invoke("save_export_file", { content: json });
+    return result === true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -219,11 +240,22 @@ export function handleImport(): void {
 }
 
 /**
- * Exports all settings and triggers a file download.
+ * Exports all settings and saves the file.
+ * On desktop, uses the native Tauri save dialog so the user can choose
+ * the file name and location. On web, falls back to a blob download.
  * Shows a confirmation message after export.
  */
 export async function handleExport(): Promise<void> {
   const data = await exportSettings();
+
+  // Try the native save dialog first (desktop only).
+  const saved = await saveExportDesktop(data);
+  if (saved) {
+    showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
+    return;
+  }
+
+  // Fallback: blob download for web or if the dialog was cancelled/failed.
   downloadExport(data);
   showResult(`Exported ${Object.keys(data.settings).length} setting${Object.keys(data.settings).length === 1 ? "" : "s"} to file.`, false);
 }

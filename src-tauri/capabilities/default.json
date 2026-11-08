@@ -15,6 +15,7 @@
     "dialog:allow-confirm",
     "dialog:allow-open",
     "allow-set-settings",
+    "allow-save-export-file",
     "allow-set-badge-count",
     "allow-notify",
     "allow-request-notification-permission",
