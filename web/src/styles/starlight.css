@@ -244,7 +244,8 @@
   background: var(--sl-bg);
 }
 
-/* Sidebar section labels */
+/* Sidebar section labels (group titles) */
+.sidebar-pane .group-label,
 .sidebar-pane nav section li.accordion > details > summary,
 .sidebar-pane nav section > header {
   font-family: "Geist Pixel", monospace;
