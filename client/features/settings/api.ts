@@ -378,6 +378,7 @@ function restoreNativeMain(): void {
   nativeMainHiddenByUs = false;
 }
 
+
 function activate(id: string): void {
   const entry = registry.get(id);
 
@@ -393,7 +394,6 @@ function activate(id: string): void {
   }
 
   const previous = activeId ? registry.get(activeId) : undefined;
-
   const target = mountPanel(entry);
 
   // Hide the panel of the section we are leaving, otherwise both panels
