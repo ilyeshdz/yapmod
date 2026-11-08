@@ -7,6 +7,65 @@ description: What the plugin runtime does and does not protect against.
 :::caution[There is no security sandbox]
 JavaScript plugins are trusted page code. yapmod does not run them in an iframe, worker, isolated realm or permission-restricted environment. A plugin runs with the same JavaScript and DOM access as code in the Yapin page.
 :::
+
+## Threat model
+
+The plugin security model is built on **trust and transparency**, not isolation. Understanding the threat model helps both authors and users make informed decisions.
+
+### Trust boundary
+
+The trust boundary is the user who installs the plugin. Once installed, the plugin code executes with full page access — the same privileges as the Yapin application itself. There is no sandbox, no capability system, and no permission prompts at runtime.
+
+```
+┌─────────────────────────────────────────────┐
+│  User (trusts the plugin author)            │
+│    └── Installs plugin                      │
+│         └── Plugin runs as page code        │
+│              ├── Full DOM access             │
+│              ├── Network interception        │
+│              ├── Storage access              │
+│              └── No runtime restrictions     │
+└─────────────────────────────────────────────┘
+```
+
+### What plugins can access
+
+A plugin can access everything the page can access:
+
+- **DOM**: Read and modify any element, including messages, user input, and UI controls.
+- **Network**: Intercept `fetch()` calls and WebSocket messages; make independent network requests.
+- **Storage**: Access the plugin's namespaced storage; read page cookies and localStorage through the DOM.
+- **Globals**: Read any global variable or object the page exposes.
+- **Events**: Listen to and intercept DOM events, including keyboard and mouse input.
+
+### What the consent dialog communicates
+
+When you install a plugin from a local package, yapmod shows a consent dialog that tells you:
+
+1. **Whether the package contains JavaScript** — CSS-only plugins cannot execute code.
+2. **The package version** — consent is tied to the specific version.
+3. **A content hash** — any change to the CSS or script requires new consent.
+
+The consent dialog does not audit the code. It only confirms that you reviewed the package type and approved this specific version.
+
+### What authors should avoid
+
+Plugin authors should treat their code as if the user can read every line:
+
+- **Do not** collect message content, authentication tokens, or personal data unless the plugin's core purpose requires it.
+- **Do not** send data to external servers without clearly documenting what, why, and where.
+- **Do not** hide UI elements that warn the user about important actions.
+- **Do not** intercept network traffic silently; document which requests the plugin observes or modifies.
+- **Do not** rely on obfuscation to hide behavior; the Verified badge process requires readable source.
+- **Do not** attempt to detect or interfere with other plugins unless documented as a feature.
+
+### What users should know
+
+- A **Verified** badge means the Yapmod team reviewed the catalog entry, not that the code is audited for security.
+- Local installs show a consent dialog; catalog installs are one-click because the catalog is a trusted source.
+- You can always inspect the installed files via **View files** in the plugin settings.
+- Remove plugins you no longer use; a disabled plugin should not retain access.
+
 ## What yapmod enforces
 
 yapmod contributes predictability and reviewability, not isolation:

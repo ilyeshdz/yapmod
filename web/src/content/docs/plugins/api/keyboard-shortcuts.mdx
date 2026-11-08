@@ -1,0 +1,166 @@
+---
+title: Keyboard shortcuts
+description: How to register, manage and clean up keyboard shortcuts in a plugin.
+---
+
+import ApiType from "../../components/ApiType.astro";
+
+The plugin API does not provide a dedicated keyboard shortcut registry. Plugins use standard DOM event listeners to capture keyboard input. This page documents the recommended patterns for registering, managing, and cleaning up keyboard shortcuts.
+
+## Basic keyboard shortcut
+
+The simplest approach is to listen for `keydown` events on the `window` object and clean up during plugin deactivation:
+
+```js
+export default {
+  activate(api) {
+    const controller = new AbortController();
+    api.onCleanup(() => controller.abort());
+
+    window.addEventListener("keydown", (event) => {
+      // Ctrl+Shift+K (or Cmd+Shift+K on macOS)
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === "K") {
+        event.preventDefault();
+        api.banner("Keyboard shortcut activated!");
+      }
+    }, { signal: controller.signal });
+  },
+};
+```
+
+Using `AbortController` with the `signal` option is the cleanest way to remove listeners — the cleanup callback simply calls `abort()`, which removes all listeners registered with that signal.
+
+## Scoping shortcuts to a container
+
+If your plugin adds a panel or widget, scope the keyboard listener to that container so it does not fire when the user is interacting with the rest of the page:
+
+```js
+export default {
+  activate(api) {
+    const panel = document.createElement("div");
+    panel.className = `plugin-${api.id}-panel`;
+    panel.tabIndex = 0; // Makes the panel focusable
+    document.body.append(panel);
+
+    api.onCleanup(() => panel.remove());
+
+    panel.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleSubmit();
+      }
+    });
+  },
+};
+```
+
+Setting `tabIndex` makes the container focusable, and the listener fires only when the panel has focus.
+
+## Common modifier patterns
+
+Use these patterns to detect common keyboard combinations:
+
+```js
+function matchesShortcut(event, options) {
+  if (options.ctrl && !event.ctrlKey && !event.metaKey) return false;
+  if (options.shift && !event.shiftKey) return false;
+  if (options.alt && !event.altKey) return false;
+  if (options.key && event.key !== options.key) return false;
+  return true;
+}
+
+// Usage examples:
+// Ctrl+K or Cmd+K
+matchesShortcut(event, { ctrl: true, key: "k" });
+
+// Ctrl+Shift+P
+matchesShortcut(event, { ctrl: true, shift: true, key: "p" });
+
+// Alt+F4
+matchesShortcut(event, { alt: true, key: "F4" });
+```
+
+## Preventing conflicts
+
+Because there is no central shortcut registry, two plugins can register the same key combination. Follow these guidelines to minimize conflicts:
+
+- **Always use modifier combinations** — never bind a single key without at least one modifier (Ctrl, Shift, or Alt).
+- **Prefer Ctrl+Shift or Cmd+Shift** — these are less likely to conflict with browser or page shortcuts than Ctrl alone.
+- **Check `event.target`** — avoid firing when the user is typing in an input field:
+
+```js
+window.addEventListener("keydown", (event) => {
+  // Ignore shortcuts when typing in inputs
+  const tag = event.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) {
+    return;
+  }
+
+  if (event.ctrlKey && event.shiftKey && event.key === "K") {
+    event.preventDefault();
+    activateFeature();
+  }
+});
+```
+
+- **Document your shortcuts** — list the keyboard shortcuts your plugin uses in the manifest description so users and other authors know what keys are in use.
+
+## Cleanup
+
+Always remove keyboard listeners when the plugin is disabled. Failure to clean up leaves orphaned handlers that continue to fire:
+
+```js
+// Good: AbortController pattern
+const controller = new AbortController();
+api.onCleanup(() => controller.abort());
+window.addEventListener("keydown", handler, { signal: controller.signal });
+
+// Good: Direct removal
+window.addEventListener("keydown", handler);
+api.onCleanup(() => window.removeEventListener("keydown", handler));
+
+// Bad: Listener never removed
+window.addEventListener("keydown", () => { /* ... */ });
+```
+
+## Accessibility considerations
+
+- Provide an alternative UI path for every keyboard shortcut so users who cannot use keyboard shortcuts can still access the feature.
+- Use `api.ui.button()` or other UI components alongside keyboard shortcuts.
+- Announce important actions with `api.banner()` or `api.notify.show()` so screen reader users are aware of the result.
+- Do not use `event.preventDefault()` on keys that have standard browser meanings (e.g., Tab, Escape) unless you have a compelling reason and provide an alternative.
+
+## Example: Settings-driven shortcut toggle
+
+A common pattern is to let the user enable or disable a shortcut through plugin settings:
+
+```js
+export default {
+  activate(api) {
+    const controller = new AbortController();
+    api.onCleanup(() => controller.abort());
+
+    const activateShortcut = () => {
+      if (!api.settings.get("enable-shortcut")) {
+        return;
+      }
+
+      window.addEventListener("keydown", (event) => {
+        const tag = event.target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || event.target.isContentEditable) {
+          return;
+        }
+
+        if (event.ctrlKey && event.shiftKey && event.key === "B") {
+          event.preventDefault();
+          toggleBadge();
+        }
+      }, { signal: controller.signal });
+    };
+
+    // Re-bind when the setting changes
+    api.onCleanup(api.settings.onChange("enable-shortcut", activateShortcut));
+    activateShortcut();
+  },
+};
+```
