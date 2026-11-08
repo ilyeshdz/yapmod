@@ -24,9 +24,10 @@
   --sl-radius-lg: 22px;
   --sl-radius-xl: 30px;
 
-  /* Fonts */
+  /* Fonts — Geist Pixel (headings), Geist (body), Geist Mono (code) */
   --__sl-font-heading: "Geist Pixel", monospace;
   --__sl-font-body: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --__sl-font-mono: "Geist Mono", monospace;
 }
 
 /* Light mode tokens */
