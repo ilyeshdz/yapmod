@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `tokio-tungstenite` now uses `rustls-tls` instead of `native-tls`, unifying the TLS implementation across the project to a single `rustls` backend (#45).
+- Shared helper functions for subscription management, handler notification, and ArrayBuffer copying are extracted from the HTTP and WebSocket inspectors into a common module, eliminating duplicated code (#68).
 
 ### Fixed
 

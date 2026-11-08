@@ -1,4 +1,10 @@
 import { getYapmod } from "./scope";
+import {
+  copyArrayBuffer,
+  copyArrayBufferView,
+  createUnsubscribe,
+  notifyHandlers,
+} from "../shared/helpers";
 import type {
   BlobSnapshot,
   WebSocketIncomingInterceptor,
@@ -21,22 +27,6 @@ const deliveredEvents = new WeakMap<Event, MessageEvent>();
 // Marker property on the global WebSocket constructor to detect re-installation.
 const INSTALLED_MARKER = "__yapmod_websocket_inspector_installed";
 
-/**
- * Notifies all registered handlers of a new message.
- * A single handler throwing does not prevent the remaining handlers from running.
- */
-function notifyHandlers(handlers: WebSocketMessageHandler[], message: WebSocketMessage): void {
-  // Snapshot the handler array so that a handler unsubscribing itself or
-  // another handler during iteration does not corrupt the iteration.
-  const snapshot = handlers.slice();
-  for (const handler of snapshot) {
-    try {
-      handler(message);
-    } catch (error) {
-      console.error("[yapmod] WebSocket inspector handler threw an error", error);
-    }
-  }
-}
 
 /**
  * Notifies subscribers of a WebSocket message without retaining it.
@@ -83,19 +73,10 @@ function normalizeMessageData(data: unknown): string | ArrayBuffer | BlobSnapsho
     return data;
   }
   if (data instanceof ArrayBuffer) {
-    // Copy to prevent the caller from mutating the stored buffer.
-    // new Uint8Array(data).buffer may return the same buffer in some engines,
-    // so we explicitly allocate a new ArrayBuffer and copy into it.
-    const dest = new ArrayBuffer(data.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(data));
-    return dest;
+    return copyArrayBuffer(data);
   }
   if (ArrayBuffer.isView(data)) {
-    // Copy only the bytes covered by the view's offset and length.
-    // Allocate a fresh ArrayBuffer to avoid SharedArrayBuffer issues.
-    const dest = new ArrayBuffer(data.byteLength);
-    new Uint8Array(dest).set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
-    return dest;
+    return copyArrayBufferView(data);
   }
   if (data instanceof Blob) {
     // Blobs cannot be read synchronously. Store metadata instead.
@@ -494,15 +475,7 @@ export function installWebSocketInspector(): void {
        */
       subscribe(handler: WebSocketMessageHandler): () => void {
         incomingHandlers.push(handler);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = incomingHandlers.indexOf(handler);
-          if (index !== -1) {
-            incomingHandlers.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(incomingHandlers, handler);
       },
       /**
        * Registers an incoming message interceptor; returns a cleanup function.
@@ -510,15 +483,7 @@ export function installWebSocketInspector(): void {
        */
       use(interceptor: WebSocketIncomingInterceptor): () => void {
         incomingInterceptors.push(interceptor);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = incomingInterceptors.indexOf(interceptor);
-          if (index !== -1) {
-            incomingInterceptors.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(incomingInterceptors, interceptor);
       },
     },
     outgoing: {
@@ -528,15 +493,7 @@ export function installWebSocketInspector(): void {
        */
       subscribe(handler: WebSocketMessageHandler): () => void {
         outgoingHandlers.push(handler);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = outgoingHandlers.indexOf(handler);
-          if (index !== -1) {
-            outgoingHandlers.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(outgoingHandlers, handler);
       },
       /**
        * Registers an outgoing interceptor; returns a cleanup function.
@@ -544,15 +501,7 @@ export function installWebSocketInspector(): void {
        */
       use(interceptor: WebSocketOutgoingInterceptor): () => void {
         outgoingInterceptors.push(interceptor);
-        let removed = false;
-        return () => {
-          if (removed) return;
-          removed = true;
-          const index = outgoingInterceptors.indexOf(interceptor);
-          if (index !== -1) {
-            outgoingInterceptors.splice(index, 1);
-          }
-        };
+        return createUnsubscribe(outgoingInterceptors, interceptor);
       },
     },
   };
