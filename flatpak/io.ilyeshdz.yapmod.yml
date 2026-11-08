@@ -1,0 +1,71 @@
+# Flatpak manifest for yapmod
+#
+# This manifest extracts the pre-built .deb from GitHub releases and installs
+# it in the Flatpak sandbox. For the source-build approach, see README.md.
+#
+# To build locally:
+#   flatpak-builder --force-clean --user --repo=repo --install builddir flatpak/io.ilyeshdz.yapmod.yml
+#
+# To submit to Flathub, copy this file and the metainfo.xml to your flathub PR.
+
+app-id: io.ilyeshdz.yapmod
+runtime: org.gnome.Platform
+runtime-version: "47"
+sdk: org.gnome.Sdk
+command: yapmod
+rename-icon: yapmod
+add-extensions:
+  org.freedesktop.Platform.ffmpeg-full:
+    directory: lib/ffmpeg
+    version: "24.08"
+    download: true
+finish-args:
+  # Wayland and X11 display server access
+  - --socket=wayland
+  - --socket=fallback-x11
+  # GPU acceleration for WebKit2GTK
+  - --device=dri
+  # IPC for proper process communication
+  - --share=ipc
+  # Network access for Yapper web content
+  - --share=network
+  # System tray icon support (required for yapmod tray-icon feature)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Allow accessing D-Bus services for notifications
+  - --talk-name=org.freedesktop.Notifications
+  # File dialog access: plugins may need to let users pick files.
+  # The XDG Desktop Portal handles file chooser dialogs, so the app does NOT
+  # get broad filesystem access — only files explicitly selected by the user
+  # through the file chooser portal. This is used by the Tauri dialog plugin.
+modules:
+  # Required for system tray icon on GTK3 (from Flathub shared modules)
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+
+  # Extract and install the pre-built .deb from GitHub releases
+  - name: yapmod
+    buildsystem: simple
+    sources:
+      # The .deb file from the latest GitHub release.
+      # Update the URL and sha256 for each release.
+      # For Flathub, this can be left as a placeholder and updated per release,
+      # or you can use the Flathub auto-update mechanism.
+      - type: file
+        url: "https://github.com/ilyeshdz/yapmod/releases/download/v0.7.0/yapmod_0.7.0_amd64.deb"
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      - type: file
+        path: io.ilyeshdz.yapmod.metainfo.xml
+    build-commands:
+      # Extract the .deb archive
+      - ar -x *.deb
+      - tar -xf data.tar.gz
+      # Install the binary
+      - install -Dm755 usr/bin/yapmod /app/bin/yapmod
+      # Fix the desktop file icon path and install it
+      - sed -i 's/^Icon=.*/Icon=io.ilyeshdz.yapmod/' usr/share/applications/io.ilyeshdz.yapmod.desktop
+      - install -Dm644 usr/share/applications/io.ilyeshdz.yapmod.desktop /app/share/applications/io.ilyeshdz.yapmod.desktop
+      # Install icons from the .deb (Tauri uses yapmod.png as the icon filename)
+      - install -Dm644 usr/share/icons/hicolor/32x32/apps/yapmod.png /app/share/icons/hicolor/32x32/apps/io.ilyeshdz.yapmod.png
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/yapmod.png /app/share/icons/hicolor/128x128/apps/io.ilyeshdz.yapmod.png
+      - install -Dm644 usr/share/icons/hicolor/256x256/apps/yapmod.png /app/share/icons/hicolor/256x256/apps/io.ilyeshdz.yapmod.png 2>/dev/null || true
+      # Install the AppStream metainfo
+      - install -Dm644 io.ilyeshdz.yapmod.metainfo.xml /app/share/metainfo/io.ilyeshdz.yapmod.metainfo.xml
