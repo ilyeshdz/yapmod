@@ -21,6 +21,7 @@ fn main() {
             "notify",
             "request_notification_permission",
             "check_for_update",
+            "install_app_update",
             "confirm_client_update",
             "get_client_update_launch_status",
             "prepare_client_update",

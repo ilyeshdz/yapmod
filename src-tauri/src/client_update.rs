@@ -467,30 +467,28 @@ pub async fn check_for_client_update(
         return Ok(());
     }
 
+    // Fetch manifest and signature in parallel to reduce wall-clock time.
+    let manifest_url = update_url(channel, "manifest.json");
+    let sig_url = update_url(channel, "manifest.sig");
+
+    #[allow(clippy::type_complexity)]
+    let (manifest_result, sig_result): (
+        Result<Option<Vec<u8>>, String>,
+        Result<Option<Vec<u8>>, String>,
+    ) = tokio::join!(
+        http::fetch(&manifest_url, MAX_MANIFEST_SIZE, REQUEST_TIMEOUT),
+        http::fetch(&sig_url, MAX_SIGNATURE_SIZE, REQUEST_TIMEOUT),
+    );
+
     // A missing channel feed simply means that channel has no published
     // client update yet. Other failures remain visible to the caller.
-    let Some(manifest_bytes) = http::fetch(
-        &update_url(channel, "manifest.json"),
-        MAX_MANIFEST_SIZE,
-        REQUEST_TIMEOUT,
-    )
-    .await
-    .map_err(YapmodError::network)?
-    else {
-        return Ok(());
+    let manifest_bytes = match manifest_result? {
+        Some(bytes) => bytes,
+        None => return Ok(()),
     };
     let signature_bytes = STANDARD
-        .decode(
-            http::fetch(
-                &update_url(channel, "manifest.sig"),
-                MAX_SIGNATURE_SIZE,
-                REQUEST_TIMEOUT,
-            )
-            .await
-            .map_err(YapmodError::network)?
-            .ok_or_else(|| YapmodError::not_found("the client update signature is missing"))?,
-        )
-        .map_err(|_| YapmodError::validation("the client update signature is not valid base64"))?;
+        .decode(sig_result?.ok_or_else(|| "the client update signature is missing".to_string())?)
+        .map_err(|_| "the client update signature is not valid base64".to_string())?;
     if !verify_manifest(&manifest_bytes, &signature_bytes, &public_key) {
         return Err(YapmodError::validation(
             "the client update manifest signature is invalid",
@@ -537,14 +535,14 @@ pub async fn check_for_client_update(
 
     let bundle_path = bundle_path(&dir, manifest.release_sequence);
     for (path, bytes) in [
-        (bundle_path.clone(), bundle_bytes.as_slice()),
+        (bundle_path.clone(), &bundle_bytes[..]),
         (
             manifest_path(&dir, manifest.release_sequence),
-            manifest_bytes.as_slice(),
+            &manifest_bytes[..],
         ),
         (
             signature_path(&dir, manifest.release_sequence),
-            signature_bytes.as_slice(),
+            &signature_bytes[..],
         ),
     ] {
         if let Err(error) = write_atomic(&path, bytes) {
