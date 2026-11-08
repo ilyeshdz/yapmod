@@ -139,18 +139,23 @@ function ButtonItem(
   const variant = props.item.variant ?? "primary";
 
   return (
-    <button
-      classList={{
-        btn: true,
-        small: true,
-        ghost: variant === "secondary",
-        danger: variant === "danger",
-      }}
-      type="button"
-      onClick={() => props.item.onClick()}
-    >
-      {props.item.label}
-    </button>
+    <div class="field">
+      <button
+        classList={{
+          btn: true,
+          small: true,
+          ghost: variant === "secondary",
+          danger: variant === "danger",
+        }}
+        type="button"
+        onClick={() => props.item.onClick()}
+      >
+        {props.item.label}
+      </button>
+      <Show when={props.item.description}>
+        <Hint text={props.item.description!} />
+      </Show>
+    </div>
   );
 }
 

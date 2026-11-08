@@ -267,6 +267,8 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "export_settings",
       label: "Export settings",
+      description:
+        "Download a JSON file with your current settings, plugins, and active theme.",
       group: "Data",
       onClick: () => void handleExport(),
     });
@@ -275,6 +277,8 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "import_settings",
       label: "Import settings",
+      description:
+        "Restore settings from a previously exported JSON file.",
       group: "Data",
       onClick: () => handleImport(),
     });
@@ -283,6 +287,7 @@ export function installDefaultSettings(): void {
       type: "button",
       id: "report_bug",
       label: "Report a bug",
+      description: "Open a GitHub issue to report a problem with yapmod.",
       group: "About",
       onClick: () => openBugReport(),
     });
