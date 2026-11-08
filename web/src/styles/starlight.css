@@ -209,13 +209,22 @@
   padding-bottom: 0.6rem;
 }
 
+/* Logo — match landing page: gradient mask at 38px */
+.site-title,
 .sl-nav-logo {
   padding: 0;
 }
 
-.sl-nav-logo img,
-.sl-nav-logo svg {
-  height: 2.2rem;
+/* The logo is rendered as a gradient mask div by the custom SiteTitle component.
+   Style it to match the landing page's .brand .logo at 38px.
+   The mask URL is set inline in the component. */
+.site-title .logo,
+.sl-nav-logo .logo {
+  display: block;
+  width: 38px;
+  height: auto;
+  aspect-ratio: 829 / 606;
+  background: var(--sl-g);
 }
 
 /* Nav links */
@@ -299,13 +308,9 @@
   font-family: "Geist Pixel", monospace !important;
 }
 
-/* Page title — gradient text */
+/* Page title — normal text color, no gradient */
 .content-panel > .sl-container > h1,
 .sl-markdown-content h1 {
-  background: var(--sl-g);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   font-weight: 800;
   letter-spacing: -0.04em;
   margin-bottom: 1rem;

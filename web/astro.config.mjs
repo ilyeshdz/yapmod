@@ -29,6 +29,9 @@ export default defineConfig({
         },
       ],
       customCss: ["./src/styles/starlight.css"],
+      components: {
+        SiteTitle: "./src/components/starlight/SiteTitle.astro",
+      },
       sidebar: [
         {
           label: "Start",
