@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin and theme update detection from the community catalog. Installed plugins and themes are compared against the catalog on load, and an update button appears on cards when a newer version is available (#44).
 - Structured error types for Tauri commands. All Tauri commands now return a structured `YapmodError` enum (`NotFound`, `Validation`, `Io`, `Network`, `AlreadyExists`, `System`) instead of plain strings, so the client can distinguish error categories programmatically (#48).
 
+### Changed
+
+- `tokio-tungstenite` now uses `rustls-tls` instead of `native-tls`, unifying the TLS implementation across the project to a single `rustls` backend (#45).
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
