@@ -41,7 +41,7 @@ Recent builds open external links in your browser. Update to the latest release 
 
 ## A theme looks wrong or breaks the layout
 
-Pick **Yapin's theme** in the theme gallery to get the usual look back, then remove the theme with the × on its card. A theme is plain CSS, so a broken rule can break the interface around it.
+Pick **Yapin's theme** in the theme gallery to get the usual look back. A theme is plain CSS, so a broken rule can break the interface around it.
 
 ## I'm stuck on the login screen
 

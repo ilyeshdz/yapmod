@@ -1,44 +1,5 @@
 /* Theme picker styles */
 
-.yapmod-theme-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.yapmod-theme-tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-
-.yapmod-theme-tab-active {
-  border-color: var(--ym-accent, var(--accent, #dd5a8c)) !important;
-  color: var(--ym-accent, var(--accent, #dd5a8c)) !important;
-}
-
-.yapmod-theme-community-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.yapmod-theme-search {
-  flex: 1;
-  min-width: 120px;
-}
-
 .yapmod-theme-field {
   margin-top: 18px;
-}
-
-.yapmod-theme-status {
-  margin: 12px 0 0;
-}
-
-.yapmod-theme-status.yapmod-theme-status-error {
-  color: var(--ym-danger, var(--danger, #d9485f));
 }

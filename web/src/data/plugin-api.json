@@ -3,7 +3,7 @@
     "client/shared/types.ts",
     "client/features/banners/api.tsx"
   ],
-  "sourceHash": "d6b535124546de48",
+  "sourceHash": "4971586d200d8a29",
   "types": {
     "YapmodPluginApi": {
       "name": "YapmodPluginApi",
@@ -587,8 +587,16 @@
       "name": "SettingsItem",
       "kind": "type",
       "description": null,
-      "declaration": "export type SettingsItem =\n  | {\n      type: \"toggle\";\n      id: string;\n      label: string;\n      description?: string;\n      value: boolean;\n      disabled?: boolean;\n      onChange: (value: boolean) => void;\n    }\n  | {\n      type: \"select\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      options: SettingOption[];\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"text\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      placeholder?: string;\n      maxLength?: number;\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"number\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min?: number;\n      max?: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"button\";\n      id: string;\n      label: string;\n      variant?: \"primary\" | \"secondary\" | \"danger\";\n      onClick: () => void;\n    }\n  | {\n      type: \"slider\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min: number;\n      max: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"custom\";\n      id: string;\n      label?: string;\n      description?: string;\n      render: (\n        host: HTMLElement,\n        context: SettingsContext,\n      ) => void | (() => void);\n    };",
-      "members": []
+      "declaration": "export type SettingsItem = (\n  | {\n      type: \"toggle\";\n      id: string;\n      label: string;\n      description?: string;\n      value: boolean;\n      disabled?: boolean;\n      onChange: (value: boolean) => void;\n    }\n  | {\n      type: \"select\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      options: SettingOption[];\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"text\";\n      id: string;\n      label: string;\n      description?: string;\n      value: string;\n      placeholder?: string;\n      maxLength?: number;\n      disabled?: boolean;\n      onChange: (value: string) => void;\n    }\n  | {\n      type: \"number\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min?: number;\n      max?: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"button\";\n      id: string;\n      label: string;\n      variant?: \"primary\" | \"secondary\" | \"danger\";\n      onClick: () => void;\n    }\n  | {\n      type: \"slider\";\n      id: string;\n      label: string;\n      description?: string;\n      value: number;\n      min: number;\n      max: number;\n      step?: number;\n      disabled?: boolean;\n      onChange: (value: number) => void;\n    }\n  | {\n      type: \"custom\";\n      id: string;\n      label?: string;\n      description?: string;\n      render: (\n        host: HTMLElement,\n        context: SettingsContext,\n      ) => void | (() => void);\n    }\n) & { group?: string;\n};",
+      "members": [
+        {
+          "name": "group",
+          "type": "string",
+          "optional": true,
+          "readonly": false,
+          "description": "Optional heading that groups consecutive items in a settings panel. Items with the same group are rendered under one heading; a change of group starts a new subsection. Leave it out for a flat list."
+        }
+      ]
     },
     "YapmodPluginUiApi": {
       "name": "YapmodPluginUiApi",

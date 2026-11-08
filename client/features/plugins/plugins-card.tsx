@@ -1,168 +1,107 @@
-import { JSX, Show } from "solid-js";
-import type { YapmodPluginInfo, CommunityPlugin } from "../../shared/types";
-import { Icon } from "../../components/icon";
+import { Show, JSX } from "solid-js";
+import type {
+  CommunityPlugin,
+  PluginManifest,
+  YapmodPluginInfo,
+} from "../../shared/types";
+import type { PackageSource } from "../../components/source-indicator";
 import { IconButton } from "../../components/icon-button";
+import { PackageCard } from "../../components/package-card";
+import { Switch } from "../../components/switch";
 
-/** Badge shown on plugins the catalog owners reviewed and verified. */
-function VerifiedBadge(): JSX.Element {
-  return (
-    <span
-      class="yapmod-plugin-verified"
-      title="Reviewed and verified by the Yapmod maintainers"
-    >
-      <Icon
-        class="yapmod-plugin-verified-icon"
-        size={13}
-        strokeWidth={2.6}
-        name="check"
-      />
-      Verified
-    </span>
-  );
-}
+/** One plugin in the unified gallery, whether installed or available. */
+export type PluginEntry = {
+  id: string;
+  manifest: PluginManifest;
+  source: PackageSource;
+  verified: boolean;
+  installed: YapmodPluginInfo | null;
+  community: CommunityPlugin | null;
+};
 
-export type InstalledPluginCardProps = {
-  plugin: YapmodPluginInfo;
-  onToggle: () => void;
+export type PluginCardProps = {
+  entry: PluginEntry;
+  /** True while the plugin is being installed, enabled or removed. */
+  pending: boolean;
+  /** Turns the plugin on or off. Returns `false` when the change failed. */
+  onToggle: (enabled: boolean) => Promise<boolean>;
+  onConfigure: () => void;
   onReload: () => void;
-  onRemove: () => void;
-  onSettings: () => void;
-  onInspect: () => void;
 };
 
-/** Card for an installed plugin with enable/disable, settings, and remove actions. */
-export function InstalledPluginCard(props: InstalledPluginCardProps): JSX.Element {
-  const { manifest } = props.plugin;
+/**
+ * A plugin card with a single on/off switch.
+ *
+ * Turning the switch on installs the package when needed and enables it;
+ * turning it off disables and removes it. Configuration stays available for
+ * installed plugins.
+ */
+export function PluginCard(props: PluginCardProps): JSX.Element {
+  const { manifest } = props.entry;
+  const installed = () => props.entry.installed !== null;
+  const enabled = () => props.entry.installed?.enabled === true;
+  const busy = () => props.pending || props.entry.installed?.busy === true;
+  const meta = () =>
+    [manifest.author, manifest.version ? `v${manifest.version}` : null, manifest.license]
+      .filter(Boolean)
+      .join(" · ");
+
   return (
-    <article class="yapmod-plugin-card">
-      <div class="yapmod-plugin-card-body">
-        <div class="yapmod-plugin-card-title-row">
-          <div class="yapmod-plugin-card-heading">
-            <h3 class="yapmod-plugin-card-name">{manifest.name}</h3>
-            <Show when={props.plugin.verified}><VerifiedBadge /></Show>
-          </div>
-          <span classList={{
-            "yapmod-plugin-state": true,
-            "yapmod-plugin-state-active": props.plugin.enabled,
-          }}>
-            {props.plugin.enabled ? "Enabled" : "Disabled"}
-          </span>
-        </div>
-        <p class="yapmod-plugin-card-meta">
-          {[manifest.author, manifest.version ? `v${manifest.version}` : null].filter(Boolean).join(" · ")}
-        </p>
-        <p class="yapmod-plugin-card-description">
-          {manifest.description ?? "No description provided."}
-        </p>
-        {manifest.script && (
-          <p>
-            Trusted JavaScript plugin — runs in the Yapin page.
-          </p>
-        )}
-        {props.plugin.error && (
-          <p class="yapmod-plugin-error">{props.plugin.error}</p>
-        )}
-      </div>
-      <div class="yapmod-plugin-card-foot">
-        <div class="yapmod-plugin-card-actions">
-          {manifest.settings.length > 0 && (
+    <PackageCard
+      name={manifest.name}
+      meta={meta()}
+      description={manifest.description ?? "No description provided."}
+      source={props.entry.source}
+      sourceNoun="plugin"
+      verified={props.entry.verified}
+      active={enabled()}
+      actions={
+        installed() ? (
+          <>
+            <Show when={manifest.settings.length > 0}>
+              <IconButton
+                class="btn small ghost yapmod-package-icon-button"
+                iconClass="yapmod-package-action-icon"
+                icon="settings"
+                size={20}
+                strokeWidth={1.9}
+                label={`Settings for ${manifest.name}`}
+                title="Plugin settings"
+                onClick={props.onConfigure}
+              />
+            </Show>
             <IconButton
-              class="btn small ghost yapmod-plugin-icon-button"
-              iconClass="yapmod-plugin-action-icon"
-              icon="settings"
-              size={22}
+              class="btn small ghost yapmod-package-icon-button"
+              iconClass="yapmod-package-action-icon"
+              icon="refresh"
+              size={20}
               strokeWidth={1.9}
-              label={`Settings for ${manifest.name}`}
-              title="Plugin settings"
-              onClick={props.onSettings}
+              label={`Reload ${manifest.name}`}
+              title="Reload the plugin files from disk"
+              disabled={busy()}
+              onClick={props.onReload}
             />
-          )}
-          <IconButton
-            class="btn small ghost yapmod-plugin-icon-button"
-            iconClass="yapmod-plugin-action-icon"
-            icon="files"
-            size={22}
-            strokeWidth={1.9}
-            label={`View files for ${manifest.name}`}
-            title="View plugin files"
-            onClick={props.onInspect}
+          </>
+        ) : undefined
+      }
+      controls={
+        <label class="yapmod-package-control">
+          <Switch
+            checked={enabled()}
+            disabled={busy()}
+            label={
+              enabled()
+                ? `Turn off ${manifest.name}`
+                : `Turn on ${manifest.name}`
+            }
+            onChange={(next) => props.onToggle(next)}
           />
-          <IconButton
-            class="btn small ghost yapmod-plugin-icon-button"
-            iconClass="yapmod-plugin-action-icon"
-            icon="refresh"
-            size={22}
-            strokeWidth={1.9}
-            label={`Reload ${manifest.name}`}
-            title="Reload the plugin files from disk"
-            disabled={props.plugin.busy}
-            onClick={props.onReload}
-          />
-          <IconButton
-            class="btn small ghost yapmod-plugin-icon-button"
-            iconClass="yapmod-plugin-action-icon"
-            icon="trash"
-            size={22}
-            strokeWidth={1.9}
-            label={`Remove ${manifest.name}`}
-            title="Remove plugin"
-            onClick={props.onRemove}
-          />
-        </div>
-        <button
-          class="btn small ghost"
-          type="button"
-          disabled={props.plugin.busy}
-          onClick={props.onToggle}
-        >
-          {props.plugin.busy ? "Working…" : props.plugin.enabled ? "Disable" : "Enable"}
-        </button>
-      </div>
-    </article>
-  );
-}
-
-export type CommunityPluginCardProps = {
-  plugin: CommunityPlugin;
-  installed: boolean;
-  onInstall: () => void;
-};
-
-/** Card for a community plugin with an install button. */
-export function CommunityPluginCard(props: CommunityPluginCardProps): JSX.Element {
-  return (
-    <article class="yapmod-plugin-card">
-      <div class="yapmod-plugin-card-body">
-        <div class="yapmod-plugin-card-title-row">
-          <div class="yapmod-plugin-card-heading">
-            <h3 class="yapmod-plugin-card-name">{props.plugin.name}</h3>
-            <Show when={props.plugin.verified}><VerifiedBadge /></Show>
-          </div>
-        </div>
-        <p class="yapmod-plugin-card-meta">
-          {[props.plugin.author, props.plugin.version ? `v${props.plugin.version}` : null, props.plugin.license].filter(Boolean).join(" · ")}
-        </p>
-        <p class="yapmod-plugin-card-description">
-          {props.plugin.description ?? "No description provided."}
-        </p>
-        {props.plugin.tags?.length > 0 && (
-          <div class="yapmod-plugin-tags">
-            {props.plugin.tags.map((tag) => (
-              <span class="yapmod-plugin-tag">{tag}</span>
-            ))}
-          </div>
-        )}
-      </div>
-      <div class="yapmod-plugin-card-foot">
-        <button
-          class="btn small yapmod-plugin-install"
-          type="button"
-          disabled={props.installed}
-          onClick={props.onInstall}
-        >
-          {props.installed ? "Installed" : "Install"}
-        </button>
-      </div>
-    </article>
+        </label>
+      }
+    >
+      <Show when={props.entry.installed?.error}>
+        <p class="yapmod-package-error">{props.entry.installed?.error}</p>
+      </Show>
+    </PackageCard>
   );
 }

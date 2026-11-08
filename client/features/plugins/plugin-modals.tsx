@@ -2,7 +2,6 @@ import { createSignal, For, Show, JSX } from "solid-js";
 
 import { mountView } from "../../shared/solid";
 import type {
-  PluginBundle,
   PluginManifest,
   PluginSetting,
   PluginSettingValue,
@@ -195,41 +194,6 @@ export function PluginSettingsForm(
       <For each={props.manifest.settings}>
         {(setting) => <PluginSettingInput setting={setting} draft={props.draft} />}
       </For>
-    </div>
-  );
-}
-
-function SourceFile(
-  props: { filename: string; source: string },
-): JSX.Element {
-  return (
-    <details class="yapmod-plugin-source-file">
-      <summary>{props.filename}</summary>
-      <pre class="yapmod-plugin-source-code">
-        <code>{props.source}</code>
-      </pre>
-    </details>
-  );
-}
-
-/** The installed package source, for review. */
-export function PluginSourceViewer(
-  props: { bundle: PluginBundle },
-): JSX.Element {
-  return (
-    <div>
-      <p class="yapmod-plugin-source-note">
-        These are the package contents loaded by Yapmod. Community plugins are
-        copied to this local installation and can be reviewed here.
-      </p>
-      <SourceFile
-        filename="manifest.json"
-        source={JSON.stringify(props.bundle.manifest, null, 2)}
-      />
-      <SourceFile filename="plugin.css" source={props.bundle.css} />
-      <Show when={props.bundle.script !== null}>
-        <SourceFile filename="plugin.js" source={props.bundle.script!} />
-      </Show>
     </div>
   );
 }
