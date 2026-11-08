@@ -12,11 +12,11 @@
   --sl-text: #fbf1f0;
   --sl-muted: #b3a3b4;
   --sl-on: #1a0f16;
-  --sl-accent: #f67567;
-  --sl-accent-2: #ff8a70;
-  --sl-accent-3: #ffb25f;
-  --sl-glow: rgba(246, 117, 103, 0.22);
-  --sl-g: linear-gradient(135deg, #f67567 0%, #ff8a70 55%, #ffb25f 100%);
+  --sl-accent: #DD5A8C;
+  --sl-accent-2: #E87DA6;
+  --sl-accent-3: #F2A3C5;
+  --sl-glow: rgba(221, 90, 140, 0.22);
+  --sl-g: linear-gradient(135deg, #DD5A8C 0%, #E87DA6 55%, #F2A3C5 100%);
 
   /* Border radii — match the website */
   --sl-radius-sm: 12px;
@@ -38,10 +38,10 @@
   --sl-text: #25141c;
   --sl-muted: #7a6068;
   --sl-on: #fff7f5;
-  --sl-accent: #d9485f;
-  --sl-accent-2: #f67567;
-  --sl-accent-3: #f67567;
-  --sl-glow: rgba(246, 117, 103, 0.18);
+  --sl-accent: #c44a78;
+  --sl-accent-2: #DD5A8C;
+  --sl-accent-3: #E87DA6;
+  --sl-glow: rgba(221, 90, 140, 0.18);
 }
 
 /* Dark mode Starlight variables */
@@ -56,7 +56,7 @@
   --__sl-color-content-fade: var(--sl-muted);
   --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #3e3048;
-  --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
+  --__sl-color-accent-low: rgba(221, 90, 140, 0.15);
   --__sl-color-accent: var(--sl-accent);
   --__sl-color-accent-high: var(--sl-accent-2);
   --sl-brand-gradient: var(--sl-g);
@@ -66,7 +66,7 @@
   --__sl-color-code: var(--sl-accent-3);
   --__sl-color-code-bg: var(--sl-surface);
   --__sl-color-inline-code-bg: var(--sl-surface);
-  --__sl-color-hairline-shade: rgba(246, 117, 103, 0.2);
+  --__sl-color-hairline-shade: rgba(221, 90, 140, 0.2);
   --__sl-card-border-color: var(--sl-line);
   --__sl-card-hover-border-color: var(--sl-accent);
   --__sl-color-backdrop: rgba(19, 14, 24, 0.85);
@@ -87,7 +87,7 @@
   --__sl-color-content-fade: var(--sl-muted);
   --__sl-color-border: var(--sl-line);
   --__sl-color-border-strong: #e0c4bd;
-  --__sl-color-accent-low: rgba(246, 117, 103, 0.15);
+  --__sl-color-accent-low: rgba(221, 90, 140, 0.15);
   --__sl-color-accent: var(--sl-accent);
   --__sl-color-accent-high: var(--sl-accent-2);
   --__sl-color-link: var(--sl-accent);
@@ -95,8 +95,8 @@
   --__sl-button-on-page-hover-bg: var(--sl-accent-2);
   --__sl-color-code: var(--sl-accent-2);
   --__sl-color-code-bg: #fff;
-  --__sl-color-inline-code-bg: #fff0ed;
-  --__sl-color-hairline-shade: rgba(246, 117, 103, 0.15);
+  --__sl-color-inline-code-bg: #fff0f5;
+  --__sl-color-hairline-shade: rgba(221, 90, 140, 0.15);
   --__sl-card-border-color: var(--sl-line);
   --__sl-card-hover-border-color: var(--sl-accent);
   --__sl-color-backdrop: rgba(255, 247, 245, 0.85);
@@ -123,7 +123,7 @@
 *::before,
 *::after {
   transition-property: background-color, border-color, color;
-  transition-duration: 0.2s;
+  transition-duration: 0.25s;
   transition-timing-function: ease;
 }
 
@@ -218,6 +218,7 @@
    ============================================================================ */
 
 .sl-markdown-content h1 {
+  font-family: "Geist Pixel", monospace;
   background: var(--sl-g);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -229,6 +230,7 @@
 
 /* Hero section on the landing/doc pages */
 .sl-markdown-content h2 {
+  font-family: "Geist Pixel", monospace;
   font-weight: 800;
   letter-spacing: -0.03em;
   border-bottom-color: var(--sl-line);
@@ -236,6 +238,7 @@
 }
 
 .sl-markdown-content h3 {
+  font-family: "Geist Pixel", monospace;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -470,7 +473,7 @@
    ============================================================================ */
 
 ::selection {
-  background: rgba(246, 117, 103, 0.2);
+  background: rgba(221, 90, 140, 0.2);
   color: var(--sl-text);
 }
 
@@ -554,6 +557,36 @@
   pointer-events: none;
   z-index: -1;
   opacity: 0.5;
+}
+
+/* ============================================================================
+   GRID SQUARE PATTERN — background with gradient fade from 100% to 0% opacity
+   ============================================================================ */
+
+.sl-root {
+  position: relative;
+}
+
+.sl-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--sl-accent) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sl-accent) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center top;
+  opacity: 0.06;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Light mode: slightly stronger grid */
+:root[data-theme="light"] .sl-root::before,
+[data-theme="light"] .sl-root::before {
+  opacity: 0.08;
 }
 
 /* ============================================================================
