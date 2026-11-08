@@ -128,6 +128,257 @@
   margin-bottom: 12px;
 }
 
+/* Named subsections inside a settings panel */
+
+.yapmod-settings-group-title {
+  margin: 22px 0 8px;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.yapmod-settings-group-title:first-child {
+  margin-top: 0;
+}
+
+/* Package galleries shared by Themes and Plugins */
+
+.yapmod-package-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.yapmod-package-search {
+  flex: 1 1 200px;
+  min-width: 140px;
+}
+
+.yapmod-package-filter {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 150px;
+}
+
+.yapmod-package-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.yapmod-package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.yapmod-package-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: var(--ym-radius, var(--radius, 10px));
+  background: var(--ym-bg-elev, var(--bg-elev, rgba(127, 127, 127, 0.06)));
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.yapmod-package-card-active {
+  border-color: var(--ym-accent, var(--accent, #dd5a8c));
+  box-shadow: 0 0 0 1px
+    color-mix(in srgb, var(--ym-accent, var(--accent, #dd5a8c)) 45%, transparent);
+}
+
+.yapmod-package-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 13px 14px;
+}
+
+.yapmod-package-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.yapmod-package-card-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+
+.yapmod-package-card-name {
+  min-width: 0;
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.yapmod-package-card-meta,
+.yapmod-package-card-description {
+  margin: 0;
+}
+
+.yapmod-package-card-meta {
+  font-size: 0.78em;
+  opacity: 0.65;
+}
+
+.yapmod-package-card-description {
+  font-size: 0.88em;
+  line-height: 1.4;
+}
+
+.yapmod-package-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 1px;
+}
+
+.yapmod-package-tag {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
+  font-size: 0.68em;
+  opacity: 0.78;
+}
+
+.yapmod-package-error {
+  margin: 0;
+  color: var(--ym-danger, var(--danger, #d9485f));
+  font-size: 0.82em;
+  overflow-wrap: anywhere;
+}
+
+.yapmod-package-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px 12px;
+  border-top: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.16)));
+}
+
+.yapmod-package-card-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+
+.yapmod-package-card-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.yapmod-package-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.yapmod-package-control-label {
+  user-select: none;
+}
+
+.yapmod-package-switch {
+  flex: none;
+}
+
+.yapmod-package-icon-button {
+  display: inline-grid;
+  width: 32px;
+  min-width: 32px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+}
+
+.yapmod-package-status {
+  margin: 12px 0 0;
+}
+
+.yapmod-package-status-error {
+  color: var(--ym-danger, var(--danger, #d9485f));
+}
+
+/* Tooltip indicators */
+
+.yapmod-indicator {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  color: var(--ym-text-muted, var(--text-muted, #9c9daa));
+  cursor: help;
+}
+
+.yapmod-indicator:hover,
+.yapmod-indicator:focus-visible {
+  background: var(--ym-bg-hover, var(--bg-hover, rgba(127, 127, 127, 0.12)));
+  color: var(--ym-text, var(--text, #e4e4e4));
+  outline: none;
+}
+
+.yapmod-indicator-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 2147483000;
+  width: max-content;
+  max-width: 220px;
+  padding: 5px 8px;
+  border: 1px solid var(--ym-border, var(--border, rgba(127, 127, 127, 0.25)));
+  border-radius: 6px;
+  background: var(--ym-bg-solid, var(--bg-elev, #1a1a1a));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  color: var(--ym-text, var(--text, #e4e4e4));
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(-50%, 2px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms;
+}
+
+.yapmod-indicator:hover .yapmod-indicator-tooltip,
+.yapmod-indicator:focus-visible .yapmod-indicator-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.yapmod-source-community {
+  color: var(--ym-accent, var(--accent, #dd5a8c));
+}
+
 /* Changelog section */
 
 .yapmod-settings-panel .yapmod-settings-body {
