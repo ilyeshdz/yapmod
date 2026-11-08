@@ -178,3 +178,308 @@ export default {
 5. Confirm the badge appears and counts traffic.
 6. Turn the badge off in the plugin settings and confirm the element is removed.
 7. Disable the plugin and confirm no badge returns when new traffic arrives.
+
+---
+
+## Example 2: Settings-driven custom panel
+
+This example shows a plugin that registers a custom settings panel with UI components, stores persistent state, and responds to setting changes.
+
+### Package
+
+```text
+note-taker/
+├── manifest.json
+├── plugin.css
+└── plugin.js
+```
+
+### `manifest.json`
+
+```json
+{
+  "id": "note-taker",
+  "name": "Note Taker",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "A simple note-taking panel with persistent storage.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["ui", "storage"],
+  "stylesheet": "plugin.css",
+  "script": "plugin.js",
+  "settings": [
+    {
+      "id": "show-floating-button",
+      "label": "Show floating button",
+      "description": "Display a floating button to open the note panel.",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}
+```
+
+### `plugin.css`
+
+```css
+.plugin-note-taker-floating-btn {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  z-index: 40;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--ym-border);
+  background: var(--ym-bg-elev);
+  color: var(--ym-text);
+  box-shadow: var(--ym-shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.plugin-note-taker-panel {
+  position: fixed;
+  bottom: 72px;
+  left: 18px;
+  z-index: 41;
+  width: 320px;
+  max-height: 400px;
+  padding: 12px;
+  border: 1px solid var(--ym-border);
+  border-radius: var(--ym-radius);
+  background: var(--ym-bg-elev);
+  box-shadow: var(--ym-shadow);
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plugin-note-taker-panel.open {
+  display: flex;
+}
+
+.plugin-note-taker-panel textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid var(--ym-border);
+  border-radius: var(--ym-radius);
+  background: var(--ym-bg);
+  color: var(--ym-text);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+```
+
+### `plugin.js`
+
+```js
+export default {
+  activate(api) {
+    const pluginId = api.id;
+    let panel = null;
+    let button = null;
+    let isOpen = false;
+
+    // Read the saved note from storage
+    const savedNote = api.storage.get("note", "");
+
+    // Create the floating button
+    button = document.createElement("button");
+    button.className = "plugin-note-taker-floating-btn";
+    button.title = "Open notes";
+    button.innerHTML = "+";
+    button.addEventListener("click", () => {
+      if (!panel) {
+        // Lazy-create the panel
+        panel = document.createElement("div");
+        panel.className = "plugin-note-taker-panel";
+
+        const textarea = document.createElement("textarea");
+        textarea.placeholder = "Write a note...";
+        textarea.value = savedNote;
+        textarea.addEventListener("input", () => {
+          api.storage.set("note", textarea.value);
+        });
+
+        const saveBtn = api.ui.button({
+          icon: "save",
+          title: "Save note",
+          variant: "primary",
+          size: "small",
+          onClick: () => {
+            api.storage.set("note", textarea.value);
+            api.notify.show({ title: "Note saved", body: "Your note has been saved." });
+          },
+        });
+
+        panel.append(textarea, saveBtn);
+        document.body.append(panel);
+      }
+
+      isOpen = !isOpen;
+      panel.classList.toggle("open", isOpen);
+    });
+
+    document.body.append(button);
+
+    // Respond to the floating button setting
+    const updateButton = () => {
+      if (api.settings.get("show-floating-button")) {
+        if (!document.body.contains(button)) {
+          document.body.append(button);
+        }
+      } else {
+        button.remove();
+        panel?.classList.remove("open");
+        isOpen = false;
+      }
+    };
+
+    api.onCleanup(api.settings.onChange("show-floating-button", updateButton));
+    api.onCleanup(() => button.remove());
+    api.onCleanup(() => panel?.remove());
+  },
+};
+```
+
+### Why it is built this way
+
+- The panel is lazy-created on first button click to avoid unnecessary DOM nodes.
+- Notes are stored in `api.storage`, which is namespaced by the plugin id.
+- The floating button respects the `show-floating-button` setting and updates when it changes.
+- CSS is scoped under `.plugin-note-taker-*` to avoid conflicts.
+- Cleanup removes both the button and the panel.
+
+---
+
+## Example 3: Network response modifier
+
+This example shows a plugin that intercepts HTTP responses, modifies specific endpoints, and logs the changes — a common pattern for debugging or development tools.
+
+### Package
+
+```text
+response-modifier/
+├── manifest.json
+└── plugin.js
+```
+
+### `manifest.json`
+
+```json
+{
+  "id": "response-modifier",
+  "name": "Response Modifier",
+  "version": "1.0.0",
+  "author": "Your name",
+  "description": "Intercepts API responses and adds a custom header for debugging.",
+  "license": "MIT",
+  "api": 1,
+  "tags": ["network", "debugging"],
+  "stylesheet": "",
+  "script": "plugin.js",
+  "settings": [
+    {
+      "id": "target-url",
+      "label": "Target URL pattern",
+      "description": "Only modify responses whose URL contains this string.",
+      "type": "text",
+      "default": "/api/"
+    },
+    {
+      "id": "enabled",
+      "label": "Enable interception",
+      "description": "Turn the interceptor on or off.",
+      "type": "toggle",
+      "default": true
+    }
+  ]
+}
+```
+
+### `plugin.js`
+
+```js
+export default {
+  activate(api) {
+    let interceptorCleanup = null;
+
+    const registerInterceptor = () => {
+      // Remove the previous interceptor if it exists
+      if (interceptorCleanup) {
+        interceptorCleanup();
+        interceptorCleanup = null;
+      }
+
+      if (!api.settings.get("enabled")) {
+        return;
+      }
+
+      const targetPattern = api.settings.get("target-url") || "/api/";
+
+      interceptorCleanup = api.http.responses.use(async (exchange) => {
+        // Only modify responses matching the target pattern
+        if (!exchange.url.includes(targetPattern)) {
+          return undefined;
+        }
+
+        api.log.info("Intercepted response", exchange.url, exchange.status);
+
+        // Example: wrap JSON responses with metadata
+        if (exchange.responseBody && typeof exchange.responseBody === "string") {
+          try {
+            const parsed = JSON.parse(exchange.responseBody);
+            const modified = {
+              ...parsed,
+              _modifiedBy: api.id,
+              _interceptedAt: new Date().toISOString(),
+            };
+
+            return new Response(JSON.stringify(modified), {
+              status: exchange.status,
+              statusText: exchange.statusText,
+              headers: { "Content-Type": "application/json" },
+            });
+          } catch {
+            // Not JSON — pass through unchanged
+            return undefined;
+          }
+        }
+
+        return undefined;
+      });
+    };
+
+    // Register on activation
+    registerInterceptor();
+
+    // Re-register when settings change
+    api.onCleanup(api.settings.onChange("enabled", registerInterceptor));
+    api.onCleanup(api.settings.onChange("target-url", registerInterceptor));
+
+    // Clean up on disable
+    api.onCleanup(() => {
+      if (interceptorCleanup) {
+        interceptorCleanup();
+        interceptorCleanup = null;
+      }
+    });
+  },
+};
+```
+
+### Why it is built this way
+
+- The interceptor returns `undefined` for non-matching URLs, so other plugins and the app are unaffected.
+- Settings changes trigger a re-registration so the pattern and toggle take effect immediately.
+- The interceptor gracefully handles non-JSON responses by passing them through.
+- Logging uses `api.log` so output is namespaced and filterable.
+- Cleanup removes the interceptor when the plugin is disabled, preventing orphaned handlers.

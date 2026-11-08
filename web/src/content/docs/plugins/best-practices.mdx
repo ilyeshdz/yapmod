@@ -97,6 +97,154 @@ Prefer `icon` with a `title` for compact actions, and keep a text label when the
 
 Scope CSS to your own nodes or to the tokens the app exposes. Avoid global resets on `*`, `body` or broad element selectors. Use `!important` only when you have verified it is necessary and documented why. Do not restyle `.yapmod-ui-*` classes directly; use a variant or wrap the component and style the wrapper instead.
 
+### CSS scoping patterns
+
+Plugin CSS runs in the page stylesheet, so unscoped selectors can affect the host page or other plugins. Use one of the following patterns to keep your styles isolated.
+
+#### Pattern 1: Namespace every selector with your plugin id
+
+Prefix every selector with a unique class or id derived from `api.id`. This is the most reliable approach:
+
+```css
+/* Always scope under a unique plugin container */
+.plugin-my-plugin .my-badge {
+  color: var(--ym-text);
+  background: var(--ym-bg-elev);
+}
+
+.plugin-my-plugin .my-panel {
+  border: 1px solid var(--ym-border);
+}
+```
+
+Then apply the namespace class in your script:
+
+```js
+const container = document.createElement("div");
+container.className = `plugin-${api.id}`;
+document.body.append(container);
+```
+
+#### Pattern 2: Use `:where()` for safe specificity
+
+When you need to style elements inside a container without increasing specificity, use `:where()`. It has zero specificity, so your rules are easy to override and do not fight the host page:
+
+```css
+:where(.plugin-my-plugin) .my-card {
+  padding: 8px;
+  border-radius: var(--ym-radius);
+}
+
+:where(.plugin-my-plugin) .my-card:hover {
+  background: var(--ym-bg-hover);
+}
+```
+
+#### Pattern 3: Use `api.styles.add()` for dynamic styles
+
+For styles generated at runtime, use the `api.styles.add()` API. It automatically removes the styles when the plugin is disabled:
+
+```js
+export default {
+  activate(api) {
+    const color = api.settings.get("accent-color") || "#ff6b4a";
+    api.onCleanup(
+      api.styles.add(`
+        .plugin-${api.id} .highlight {
+          color: ${color};
+        }
+      `)
+    );
+  },
+};
+```
+
+#### What to avoid
+
+- **Never** use global resets like `* { margin: 0; box-sizing: border-box; }`.
+- **Never** target `body`, `html`, or `:root` directly.
+- **Avoid** element-only selectors (`div`, `span`, `a`) without a namespace prefix.
+- **Avoid** `!important` unless you have measured specificity and confirmed it is the only option.
+- **Do not** restyle `.yapmod-ui-*` classes; wrap components and style the wrapper.
+
+## Plugin interaction and collision avoidance
+
+Plugins share the same page, DOM, and network layer. When two plugins modify the same area, unexpected behavior can occur. Follow these guidelines to minimize conflicts.
+
+### Can one plugin detect another?
+
+There is no plugin discovery API. A plugin cannot list other installed plugins or query their state. However, a plugin can indirectly detect another by observing DOM changes, network traffic, or storage keys that the other plugin leaves behind. This is fragile and not recommended.
+
+### What happens when two plugins modify the same element?
+
+The last write wins. If Plugin A and Plugin B both append a badge to the same container, both badges appear. If they both replace the inner HTML of the same element, the second plugin overwrites the first. There is no coordination layer.
+
+### Collision avoidance strategies
+
+#### Use unique namespaces
+
+Always prefix DOM ids, classes, and data attributes with `api.id`. This prevents selector collisions and makes it clear which plugin owns which element:
+
+```js
+const panelId = `plugin-${api.id}-panel`;
+const badgeClass = `plugin-${api.id}-badge`;
+```
+
+#### Observe before you modify
+
+When your plugin needs to work with existing page elements, observe the DOM first rather than assuming a fixed structure:
+
+```js
+// Safe: check before modifying
+const target = document.querySelector(".message-area");
+if (target && !target.querySelector(`[data-plugin="${api.id}"]`)) {
+  // Only add our element if we haven't already
+  const wrapper = document.createElement("div");
+  wrapper.dataset.plugin = api.id;
+  target.append(wrapper);
+}
+```
+
+#### Use MutationObserver sparingly
+
+If you must react to DOM changes from other plugins or the host page, use a `MutationObserver` with a narrow filter:
+
+```js
+const observer = new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    // Only react to changes in our own container
+    if (mutation.target.closest(`.plugin-${api.id}`)) {
+      handleChanges(mutation);
+    }
+  }
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+api.onCleanup(() => observer.disconnect());
+```
+
+#### Coordinate through settings, not detection
+
+If your plugin can work alongside another, document the expected interaction in your manifest description. Do not build detection logic that depends on another plugin's internal implementation.
+
+#### Network interceptor order
+
+HTTP and WebSocket interceptors run in registration order. If two plugins register interceptors for the same URL pattern, they will both fire. Return `undefined` from your interceptor for requests you do not want to modify:
+
+```js
+api.http.responses.use((exchange) => {
+  // Only modify our target URLs
+  if (!exchange.url.includes("/api/target")) {
+    return undefined;
+  }
+  return modifiedResponse;
+});
+```
+
+### Should authors coordinate?
+
+For plugins in the Community catalog, authors should coordinate when their plugins target the same feature area. Contact the other author before publishing a plugin that overlaps significantly with an existing one. Consider collaborating or documenting how the plugins work together.
+
 ## Document the plugin in the package
 
 The manifest description is the only package metadata users see. Explain what the plugin changes, what it reads, and what settings do. If the plugin is published in the Community catalog, the repository README and review notes are the right place for longer caveats.
