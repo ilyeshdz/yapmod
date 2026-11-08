@@ -726,9 +726,7 @@ pub async fn update_community_plugin(
     // Remove the old installation
     let folder = plugins_dir(&app)?.join(&id);
     if folder.exists()
-        && fs::symlink_metadata(&folder).is_ok_and(|m| {
-            !m.file_type().is_symlink() && m.is_dir()
-        })
+        && fs::symlink_metadata(&folder).is_ok_and(|m| !m.file_type().is_symlink() && m.is_dir())
     {
         let _ = fs::remove_dir_all(&folder);
     }
