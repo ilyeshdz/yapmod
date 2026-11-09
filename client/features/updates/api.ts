@@ -63,7 +63,7 @@ export function showUpdateAvailableModal(info: UpdateInfo): YapmodModal | null {
   }
 
   const content = createUpdateContent(info);
-  const product = info.channel === "nightly" ? "yapmod nightly" : "yapmod";
+  const product = "yapmod";
   const target = info.release_url || WEBSITE_URL;
   const host = getHost();
   const canAutoUpdate = !!host.updates?.installAppUpdate;

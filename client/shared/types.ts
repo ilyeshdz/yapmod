@@ -5,7 +5,6 @@ import type {
   ReleaseInfo,
   ReleaseNotes,
   ReleaseNotesSection,
-  UpdateChannel,
   UpdateInfo,
 } from "../generated/types";
 import type { DesktopBridge } from "../core/desktop";
@@ -19,7 +18,6 @@ export type {
   ReleaseInfo,
   ReleaseNotes,
   ReleaseNotesSection,
-  UpdateChannel,
   UpdateInfo,
 };
 

@@ -77,7 +77,7 @@ function stringField(params: Record<string, unknown>, field: string): string {
   return value;
 }
 
-/** Reads one file from this channel's signed web feed. */
+/** Reads one file from the signed web feed. */
 async function fetchFeedText(file: string, maxBytes: number): Promise<string> {
   const url = updateUrl(file);
 
