@@ -64,26 +64,37 @@
       vec2 cellId = floor(gridUv);
       vec2 cellUv = fract(gridUv) - 0.5;
 
-      vec2 d = abs(cellUv);
-      float square = 1.0 - smoothstep(0.30, 0.37, max(d.x, d.y));
-
       float rnd = hash21(cellId + 11.0);
       float field = noise(gridUv * 0.09 + vec2(u_time * 0.01, -u_time * 0.008));
 
-      // Soft spotlight around the pointer, measured in device pixels.
+      // Square size breathes slightly with the field so the texture reads as
+      // dithered rather than a flat checkerboard.
+      float halfSize = 0.29 + 0.055 * field;
+      vec2 d = abs(cellUv);
+      float square = 1.0 - smoothstep(halfSize - 0.03, halfSize + 0.03, max(d.x, d.y));
+
+      // Pointer spotlight. A little noise warps the radius so the reveal has an
+      // organic edge instead of a perfect circle.
       vec2 pointer = u_pointer * u_resolution;
       float dist = length(frag - pointer) / max(u_radius * u_dpr, 1.0);
-      float spot = smoothstep(1.0, 0.0, dist);
-      spot = pow(spot, 1.25);
+      float organic = 0.82 + 0.18 * noise(gridUv * 0.06 + 17.0);
+      float spot = smoothstep(1.0, 0.0, dist * organic);
+      spot = pow(spot, 1.3);
 
-      // Slight per-cell variation keeps the grid from looking mechanical.
-      float variation = 0.72 + 0.28 * field + 0.08 * rnd;
+      float variation = 0.7 + 0.3 * field + 0.08 * rnd;
       float alpha = clamp(square * spot * variation * u_reveal * u_intensity, 0.0, 1.0);
 
-      vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.55 + field * 0.45, 0.0, 1.0));
+      vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.5 + field * 0.5, 0.0, 1.0));
+      color = mix(color, vec3(1.0), spot * 0.14);
+
+      // Faint warm halo makes the spotlight feel lit rather than clipped.
+      float halo = pow(smoothstep(1.0, 0.0, dist), 2.0) * 0.035 * u_reveal;
+      vec3 haloColor = mix(u_color_a, u_color_b, 0.35);
+
+      float outAlpha = clamp(alpha + halo, 0.0, 1.0);
 
       // Premultiplied output, matching the context's premultipliedAlpha.
-      gl_FragColor = vec4(color * alpha, alpha);
+      gl_FragColor = vec4(color * alpha + haloColor * halo, outAlpha);
     }
   `;
 
@@ -174,7 +185,6 @@
     };
 
     const hero = canvas.closest(".hero");
-    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -185,6 +195,7 @@
     let elapsed = 0;
     let visible = !document.hidden;
     let onScreen = true;
+    let hasPointer = false;
 
     // Pointer state is smoothed toward the target so the spotlight trails
     // behind the cursor instead of snapping.
@@ -262,9 +273,9 @@
       lastFrame = now;
       elapsed = (now - startedAt) / 1000;
 
-      if (!canHover) drift(now);
+      if (!hasPointer) drift(now);
 
-      const ease = 1 - Math.pow(0.0001, dt);
+      const ease = 1 - Math.pow(0.0000001, dt);
       pointer.x += (target.x - pointer.x) * ease;
       pointer.y += (target.y - pointer.y) * ease;
       reveal += (targetReveal - reveal) * ease;
@@ -277,7 +288,7 @@
       if (running || !visible || !onScreen) return;
 
       if (reducedMotion.matches) {
-        if (!canHover) {
+        if (!hasPointer) {
           drift(performance.now());
           pointer.x = target.x;
           pointer.y = target.y;
@@ -311,7 +322,9 @@
     }
 
     function onPointerMove(event: PointerEvent) {
-      if (!canHover || !hero) return;
+      if (!hero) return;
+
+      hasPointer = true;
 
       const bounds = hero.getBoundingClientRect();
       const inside = event.clientY >= bounds.top && event.clientY <= bounds.bottom;
@@ -321,7 +334,9 @@
       } else {
         const rect = canvas.getBoundingClientRect();
         target.x = (event.clientX - rect.left) / rect.width;
-        target.y = (event.clientY - rect.top) / rect.height;
+        // WebGL NDC and the shader's UVs have y growing upward, while DOM
+        // coordinates grow downward.
+        target.y = 1 - (event.clientY - rect.top) / rect.height;
         targetReveal = 1;
       }
 
@@ -380,6 +395,7 @@
 
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerdown", onPointerMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onPointerLeave);
     window.addEventListener("resize", onResize);
     reducedMotion.addEventListener("change", onMotionChange);
@@ -392,6 +408,7 @@
       themeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerdown", onPointerMove);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       window.removeEventListener("resize", onResize);
       reducedMotion.removeEventListener("change", onMotionChange);
