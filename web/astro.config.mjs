@@ -43,7 +43,7 @@ export default defineConfig({
             { label: "Install", slug: "install" },
             { label: "Desktop Features", slug: "desktop-features" },
             { label: "Web Extension", slug: "web-extension" },
-            { label: "Release Channels", slug: "release-channels" },
+            { label: "Releases and Updates", slug: "releases" },
             { label: "Run from Source", slug: "run-from-source" },
             { label: "Troubleshooting", slug: "troubleshooting" },
           ],

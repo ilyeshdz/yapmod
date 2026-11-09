@@ -102,14 +102,13 @@ The store build receives updates through the browser's extension update mechanis
 
 The loader build can update the injected client at runtime without republishing the extension. The update process works as follows:
 
-1. **Check:** On each page load, the client checks the signed web feed at `https://ilyeshdz.github.io/yapmod/client-updates-web/<channel>/` for a newer version.
+1. **Check:** On each page load, the client checks the signed web feed at `https://ilyeshdz.github.io/yapmod/client-updates-web/stable/` for a newer version.
 2. **Verify:** The loader downloads three files — `manifest.json`, `manifest.sig`, and `bundle.json` — and validates them before using any of them:
    - The Ed25519 signature on the manifest is verified against the embedded public key.
-   - The manifest channel must match the build channel (stable or nightly).
    - The manifest expiry time must not have passed.
    - The release sequence must be greater than the cached bundle's sequence.
    - The SHA-256 hash of `bundle.json` must match the manifest's `bundleSha256`.
-   - The bundle fields (version, sequence, channel) must match the manifest.
+   - The bundle fields (version and sequence) must match the manifest.
 3. **Stage:** If all checks pass, the new client code is written to `localStorage` (shared between the isolated bridge and page worlds) and will run on the next page load.
 4. **Confirm:** When the new client successfully boots, the bridge confirms the cached bundle. If the client fails to start, the loader removes the cached bundle and falls back to the embedded client on the next load.
 5. **Auto-update:** By default, the client checks for updates on each page load. You can disable this in **Settings → Yapmod** by turning off auto-update.
@@ -118,9 +117,9 @@ The loader build can update the injected client at runtime without republishing 
 
 To check for client updates manually, open **Settings → Yapmod** and look for the update banner. If a newer client is available, a banner will appear offering to apply the update on the next page load.
 
-### Channels
+### Updates
 
-The extension is compiled with a release channel (`stable` or `nightly`) baked in. The channel determines which signed feed the loader reads. A build never switches channel through an update — a stable build only receives stable updates, and a nightly build only receives nightly updates.
+The extension is compiled to read the signed stable feed. A build never switches feeds at runtime; a new build embeds the client it ships with and the loader picks up later signed updates from the same feed.
 
 ## Security model
 
@@ -136,7 +135,6 @@ The loader build verifies every client update before executing it:
 
 - **Ed25519 signatures:** Each manifest is signed with an Ed25519 private key. The loader embeds the corresponding public key and verifies the signature before trusting any manifest data.
 - **Bundle hash:** The SHA-256 hash of the downloaded bundle is compared against the manifest's declared hash. A mismatch rejects the update.
-- **Channel isolation:** The manifest channel must match the build's compiled channel. A stable build will reject a nightly manifest and vice versa.
 - **Expiry:** Each manifest includes an expiry timestamp. Expired manifests are rejected.
 - **Release sequence:** The loader tracks the release sequence number and will not downgrade to an older sequence.
 - **Size limits:** Downloads are capped at 16 KB for the manifest, 1 KB for the signature, and 8 MB for the bundle.
@@ -214,7 +212,7 @@ The loader automatically rolls back a client update if the new client fails to s
 
 - Open the browser DevTools console and look for `[yapmod]` error messages.
 - Verify the public key used to build the loader matches the signing key for the feed.
-- Check that the channel (stable/nightly) matches between the build and the feed.
+- Check that the feed paths and release sequence match the published stable feed.
 - If auto-update is causing issues, disable it in **Settings → Yapmod**.
 
 ### Firefox temporary add-on disappears after restart

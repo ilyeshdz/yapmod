@@ -16,7 +16,7 @@ External links open in your default browser. A theme can change the Yapin interf
 ## Next steps
 
 - [Install yapmod](/yapmod/install)
-- [Release channels](/yapmod/release-channels)
+- [Releases and updates](/yapmod/releases)
 - [Explore desktop features](/yapmod/desktop-features)
 - [Use themes](/yapmod/using-themes)
 - [Troubleshoot a problem](/yapmod/troubleshooting)

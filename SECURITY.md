@@ -97,13 +97,10 @@ All theme packages are validated before application:
 
 ##### 5. Client Update Integrity
 
-Client bundles (preinject + postinject scripts) are independently versioned and
-channel-isolated:
+Client bundles (preinject + postinject scripts) are independently versioned:
 
 - **Signed updates** — each client bundle is cryptographically signed. The app verifies
   the signature before applying an update.
-- **Channel isolation** — stable and nightly channels have separate signed feeds and
-  cache directories. A build never switches channel through an update.
 - **Minimum app version** — a client bundle declares the minimum app version it requires,
   preventing incompatible updates.
 
