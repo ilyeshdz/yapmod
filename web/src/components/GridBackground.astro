@@ -184,7 +184,7 @@
       colorB: gl.getUniformLocation(program, "u_color_b"),
     };
 
-    const hero = canvas.closest(".hero");
+    const region = canvas.closest(".hero");
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -322,11 +322,11 @@
     }
 
     function onPointerMove(event: PointerEvent) {
-      if (!hero) return;
+      if (!region) return;
 
       hasPointer = true;
 
-      const bounds = hero.getBoundingClientRect();
+      const bounds = region.getBoundingClientRect();
       const inside = event.clientY >= bounds.top && event.clientY <= bounds.bottom;
 
       if (!inside) {
