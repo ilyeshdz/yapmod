@@ -1,5 +1,6 @@
 ---
 import logo from "../assets/yapmod-logo.png";
+import GridBackground from "../components/GridBackground.astro";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
 import Features from "../components/Features.astro";
@@ -56,6 +57,7 @@ const favicon = new URL(`${base}/favicon.svg`, Astro.site);
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
+    <GridBackground />
     <div class="wrap">
       <Nav />
       <Hero />

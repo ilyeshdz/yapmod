@@ -1,0 +1,355 @@
+---
+// A fixed, full-viewport canvas that renders the halftone-style grid from the
+// banner art. The CSS gradient underneath doubles as the fallback when WebGL
+// is unavailable, so the page never loses its glow.
+---
+
+<div class="grid-bg" aria-hidden="true">
+  <canvas id="grid-bg"></canvas>
+</div>
+
+<script>
+  type Vec3 = [number, number, number];
+
+  const VERTEX_SOURCE = `
+    attribute vec2 a_position;
+    varying vec2 v_uv;
+
+    void main() {
+      v_uv = a_position * 0.5 + 0.5;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  const FRAGMENT_SOURCE = `
+    precision mediump float;
+
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform float u_dpr;
+    uniform float u_intensity;
+    uniform vec2 u_glow;
+    uniform vec3 u_color_a;
+    uniform vec3 u_color_b;
+
+    varying vec2 v_uv;
+
+    float hash21(vec2 p) {
+      p = fract(p * vec2(123.34, 456.21));
+      p += dot(p, p + 45.32);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+
+      float a = hash21(i);
+      float b = hash21(i + vec2(1.0, 0.0));
+      float c = hash21(i + vec2(0.0, 1.0));
+      float d = hash21(i + vec2(1.0, 1.0));
+
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    void main() {
+      float cell = max(14.0, 26.0 * u_dpr);
+      vec2 gridUv = (v_uv * u_resolution) / cell;
+      vec2 cellId = floor(gridUv);
+      vec2 cellUv = fract(gridUv) - 0.5;
+
+      // A soft-edged square that occupies the middle of each cell.
+      vec2 d = abs(cellUv);
+      float square = 1.0 - smoothstep(0.29, 0.34, max(d.x, d.y));
+
+      float rnd = hash21(cellId + 11.0);
+
+      // Radial falloff centred behind the hero logo, measured in screen space.
+      float aspect = u_resolution.x / u_resolution.y;
+      float dist = length((v_uv - u_glow) * vec2(aspect, 1.0));
+      float glow = smoothstep(0.95, 0.08, dist);
+      glow = pow(glow, 1.45);
+
+      // Slowly moving noise plus a per-cell pulse decided by the animation time.
+      float field = noise(gridUv * 0.045 + vec2(u_time * 0.018, -u_time * 0.012));
+      float pulse = 0.5 + 0.5 * sin(u_time * 0.55 + rnd * 6.2831 + field * 8.0);
+      float density = smoothstep(0.38, 0.82, field * 0.68 + pulse * 0.32);
+
+      float heroAlpha = square * glow * density * 0.8;
+      float pageAlpha = square * smoothstep(0.52, 0.9, field) * 0.045;
+      float alpha = clamp((heroAlpha + pageAlpha) * u_intensity, 0.0, 1.0);
+
+      vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.65 + field * 0.35, 0.0, 1.0));
+
+      // Premultiplied output, matching the context's premultipliedAlpha.
+      gl_FragColor = vec4(color * alpha, alpha);
+    }
+  `;
+
+  function compile(gl: WebGLRenderingContext, type: number, source: string) {
+    const shader = gl.createShader(type);
+    if (!shader) return null;
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.warn("[grid-bg] shader compilation failed", gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+
+    return shader;
+  }
+
+  function createProgram(gl: WebGLRenderingContext) {
+    const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX_SOURCE);
+    const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SOURCE);
+    if (!vertex || !fragment) return null;
+
+    const program = gl.createProgram();
+    if (!program) return null;
+
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.warn("[grid-bg] program link failed", gl.getProgramInfoLog(program));
+      gl.deleteProgram(program);
+      return null;
+    }
+
+    return program;
+  }
+
+  function parseColor(value: string, fallback: Vec3): Vec3 {
+    const hex = value.trim().match(/^#([0-9a-f]{6})$/i);
+    if (hex) {
+      const n = Number.parseInt(hex[1], 16);
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+    }
+
+    const rgb = value.trim().match(/^rgba?\(([^)]+)\)$/i);
+    if (rgb) {
+      const parts = rgb[1]
+        .split(/[\s,/]+/)
+        .filter(Boolean)
+        .map(Number);
+      if (parts.length >= 3 && parts.every((part) => Number.isFinite(part))) {
+        return [parts[0] / 255, parts[1] / 255, parts[2] / 255];
+      }
+    }
+
+    return fallback;
+  }
+
+  function run(canvas: HTMLCanvasElement, gl: WebGLRenderingContext, program: WebGLProgram) {
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
+      gl.STATIC_DRAW,
+    );
+
+    const position = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const uniforms = {
+      resolution: gl.getUniformLocation(program, "u_resolution"),
+      time: gl.getUniformLocation(program, "u_time"),
+      dpr: gl.getUniformLocation(program, "u_dpr"),
+      intensity: gl.getUniformLocation(program, "u_intensity"),
+      glow: gl.getUniformLocation(program, "u_glow"),
+      colorA: gl.getUniformLocation(program, "u_color_a"),
+      colorB: gl.getUniformLocation(program, "u_color_b"),
+    };
+
+    let frame = 0;
+    let running = false;
+    let startedAt = performance.now();
+    let elapsed = 0;
+    let visible = !document.hidden;
+    let onScreen = true;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function themeColors() {
+      const styles = getComputedStyle(document.documentElement);
+      const isLight = document.documentElement.dataset.theme === "light";
+
+      return {
+        colorA: parseColor(styles.getPropertyValue("--accent"), [0.87, 0.35, 0.55]),
+        colorB: parseColor(styles.getPropertyValue("--accent-2"), [0.91, 0.49, 0.65]),
+        intensity: isLight ? 0.5 : 1,
+      };
+    }
+
+    // Reading computed styles every frame would force a style recalculation, so
+    // cache the palette and refresh it only when the theme can have changed.
+    let colors = themeColors();
+
+    function refreshColors() {
+      colors = themeColors();
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const width = Math.max(1, Math.round(window.innerWidth * dpr));
+      const height = Math.max(1, Math.round(window.innerHeight * dpr));
+
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      gl.viewport(0, 0, width, height);
+      return dpr;
+    }
+
+    function draw() {
+      const dpr = resize();
+      const { colorA, colorB, intensity } = colors;
+
+      // The glow sits behind the hero logo area on wide screens and in the
+      // middle on stacked layouts.
+      const narrow = window.innerWidth < 900;
+      const glow: [number, number] = narrow ? [0.5, 0.26] : [0.72, 0.22];
+
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      gl.useProgram(program);
+      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform1f(uniforms.time, reducedMotion.matches ? 0 : elapsed);
+      gl.uniform1f(uniforms.dpr, dpr);
+      gl.uniform1f(uniforms.intensity, intensity);
+      gl.uniform2f(uniforms.glow, glow[0], glow[1]);
+      gl.uniform3f(uniforms.colorA, colorA[0], colorA[1], colorA[2]);
+      gl.uniform3f(uniforms.colorB, colorB[0], colorB[1], colorB[2]);
+
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    function tick(now: number) {
+      if (!running) return;
+
+      elapsed = (now - startedAt) / 1000;
+      draw();
+      frame = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      if (running || !visible || !onScreen) return;
+
+      if (reducedMotion.matches) {
+        elapsed = 0;
+        draw();
+        return;
+      }
+
+      running = true;
+      frame = requestAnimationFrame(tick);
+    }
+
+    function stop() {
+      running = false;
+      cancelAnimationFrame(frame);
+    }
+
+    function restartClock() {
+      startedAt = performance.now() - elapsed * 1000;
+      start();
+    }
+
+    function onVisibilityChange() {
+      visible = !document.hidden;
+      if (visible) restartClock();
+      else stop();
+    }
+
+    function onMotionChange() {
+      stop();
+      refreshColors();
+      elapsed = 0;
+      startedAt = performance.now();
+      start();
+    }
+
+    const intersection = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      if (onScreen) restartClock();
+      else stop();
+    });
+    intersection.observe(canvas);
+
+    const themeObserver = new MutationObserver(() => {
+      refreshColors();
+      if (reducedMotion.matches) draw();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    let resizeFrame = 0;
+    function onResize() {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        if (reducedMotion.matches) draw();
+      });
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("resize", onResize);
+    reducedMotion.addEventListener("change", onMotionChange);
+    darkScheme.addEventListener("change", onMotionChange);
+
+    function cleanup() {
+      stop();
+      cancelAnimationFrame(resizeFrame);
+      intersection.disconnect();
+      themeObserver.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("resize", onResize);
+      reducedMotion.removeEventListener("change", onMotionChange);
+      darkScheme.removeEventListener("change", onMotionChange);
+      gl.deleteBuffer(positionBuffer);
+      gl.deleteProgram(program);
+    }
+
+    document.addEventListener("astro:before-swap", cleanup, { once: true });
+
+    start();
+  }
+
+  function init() {
+    const canvas = document.getElementById("grid-bg");
+    if (!(canvas instanceof HTMLCanvasElement)) return;
+
+    const gl = canvas.getContext("webgl", {
+      alpha: true,
+      antialias: false,
+      depth: false,
+      premultipliedAlpha: true,
+      powerPreference: "low-power",
+    });
+
+    // The CSS gradient on `.grid-bg` is the fallback when WebGL is unavailable.
+    if (!gl) return;
+
+    const program = createProgram(gl);
+    if (!program) return;
+
+    run(canvas, gl, program);
+  }
+
+  init();
+</script>
