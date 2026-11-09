@@ -1,7 +1,8 @@
 ---
-// A canvas layered behind the hero that renders the halftone-style grid from
-// the banner art. The CSS gradient underneath doubles as the fallback when
-// WebGL is unavailable, so the hero never loses its glow.
+// A canvas layered behind the hero that renders the halftone grid from the
+// banner art. The grid follows the pointer so it only appears around the
+// cursor. The CSS gradient underneath doubles as the fallback when WebGL is
+// unavailable, so the hero never loses its glow.
 ---
 
 <div class="grid-bg" aria-hidden="true">
@@ -28,7 +29,9 @@
     uniform float u_time;
     uniform float u_dpr;
     uniform float u_intensity;
-    uniform vec2 u_glow;
+    uniform float u_reveal;
+    uniform float u_radius;
+    uniform vec2 u_pointer;
     uniform vec3 u_color_a;
     uniform vec3 u_color_b;
 
@@ -54,31 +57,30 @@
     }
 
     void main() {
-      float cell = max(7.0, 10.0 * u_dpr);
-      vec2 gridUv = (v_uv * u_resolution) / cell;
+      // Fine grid of small squares, close to the banner's halftone texture.
+      float cell = max(5.0, 8.0 * u_dpr);
+      vec2 frag = v_uv * u_resolution;
+      vec2 gridUv = frag / cell;
       vec2 cellId = floor(gridUv);
       vec2 cellUv = fract(gridUv) - 0.5;
 
-      // A soft-edged square that occupies the middle of each cell.
       vec2 d = abs(cellUv);
-      float square = 1.0 - smoothstep(0.29, 0.34, max(d.x, d.y));
+      float square = 1.0 - smoothstep(0.30, 0.37, max(d.x, d.y));
 
       float rnd = hash21(cellId + 11.0);
+      float field = noise(gridUv * 0.09 + vec2(u_time * 0.01, -u_time * 0.008));
 
-      // Radial falloff centred behind the hero logo, measured in screen space.
-      float aspect = u_resolution.x / u_resolution.y;
-      float dist = length((v_uv - u_glow) * vec2(aspect, 1.0));
-      float glow = smoothstep(0.95, 0.08, dist);
-      glow = pow(glow, 1.45);
+      // Soft spotlight around the pointer, measured in device pixels.
+      vec2 pointer = u_pointer * u_resolution;
+      float dist = length(frag - pointer) / max(u_radius * u_dpr, 1.0);
+      float spot = smoothstep(1.0, 0.0, dist);
+      spot = pow(spot, 1.25);
 
-      // Slowly moving noise plus a per-cell pulse decided by the animation time.
-      float field = noise(gridUv * 0.045 + vec2(u_time * 0.018, -u_time * 0.012));
-      float pulse = 0.5 + 0.5 * sin(u_time * 0.55 + rnd * 6.2831 + field * 8.0);
-      float density = smoothstep(0.38, 0.82, field * 0.68 + pulse * 0.32);
+      // Slight per-cell variation keeps the grid from looking mechanical.
+      float variation = 0.72 + 0.28 * field + 0.08 * rnd;
+      float alpha = clamp(square * spot * variation * u_reveal * u_intensity, 0.0, 1.0);
 
-      float alpha = clamp(square * glow * density * 0.42 * u_intensity, 0.0, 1.0);
-
-      vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.65 + field * 0.35, 0.0, 1.0));
+      vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.55 + field * 0.45, 0.0, 1.0));
 
       // Premultiplied output, matching the context's premultipliedAlpha.
       gl_FragColor = vec4(color * alpha, alpha);
@@ -164,20 +166,32 @@
       time: gl.getUniformLocation(program, "u_time"),
       dpr: gl.getUniformLocation(program, "u_dpr"),
       intensity: gl.getUniformLocation(program, "u_intensity"),
-      glow: gl.getUniformLocation(program, "u_glow"),
+      reveal: gl.getUniformLocation(program, "u_reveal"),
+      radius: gl.getUniformLocation(program, "u_radius"),
+      pointer: gl.getUniformLocation(program, "u_pointer"),
       colorA: gl.getUniformLocation(program, "u_color_a"),
       colorB: gl.getUniformLocation(program, "u_color_b"),
     };
 
+    const hero = canvas.closest(".hero");
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+
     let frame = 0;
     let running = false;
     let startedAt = performance.now();
+    let lastFrame = startedAt;
     let elapsed = 0;
     let visible = !document.hidden;
     let onScreen = true;
 
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    // Pointer state is smoothed toward the target so the spotlight trails
+    // behind the cursor instead of snapping.
+    const pointer = { x: 0.5, y: 0.5 };
+    const target = { x: 0.5, y: 0.5 };
+    let reveal = 0;
+    let targetReveal = 0;
 
     function themeColors() {
       const styles = getComputedStyle(document.documentElement);
@@ -186,7 +200,7 @@
       return {
         colorA: parseColor(styles.getPropertyValue("--accent"), [0.87, 0.35, 0.55]),
         colorB: parseColor(styles.getPropertyValue("--accent-2"), [0.91, 0.49, 0.65]),
-        intensity: isLight ? 0.3 : 0.42,
+        intensity: isLight ? 0.4 : 0.5,
       };
     }
 
@@ -215,11 +229,7 @@
     function draw() {
       const dpr = resize();
       const { colorA, colorB, intensity } = colors;
-
-      // The glow sits behind the hero logo area on wide screens and in the
-      // middle of the stacked layout on narrow screens.
-      const narrow = window.innerWidth < 900;
-      const glow: [number, number] = narrow ? [0.5, 0.22] : [0.72, 0.46];
+      const radius = Math.max(150, Math.min(280, canvas.clientWidth * 0.26));
 
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -229,17 +239,36 @@
       gl.uniform1f(uniforms.time, reducedMotion.matches ? 0 : elapsed);
       gl.uniform1f(uniforms.dpr, dpr);
       gl.uniform1f(uniforms.intensity, intensity);
-      gl.uniform2f(uniforms.glow, glow[0], glow[1]);
+      gl.uniform1f(uniforms.reveal, reveal);
+      gl.uniform1f(uniforms.radius, radius);
+      gl.uniform2f(uniforms.pointer, pointer.x, pointer.y);
       gl.uniform3f(uniforms.colorA, colorA[0], colorA[1], colorA[2]);
       gl.uniform3f(uniforms.colorB, colorB[0], colorB[1], colorB[2]);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
+    function drift(now: number) {
+      const t = reducedMotion.matches ? 0 : (now - startedAt) / 1000;
+      target.x = 0.5 + Math.cos(t * 0.35) * 0.22;
+      target.y = 0.5 + Math.sin(t * 0.28) * 0.16;
+      targetReveal = 1;
+    }
+
     function tick(now: number) {
       if (!running) return;
 
+      const dt = Math.min(0.05, (now - lastFrame) / 1000);
+      lastFrame = now;
       elapsed = (now - startedAt) / 1000;
+
+      if (!canHover) drift(now);
+
+      const ease = 1 - Math.pow(0.0001, dt);
+      pointer.x += (target.x - pointer.x) * ease;
+      pointer.y += (target.y - pointer.y) * ease;
+      reveal += (targetReveal - reveal) * ease;
+
       draw();
       frame = requestAnimationFrame(tick);
     }
@@ -248,12 +277,19 @@
       if (running || !visible || !onScreen) return;
 
       if (reducedMotion.matches) {
+        if (!canHover) {
+          drift(performance.now());
+          pointer.x = target.x;
+          pointer.y = target.y;
+          reveal = targetReveal;
+        }
         elapsed = 0;
         draw();
         return;
       }
 
       running = true;
+      lastFrame = performance.now();
       frame = requestAnimationFrame(tick);
     }
 
@@ -264,7 +300,44 @@
 
     function restartClock() {
       startedAt = performance.now() - elapsed * 1000;
+      lastFrame = startedAt;
       start();
+    }
+
+    function snapToTarget() {
+      pointer.x = target.x;
+      pointer.y = target.y;
+      reveal = targetReveal;
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (!canHover || !hero) return;
+
+      const bounds = hero.getBoundingClientRect();
+      const inside = event.clientY >= bounds.top && event.clientY <= bounds.bottom;
+
+      if (!inside) {
+        targetReveal = 0;
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        target.x = (event.clientX - rect.left) / rect.width;
+        target.y = (event.clientY - rect.top) / rect.height;
+        targetReveal = 1;
+      }
+
+      if (reducedMotion.matches) {
+        snapToTarget();
+        draw();
+      }
+    }
+
+    function onPointerLeave() {
+      targetReveal = 0;
+
+      if (reducedMotion.matches) {
+        snapToTarget();
+        draw();
+      }
     }
 
     function onVisibilityChange() {
@@ -306,6 +379,8 @@
     }
 
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onPointerLeave);
     window.addEventListener("resize", onResize);
     reducedMotion.addEventListener("change", onMotionChange);
     darkScheme.addEventListener("change", onMotionChange);
@@ -316,6 +391,8 @@
       intersection.disconnect();
       themeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pointermove", onPointerMove);
+      document.documentElement.removeEventListener("pointerleave", onPointerLeave);
       window.removeEventListener("resize", onResize);
       reducedMotion.removeEventListener("change", onMotionChange);
       darkScheme.removeEventListener("change", onMotionChange);

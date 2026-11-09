@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keyboard shortcut API reference page documenting how to register, scope, and clean up keyboard event listeners in plugins (#42).
 - Expanded plugin API documentation with threat model, CSS scoping patterns, plugin interaction model, and additional examples (#42).
 - Plugin and theme update detection from the community catalog. Installed plugins and themes are compared against the catalog on load, and an update button appears on cards when a newer version is available (#44).
-- Animated, WebGL-rendered dithered grid background behind the landing page hero, inspired by the banner art, with theme-aware colors plus reduced-motion, visibility, and no-WebGL fallbacks (#70).
+- Interactive, WebGL-rendered dithered grid in the landing page hero that follows the pointer, inspired by the banner art, with theme-aware colors plus reduced-motion, visibility, and no-WebGL fallbacks (#70).
 - Structured error types for Tauri commands. All Tauri commands now return a structured `YapmodError` enum (`NotFound`, `Validation`, `Io`, `Network`, `AlreadyExists`, `System`) instead of plain strings, so the client can distinguish error categories programmatically (#48).
 - Flatpak packaging support for Flathub distribution. The app can now be installed via Flatpak using a `.deb` extraction approach — the manifest downloads the pre-built `.deb` from GitHub releases and installs it in the Flatpak sandbox. Includes AppStream metadata for software center listing, desktop entry with proper categories, and a dedicated CI workflow for building and publishing to Flathub (#24).
 
