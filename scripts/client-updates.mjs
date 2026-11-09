@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /**
- * Channel-aware client update manifest tooling.
+ * Client update manifest tooling.
  *
- * Stable and nightly releases each have their own directory below
- * `client-updates/`, their own release sequence and their own manifest. The
- * legacy stable paths are still written for installations built before
- * channels existed.
+ * yapmod publishes one signed client feed under `client-updates/stable/`. The
+ * legacy stable paths are still written for installations built before the
+ * feed was separated into a directory.
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const CHANNELS = Object.freeze(["stable", "nightly"]);
+/**
+ * The only update channel. It is also written into every signed manifest and
+ * bundle so installations built before the nightly channel was removed keep
+ * validating the feed.
+ */
+export const UPDATE_CHANNEL = "stable";
 export const BRIDGE_API_VERSION = 1;
 export const DEFAULT_UPDATES_URL =
   "https://ilyeshdz.github.io/yapmod/client-updates";
@@ -22,31 +26,22 @@ export const DEFAULT_MANIFEST_LIFETIME = 60 * 24 * 60 * 60;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
-/** Files published for one channel, relative to the client-updates root. */
-export function channelPaths(channel) {
-  assertChannel(channel);
-
+/** Files published for the feed, relative to the client-updates root. */
+export function feedPaths() {
   return {
-    manifest: `${channel}/manifest.json`,
-    signature: `${channel}/manifest.sig`,
-    bundle: `${channel}/bundle.json`,
+    manifest: `${UPDATE_CHANNEL}/manifest.json`,
+    signature: `${UPDATE_CHANNEL}/manifest.sig`,
+    bundle: `${UPDATE_CHANNEL}/bundle.json`,
   };
 }
 
-/** Stable aliases consumed by installations from before channel isolation. */
+/** Aliases consumed by installations from before the feed was versioned. */
 export function legacyStablePaths() {
   return {
     manifest: "manifest.json",
     signature: "manifest.sig",
     bundle: "bundle.json",
   };
-}
-
-export function assertChannel(channel) {
-  if (!CHANNELS.includes(channel)) {
-    throw new Error(`Unknown update channel: ${channel}`);
-  }
-  return channel;
 }
 
 export function isValidVersion(version) {
@@ -62,25 +57,22 @@ export function sha256Hex(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-export function validateManifest(manifest, expectedChannel, options = {}) {
+export function validateManifest(manifest, options = {}) {
   const { allowLegacyStable = false } = options;
 
   if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
     throw new Error("the client update manifest is not an object");
   }
   if (allowLegacyStable) {
-    if (expectedChannel !== "stable") {
-      throw new Error("legacy manifests are only valid for the stable channel");
-    }
     if (
       manifest.channel !== undefined &&
-      manifest.channel !== "stable"
+      manifest.channel !== UPDATE_CHANNEL
     ) {
       throw new Error("the legacy manifest belongs to another channel");
     }
-  } else if (manifest.channel !== expectedChannel) {
+  } else if (manifest.channel !== UPDATE_CHANNEL) {
     throw new Error(
-      `the client update manifest belongs to ${manifest.channel ?? "no channel"}, expected ${expectedChannel}`,
+      `the client update manifest belongs to ${manifest.channel ?? "no channel"}, expected ${UPDATE_CHANNEL}`,
     );
   }
   if (!isValidVersion(manifest.clientVersion)) {
@@ -114,13 +106,13 @@ export function validateManifest(manifest, expectedChannel, options = {}) {
   return manifest;
 }
 
-export function validateBundle(bundle, expectedChannel) {
+export function validateBundle(bundle) {
   if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
     throw new Error("the client update bundle is not an object");
   }
-  if (bundle.channel !== expectedChannel) {
+  if (bundle.channel !== UPDATE_CHANNEL) {
     throw new Error(
-      `the client update bundle belongs to ${bundle.channel ?? "no channel"}, expected ${expectedChannel}`,
+      `the client update bundle belongs to ${bundle.channel ?? "no channel"}, expected ${UPDATE_CHANNEL}`,
     );
   }
   if (!isValidVersion(bundle.clientVersion)) {
@@ -147,14 +139,9 @@ export function validateBundle(bundle, expectedChannel) {
   return bundle;
 }
 
-export function verifyBundleMatchesManifest(
-  bundle,
-  manifest,
-  expectedChannel,
-  bundleBytes,
-) {
-  validateBundle(bundle, expectedChannel);
-  validateManifest(manifest, expectedChannel);
+export function verifyBundleMatchesManifest(bundle, manifest, bundleBytes) {
+  validateBundle(bundle);
+  validateManifest(manifest);
 
   if (bundle.clientVersion !== manifest.clientVersion) {
     throw new Error("the bundle and manifest client versions differ");
@@ -176,8 +163,8 @@ export function verifyBundleMatchesManifest(
 }
 
 /**
- * Returns the next sequence for a channel. Only manifests from that channel
- * may be passed in; the caller is responsible for keeping the lists separate.
+ * Returns the next release sequence. Only published manifests may be passed
+ * in; the caller is responsible for including the legacy stable manifest.
  */
 export function nextReleaseSequence(manifests, requested) {
   const sequences = manifests
@@ -210,7 +197,6 @@ export function nextReleaseSequence(manifests, requested) {
 }
 
 export function createBundle({
-  channel,
   clientVersion,
   releaseSequence,
   minAppVersion,
@@ -218,7 +204,6 @@ export function createBundle({
   postinject,
   minimumCss,
 }) {
-  assertChannel(channel);
   if (!isValidVersion(clientVersion)) {
     throw new Error("client_version must be a semantic version");
   }
@@ -237,31 +222,25 @@ export function createBundle({
     releaseSequence,
     bridgeApiVersion: BRIDGE_API_VERSION,
     minAppVersion,
-    channel,
+    channel: UPDATE_CHANNEL,
     preinject,
     postinject,
     minimumCss,
   };
 }
 
-export function createManifest({
-  channel,
-  bundle,
-  bundleSha256,
-  expiresAt,
-}) {
-  assertChannel(channel);
+export function createManifest({ bundle, bundleSha256, expiresAt }) {
   const manifest = {
     clientVersion: bundle.clientVersion,
     releaseSequence: bundle.releaseSequence,
     bridgeApiVersion: bundle.bridgeApiVersion,
     minAppVersion: bundle.minAppVersion,
-    channel,
+    channel: UPDATE_CHANNEL,
     expiresAt,
     bundleSha256,
   };
 
-  return validateManifest(manifest, channel);
+  return validateManifest(manifest);
 }
 
 function updatesUrl(baseUrl = DEFAULT_UPDATES_URL, relativePath) {
@@ -291,9 +270,9 @@ async function fetchBytes(url) {
   return Buffer.from(await response.arrayBuffer());
 }
 
-async function fetchManifest(baseUrl, channel, options = {}) {
+async function fetchManifest(baseUrl, options = {}) {
   const { legacy = false } = options;
-  const paths = legacy ? legacyStablePaths() : channelPaths(channel);
+  const paths = legacy ? legacyStablePaths() : feedPaths();
   const bytes = await fetchBytes(updatesUrl(baseUrl, paths.manifest));
   if (bytes === null) {
     return null;
@@ -307,23 +286,18 @@ async function fetchManifest(baseUrl, channel, options = {}) {
   }
 
   return {
-    manifest: validateManifest(manifest, channel, {
-      allowLegacyStable: legacy,
-    }),
+    manifest: validateManifest(manifest, { allowLegacyStable: legacy }),
     bytes,
   };
 }
 
-async function previousManifests(baseUrl, channel) {
-  const published = [await fetchManifest(baseUrl, channel)];
-
-  // The first stable release after channels exist must still move past the
-  // sequence that installations used before the migration.
-  if (channel === "stable") {
-    published.push(
-      await fetchManifest(baseUrl, channel, { legacy: true }),
-    );
-  }
+async function previousManifests(baseUrl) {
+  const published = [
+    await fetchManifest(baseUrl),
+    // The first release after the feed was versioned must still move past the
+    // sequence that installations used before the migration.
+    await fetchManifest(baseUrl, { legacy: true }),
+  ];
 
   return published
     .filter(Boolean)
@@ -344,21 +318,14 @@ function defaultMinAppVersion(root) {
   return match[1];
 }
 
-function nonEmpty(name, value) {
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`${name} is required`);
-  }
-  return value.trim();
-}
-
 export async function prepare(options) {
   const root = options.root ?? process.cwd();
-  const channel = assertChannel(options.channel);
   const clientVersion =
     options.clientVersion ??
     readJson(join(root, "client/version.json")).version;
   const minAppVersion =
-    options.minAppVersion || defaultMinAppVersion(root);  const now = Math.floor(Date.now() / 1000);
+    options.minAppVersion || defaultMinAppVersion(root);
+  const now = Math.floor(Date.now() / 1000);
   const expiresAt = options.expiresAt ?? now + DEFAULT_MANIFEST_LIFETIME;
   if (
     !Number.isSafeInteger(expiresAt) ||
@@ -370,14 +337,12 @@ export async function prepare(options) {
 
   const previous = await previousManifests(
     options.baseUrl ?? DEFAULT_UPDATES_URL,
-    channel,
   );
   const releaseSequence = nextReleaseSequence(
     previous,
     options.releaseSequence,
   );
   const bundle = createBundle({
-    channel,
     clientVersion,
     releaseSequence,
     minAppVersion,
@@ -397,12 +362,11 @@ export async function prepare(options) {
   });
   const bundleBytes = Buffer.from(JSON.stringify(bundle));
   const manifest = createManifest({
-    channel,
     bundle,
     bundleSha256: sha256Hex(bundleBytes),
     expiresAt,
   });
-  const paths = channelPaths(channel);
+  const paths = feedPaths();
   const outputDir = resolve(root, options.outputDir ?? "web/dist");
   const feedDir = options.feedDir ?? "client-updates";
 
@@ -416,7 +380,6 @@ export async function prepare(options) {
   }
 
   return {
-    channel,
     clientVersion,
     releaseSequence,
     minAppVersion,
@@ -425,97 +388,6 @@ export async function prepare(options) {
     manifestPath: outputPath(outputDir, paths.manifest, feedDir),
     signaturePath: outputPath(outputDir, paths.signature, feedDir),
   };
-}
-
-async function preserveChannel(baseUrl, channel, outputDir, feedDir) {
-  const paths = channelPaths(channel);
-  const published = await fetchManifest(baseUrl, channel);
-  if (!published) {
-    console.log(`No published ${channel} client update to preserve.`);
-    return;
-  }
-  const { manifest, bytes: manifestBytes } = published;
-  const signature = await fetchBytes(updatesUrl(baseUrl, paths.signature));
-  const bundleBytes = await fetchBytes(updatesUrl(baseUrl, paths.bundle));
-  if (signature === null || bundleBytes === null) {
-    throw new Error(`The published ${channel} client update is incomplete`);
-  }
-
-  let bundle;
-  try {
-    bundle = JSON.parse(bundleBytes.toString("utf8"));
-  } catch {
-    throw new Error(`The published ${paths.bundle} is not valid JSON`);
-  }
-  verifyBundleMatchesManifest(bundle, manifest, channel, bundleBytes);
-
-  for (const [relativePath, bytes] of [
-    [paths.manifest, manifestBytes],
-    [paths.signature, signature],
-    [paths.bundle, bundleBytes],
-  ]) {
-    const path = outputPath(outputDir, relativePath, feedDir);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, bytes);
-  }
-}
-
-async function preserveLegacyStable(baseUrl, outputDir, feedDir) {
-  const paths = legacyStablePaths();
-  const published = await fetchManifest(baseUrl, "stable", { legacy: true });
-  if (!published) {
-    return;
-  }
-  const { manifest, bytes: manifestBytes } = published;
-  const signature = await fetchBytes(updatesUrl(baseUrl, paths.signature));
-  const bundleBytes = await fetchBytes(updatesUrl(baseUrl, paths.bundle));
-  if (signature === null || bundleBytes === null) {
-    throw new Error("The legacy stable client update is incomplete");
-  }
-
-  let bundle;
-  try {
-    bundle = JSON.parse(bundleBytes.toString("utf8"));
-  } catch {
-    throw new Error(`The published ${paths.bundle} is not valid JSON`);
-  }
-  // Older stable bundles predate the channel field.
-  if (bundle.channel !== undefined && bundle.channel !== "stable") {
-    throw new Error("The legacy stable bundle belongs to another channel");
-  }
-  validateBundle({ ...bundle, channel: "stable" }, "stable");
-  if (sha256Hex(bundleBytes) !== manifest.bundleSha256) {
-    throw new Error("The legacy stable bundle does not match its manifest");
-  }
-
-  for (const [relativePath, bytes] of [
-    [paths.manifest, manifestBytes],
-    [paths.signature, signature],
-    [paths.bundle, bundleBytes],
-  ]) {
-    const path = outputPath(outputDir, relativePath, feedDir);
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, bytes);
-  }
-}
-
-export async function preserve(options = {}) {
-  const root = options.root ?? process.cwd();
-  const baseUrl = options.baseUrl ?? DEFAULT_UPDATES_URL;
-  const outputDir = resolve(root, options.outputDir ?? "web/dist");
-  const feedDir = options.feedDir ?? "client-updates";
-  const skipChannel = options.skipChannel
-    ? assertChannel(options.skipChannel)
-    : null;
-
-  for (const channel of CHANNELS) {
-    if (channel !== skipChannel) {
-      await preserveChannel(baseUrl, channel, outputDir, feedDir);
-    }
-  }
-  if (skipChannel !== "stable") {
-    await preserveLegacyStable(baseUrl, outputDir, feedDir);
-  }
 }
 
 async function main() {
@@ -534,7 +406,6 @@ async function main() {
       outputDir,
       feedDir,
       baseUrl,
-      channel: nonEmpty("CHANNEL", process.env.CHANNEL),
       clientVersion: process.env.CLIENT_VERSION || undefined,
       releaseSequence: process.env.RELEASE_SEQUENCE
         ? Number(process.env.RELEASE_SEQUENCE)
@@ -554,18 +425,7 @@ async function main() {
     return;
   }
 
-  if (command === "preserve") {
-    await preserve({
-      root,
-      outputDir,
-      feedDir,
-      baseUrl,
-      skipChannel: process.env.SKIP_CHANNEL || undefined,
-    });
-    return;
-  }
-
-  throw new Error("Usage: node scripts/client-updates.mjs <prepare|preserve>");
+  throw new Error("Usage: node scripts/client-updates.mjs prepare");
 }
 
 const entryPoint = process.argv[1]
