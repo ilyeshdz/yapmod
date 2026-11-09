@@ -1,16 +1,8 @@
 # Releasing yapmod
 
-yapmod builds everything from one branch, `main`. Two release channels remain:
-an installation belongs to the channel it was built for and never switches
-channels through an update.
-
-| Channel | Source | Audience | Client update feed |
-| --- | --- | --- | --- |
-| Stable | `main` | Normal users; reliable releases and hotfixes | `/client-updates/stable/` |
-| Nightly | `main` | Development and early testing | `/client-updates/nightly/` |
-
-Nightly is a scheduled build of `main`, not a separate source branch. Nightly
-automation never writes stable metadata or stable artifacts.
+yapmod builds everything from one branch, `main`, and ships a single stable
+release channel. There is no nightly channel: a release is an explicit action,
+and every installation follows the same signed feed.
 
 ## Version model
 
@@ -37,120 +29,79 @@ Web versions must be a numeric dotted version (`1.0.0`, `1.0.1.2`). Browser
 stores reject semver prerelease and build metadata, so `+nightly` cannot appear
 in `manifest.json`.
 
-## How the channels are isolated
+## The client update feed
 
-The desktop app resolves its channel at build time from
-`YAPMOD_UPDATE_CHANNEL`. CI sets this to `stable` or `nightly`. Builds created
-before the channel existed fall back to the `+nightly.*` build metadata in
-their version, so an existing nightly installation never silently becomes
-stable. A normal local build defaults to stable.
+Every build consumes the same signed feed:
 
-Each channel has its own:
+- desktop manifest: `client-updates/stable/manifest.json`
+- desktop signature: `client-updates/stable/manifest.sig`
+- desktop bundle: `client-updates/stable/bundle.json`
+- cached update directory: `<config>/client-updates/stable/`
+- web feed: `client-updates-web/stable/` with its own manifest, signature,
+  bundle, release sequence and `minAppVersion` (the web shell version)
+- app updates: the latest GitHub release
 
-- client update manifest: `client-updates/<channel>/manifest.json`
-- signature: `client-updates/<channel>/manifest.sig`
-- bundle: `client-updates/<channel>/bundle.json`
-- cached update directory: `<config>/client-updates/<channel>/`
-- release sequence: `releaseSequence` only advances within one channel
-- app update source: stable uses the latest GitHub release; nightly uses the
-  `yapmod-version.json` asset on the rolling `nightly` release
-- web client feed: `client-updates-web/<channel>/` with its own manifest,
-  signature, bundle, release sequence and `minAppVersion` (the web shell version)
-
-Stable releases also keep writing the old pre-channel paths
+The feed also keeps writing the old pre-versioning paths
 (`client-updates/manifest.json`, `manifest.sig`, `bundle.json`) so installations
-that have not received an app update yet continue to receive stable client
-updates. Nightly never writes those paths.
+that have not received an app update yet continue to receive client updates.
 
-Both manifests carry a signed `channel` field, and each bundle carries the same
-field. The app rejects a manifest or bundle whose channel does not match the
-installation. A signed stable manifest cannot be replayed to a nightly client,
-or the other way around.
+Manifests and bundles carry a signed `channel` field with the value `stable`.
+The app rejects a manifest or bundle whose channel does not match, which keeps
+older installations compatible with the current feed.
 
 ## The release workflow
 
-`.github/workflows/release.yml` handles both channels. It runs:
-
-- daily at `17 2 * * *` as a nightly release;
-- on manual dispatch, where you choose the channel;
-- when a stable draft release is published.
+`.github/workflows/release.yml` runs on manual dispatch or when a release is
+published.
 
 Manual dispatch inputs:
 
 | Input | Meaning |
 | --- | --- |
-| `channel` | `stable` or `nightly` |
 | `app` | Build and publish desktop artifacts |
 | `client` | Publish a client update |
 | `dry_run` | Build and sign without publishing anything |
 | `min_app_version` | Optional minimum app version for a client-only release |
 
-### Nightly
+### Publishing a release
 
-The scheduled run, or a dispatch with `channel: nightly`:
-
-1. computes `patch + 1` and `+nightly.YYYYMMDD.RUN` from
-   `src-tauri/Cargo.toml`;
-2. builds the app artifacts with `YAPMOD_UPDATE_CHANNEL=nightly`;
-3. moves the rolling `nightly` tag and publishes the prerelease plus
-   `yapmod-version.json`;
-4. builds the client from `main` and publishes it under
-   `client-updates/nightly/` and `client-updates-web/nightly/`.
-
-Nightly artifacts also include two web extension zips,
-`yapmod_web_nightly_<web_version>.zip` and
-`yapmod_web_loader_nightly_<web_version>.zip`. They are not store builds: they
-bundle the nightly client and are attached to the rolling prerelease only. Do
-not upload a nightly package to a browser store.
-
-The website files are always built from `main`, so the nightly job only
-updates the nightly client feeds.
-
-### Stable
-
-1. Make the stable change on `main`.
+1. Make the change on `main`.
 2. Update the app version in `src-tauri/Cargo.toml`.
 3. If the injected client changed, update `client/version.json`.
 4. If the extension shell changed, update `client/targets/web/version.json`.
 5. Add the release entry to `src-tauri/assets/release-notes.json` (for the in-app UI)
    and `CHANGELOG.md` (for GitHub visitors).
 6. Push `main`.
-7. Dispatch `Release` with `channel: stable`, `app: true`, `client: true`.
+7. Dispatch `Release` with `app: true`, `client: true`.
    It builds the artifacts and creates a **draft** release for the version in
    `Cargo.toml`.
 8. Review and publish the draft release.
 
-Publishing the draft triggers the stable client update: the workflow checks out
-the release tag, builds the client, increments the stable `releaseSequence`,
-signs the manifest, updates the stable feed, and keeps the nightly feed
-unchanged.
+Publishing the draft triggers the client update: the workflow checks out the
+release tag, builds the client, increments the `releaseSequence`, signs the
+manifest, updates the feed, and refreshes the legacy aliases.
 
-To publish a client-only stable update without a new desktop release, dispatch
+To publish a client-only update without a new desktop release, dispatch
 `Release` with:
 
-- `channel: stable`
 - `app: false`
 - `client: true`
 - `min_app_version` when the change must not reach older apps
 
 ## Releasing the web extension
 
-The browser extension is a distribution of the same client. It shares the
-release train: it is built from the same ref and embeds the same client version
-as the desktop app and the signed client feed. The desktop and web client
-bundles are still compiled per target, because each target embeds its own host
-adapter.
+The browser extension is a distribution of the same client. It is built from the
+same ref and embeds the same client version as the desktop app and the signed
+client feed. The desktop and web client bundles are still compiled per target,
+because each target embeds its own host adapter.
 
-`Publish client update` signs two feeds with the same key and envelope:
+`prepare` signs two feeds with the same key and envelope:
 
-- `client-updates/<channel>/` for the desktop app.
-- `client-updates-web/<channel>/` for the self-hosted web loader.
+- `client-updates/stable/` for the desktop app.
+- `client-updates-web/stable/` for the self-hosted web loader.
 
-Both feeds are deployed with the website. They have independent release
-sequences and independent `minAppVersion` values.
-
-The `Build` workflow produces two web artifacts, and both release workflows
-attach them:
+The `Build` workflow produces two web artifacts, and the release workflow
+attaches them:
 
 | Artifact | Distribution | Client delivery |
 | --- | --- | --- |
@@ -158,9 +109,7 @@ attach them:
 | `yapmod-web-loader` | Self-hosted, unpacked, release zip | Signed web feed at runtime |
 
 `Draft release` renames them to `yapmod_web_<web_version>.zip` and
-`yapmod_web_loader_<web_version>.zip`. `Nightly release` attaches
-`yapmod_web_nightly_<web_version>.zip` and
-`yapmod_web_loader_nightly_<web_version>.zip`.
+`yapmod_web_loader_<web_version>.zip`.
 
 To produce a package locally:
 
@@ -189,10 +138,9 @@ the client code.
 The loader build embeds the client for a fresh install and also consumes the
 signed web feed:
 
-1. The bridge reads `client-updates-web/<channel>/` through the background
-   worker.
-2. It verifies the Ed25519 manifest signature, channel, expiry, release
-   sequence, bridge API version and bundle hash.
+1. The bridge reads `client-updates-web/stable/` through the background worker.
+2. It verifies the Ed25519 manifest signature, expiry, release sequence,
+   bridge API version and bundle hash.
 3. It stages the verified `preinject` in `localStorage`.
 4. The loader runs the staged bundle on the next page load.
 5. A successful bootstrap confirms the bundle. An unconfirmed bundle is removed
@@ -208,43 +156,26 @@ The bridge is part of the extension shell and never updates at runtime. A client
 that needs a new bridge method must wait for a new shell version; the signed
 manifest's `bridgeApiVersion` enforces that compatibility.
 
-## Nightly to stable
-
-`main` is the only source branch. Nightly is a scheduled build of `main`, so no
-branch merge promotes nightly to stable. To publish a stable release:
-
-1. Bump the app version on `main` so the stable release supersedes the nightly
-   builds it contains. Nightly uses `patch + 1` with `+nightly.*` metadata, and
-   a stable release with the same core version is ordered after those nightlies.
-2. Update `client/version.json` if the client changed.
-3. Update `client/targets/web/version.json` if the extension shell changed.
-4. Follow the stable release steps above.
-
-Merging alone does not publish anything. Publishing the draft release is the
-explicit promotion approval step.
-
 ## Testing without publishing
 
 - Both the app and client parts honour `dry_run`. Artifacts are built and the
   manifest is signed, but nothing is uploaded or deployed.
-- Locally, build with
-  `YAPMOD_UPDATE_CHANNEL=nightly pnpm tauri build` to exercise the nightly
-  update path. Local builds without the variable use stable.
+- Locally, build the client with `pnpm client:build` and the app with
+  `pnpm tauri build`.
 - Build the web loader with
   `YAPMOD_CLIENT_UPDATE_PUBLIC_KEY=<base64 key> pnpm client:package:web:loader`
   to exercise runtime client updates. A loader built without the key keeps
   working but only runs its embedded client.
-- `pnpm test:scripts` tests the channel manifest tooling and the web packaging.
+- `pnpm test:scripts` tests the feed manifest tooling and the web packaging.
   `cargo test --manifest-path src-tauri/Cargo.toml` tests the Rust validation
   logic.
 
 Never run a non-dry-run publication from a commit that is not on `main`. The
-workflow enforces this for both channels.
+workflow enforces this.
 
 ## Required repository setup
 
 - `main` is the default branch.
 - Secret `CLIENT_UPDATE_SIGNING_KEY` contains the Ed25519 signing key.
 - Variable `CLIENT_UPDATE_PUBLIC_KEY` contains the matching public key.
-- The same key signs both channels; channel isolation comes from separate
-  paths, manifests and signed channel fields.
+- The same key signs both the desktop and web feeds.

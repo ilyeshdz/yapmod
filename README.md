@@ -45,8 +45,6 @@ Download the latest build from the [Releases](https://github.com/ilyeshdz/yapmod
 | **macOS** | `.dmg` (Apple Silicon and Intel) |
 | **Linux** | `.AppImage`, `.deb`, `.rpm`, or portable `.tar.gz` |
 
-Want to try changes before they ship? Grab the [nightly build](https://github.com/ilyeshdz/yapmod/releases/tag/nightly). It updates daily and might be unstable.
-
 > **macOS:** builds are ad-hoc signed but not notarized. On first launch, right-click the app and choose **Open**, or allow it in **System Settings → Privacy & Security**.
 
 ## Documentation

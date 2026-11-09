@@ -29,18 +29,14 @@ function clientTargets() {
   const clientVersion = JSON.parse(
     readFileSync(join(sourceDir, "version.json"), "utf8"),
   ).version;
-  const updateChannel =
-    process.env.YAPMOD_UPDATE_CHANNEL === "nightly" ? "nightly" : "stable";
   const updatePublicKey = process.env.YAPMOD_CLIENT_UPDATE_PUBLIC_KEY ?? "";
 
   /**
-   * Values esbuild substitutes into every bundle. The channel is baked in,
-   * exactly like the desktop app, so a nightly package never reads the stable
-   * signed feed.
+   * Values esbuild substitutes into every bundle. Every build consumes the
+   * same signed feed.
    */
   const sharedDefine = {
     __YAPMOD_CLIENT_VERSION__: JSON.stringify(clientVersion),
-    __YAPMOD_UPDATE_CHANNEL__: JSON.stringify(updateChannel),
     __YAPMOD_CLIENT_UPDATE_PUBLIC_KEY__: JSON.stringify(updatePublicKey),
   };
 

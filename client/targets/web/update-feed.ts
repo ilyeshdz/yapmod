@@ -10,15 +10,13 @@
  * API version and the release sequence rules stay shared.
  */
 
-declare const __YAPMOD_UPDATE_CHANNEL__: string;
 declare const __YAPMOD_CLIENT_UPDATE_PUBLIC_KEY__: string;
 declare const __YAPMOD_WEB_LOADER__: boolean;
 
 export const WEB_LOADER = __YAPMOD_WEB_LOADER__;
-export const UPDATE_CHANNEL = __YAPMOD_UPDATE_CHANNEL__;
 export const UPDATE_PUBLIC_KEY = __YAPMOD_CLIENT_UPDATE_PUBLIC_KEY__;
 export const UPDATE_BASE =
-  "https://ilyeshdz.github.io/yapmod/client-updates-web";
+  "https://ilyeshdz.github.io/yapmod/client-updates-web/stable";
 export const BRIDGE_API_VERSION = 1;
 
 export const MAX_MANIFEST_BYTES = 16 * 1024;
@@ -34,7 +32,6 @@ export type ClientUpdateManifest = {
   releaseSequence: number;
   bridgeApiVersion: number;
   minAppVersion: string;
-  channel: string;
   expiresAt: number;
   bundleSha256: string;
 };
@@ -44,7 +41,6 @@ export type ClientUpdateBundle = {
   releaseSequence: number;
   bridgeApiVersion: number;
   minAppVersion: string;
-  channel: string;
   preinject: string;
   postinject?: string;
   minimumCss?: string;
@@ -56,10 +52,10 @@ export type ClientUpdateCheck = {
 };
 
 export function updateUrl(file: string): string {
-  return `${UPDATE_BASE}/${UPDATE_CHANNEL}/${file}`;
+  return `${UPDATE_BASE}/${file}`;
 }
 
-/** The background worker may only fetch the files of this channel's feed. */
+/** The background worker may only fetch the files of the signed feed. */
 export function isUpdateUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -67,9 +63,9 @@ export function isUpdateUrl(value: string): boolean {
     return (
       url.protocol === "https:" &&
       url.origin === new URL(UPDATE_BASE).origin &&
-      url.href.startsWith(`${UPDATE_BASE}/${UPDATE_CHANNEL}/`) &&
+      url.href.startsWith(`${UPDATE_BASE}/`) &&
       CLIENT_UPDATE_FILES.includes(
-        url.href.slice(`${UPDATE_BASE}/${UPDATE_CHANNEL}/`.length),
+        url.href.slice(`${UPDATE_BASE}/`.length),
       )
     );
   } catch {
@@ -180,11 +176,6 @@ export function validateManifest(
 
   const manifest = value as Partial<ClientUpdateManifest>;
 
-  if (manifest.channel !== UPDATE_CHANNEL) {
-    throw new Error(
-      `the client update belongs to ${manifest.channel ?? "no channel"}, expected ${UPDATE_CHANNEL}`,
-    );
-  }
   if (
     typeof manifest.clientVersion !== "string" ||
     !VERSION_PATTERN.test(manifest.clientVersion)
@@ -268,7 +259,6 @@ export async function verifyBundle(
   const bundle = value as Partial<ClientUpdateBundle>;
 
   if (
-    bundle.channel !== UPDATE_CHANNEL ||
     bundle.clientVersion !== manifest.clientVersion ||
     bundle.releaseSequence !== manifest.releaseSequence ||
     bundle.bridgeApiVersion !== manifest.bridgeApiVersion ||

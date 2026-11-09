@@ -19,17 +19,14 @@ yapmod gives Yapin a real home on your computer: its own window, native integrat
 - **Write code.** Fork the repository, set it up, and open a pull request.
 - **Improve the docs.** The documentation lives in `web/src/content/docs/` as Markdown files.
 
-## Branch and release channels
+## Branch and releases
 
 - `main` is the only development branch and the default branch. Pull requests
   target it.
-- Stable and nightly are release channels built from `main`; nightly is a
-  scheduled build, not a separate source branch.
+- yapmod ships a single stable release channel built from `main`.
 
-Local builds default to the stable update channel. Set
-`YAPMOD_UPDATE_CHANNEL=nightly` when building to exercise the nightly update
-path. A build never switches channels through an update. See
-[RELEASING.md](RELEASING.md) for the release workflow.
+Local builds use the stable update feed. A build never switches update feeds at
+runtime. See [RELEASING.md](RELEASING.md) for the release workflow.
 
 ## Getting started
 

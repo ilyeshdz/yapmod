@@ -1,18 +1,8 @@
 name: Release
 
 on:
-  schedule:
-    - cron: '17 2 * * *'
   workflow_dispatch:
     inputs:
-      channel:
-        description: Release channel
-        required: true
-        type: choice
-        default: stable
-        options:
-          - stable
-          - nightly
       app:
         description: Build and publish the desktop app
         required: false
@@ -54,7 +44,6 @@ jobs:
     outputs:
       app_version: ${{ steps.version.outputs.app_version }}
       wix_version: ${{ steps.version.outputs.wix_version }}
-      channel: ${{ steps.version.outputs.channel }}
       web_version: ${{ steps.version.outputs.web_version }}
     steps:
       - name: Checkout
@@ -75,9 +64,6 @@ jobs:
 
       - name: Choose app version
         id: version
-        env:
-          CHANNEL: ${{ github.event_name == 'schedule' && 'nightly' || inputs.channel }}
-          RUN_NUMBER: ${{ github.run_number }}
         run: |
           current_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)
 
@@ -95,34 +81,15 @@ jobs:
             exit 1
           fi
 
-          if [ "$CHANNEL" = "nightly" ]; then
-            if [[ ! "$RUN_NUMBER" =~ ^[0-9]+$ ]] || (( 10#$RUN_NUMBER < 1 || 10#$RUN_NUMBER > 65534 )); then
-              echo "The GitHub Actions run number must be between 1 and 65534 for MSI nightlies: $RUN_NUMBER" >&2
-              exit 1
-            fi
-
-            next_patch=$((10#$patch + 1))
-            if (( next_patch > 65535 )); then
-              echo "The nightly version exceeds the Windows MSI patch limit: ${major}.${minor}.${next_patch}" >&2
-              exit 1
-            fi
-
-            app_version="${major}.${minor}.${next_patch}+nightly.$(date -u +%Y%m%d).${RUN_NUMBER}"
-            wix_version="${major}.${minor}.${next_patch}.${RUN_NUMBER}"
-          else
-            app_version="$current_version"
-            # Reserve the highest MSI build component so a stable release can
-            # upgrade over every nightly built from the same app version.
-            wix_version="${major}.${minor}.${patch}.65535"
-          fi
+          app_version="$current_version"
+          wix_version="${major}.${minor}.${patch}.65535"
 
           web_version=$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("client/targets/web/version.json", "utf8")).version)')
 
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
           echo "web_version=$web_version" >> "$GITHUB_OUTPUT"
           echo "wix_version=$wix_version" >> "$GITHUB_OUTPUT"
-          echo "Building yapmod v$app_version ($CHANNEL)"
+          echo "Building yapmod v$app_version"
 
   build:
     needs: prepare
@@ -233,7 +200,6 @@ jobs:
       - name: Build
         env:
           YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
-          YAPMOD_UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
           # Allows the Tauri DMG bundler to run macOS Automation scripts (via create-dmg)
           # to set the custom background, icon positions, and window size on macOS.
           # Without this, the bundler passes --skip-jenkins to create-dmg in CI,
@@ -339,7 +305,6 @@ jobs:
 
       - name: Build and package the web extension
         env:
-          YAPMOD_UPDATE_CHANNEL: ${{ needs.prepare.outputs.channel }}
           YAPMOD_CLIENT_UPDATE_PUBLIC_KEY: ${{ vars.CLIENT_UPDATE_PUBLIC_KEY }}
         run: |
           pnpm client:package:web
@@ -363,7 +328,6 @@ jobs:
     needs: [prepare, build, web]
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      inputs.channel == 'stable' &&
       inputs.app != false &&
       inputs.dry_run != true
     runs-on: ubuntu-latest
@@ -464,127 +428,6 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-  nightly-release:
-    needs: [prepare, build, web]
-    if: >-
-      github.event_name != 'release' &&
-      needs.prepare.outputs.channel == 'nightly' &&
-      inputs.app != false &&
-      inputs.dry_run != true
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Rename nightly artifacts
-        env:
-          WEB_VERSION: ${{ needs.prepare.outputs.web_version }}
-        run: |
-          set -euo pipefail
-          mkdir -p nightly-artifacts
-
-          while IFS='|' read -r artifact_name new_name; do
-            artifact_file=$(find "artifacts/$artifact_name" -type f -print -quit)
-            if [ -z "$artifact_file" ]; then
-              echo "Missing artifact: $artifact_name" >&2
-              exit 1
-            fi
-            cp "$artifact_file" "nightly-artifacts/$new_name"
-          done <<'ARTIFACTS'
-          yapmod-aarch64-apple-darwin-dmg|yapmod_nightly_aarch64.dmg
-          yapmod-x86_64-apple-darwin-dmg|yapmod_nightly_x64.dmg
-          yapmod-x86_64-pc-windows-msvc-nsis|yapmod_nightly_x64-setup.exe
-          yapmod-x86_64-pc-windows-msvc-msi|yapmod_nightly_x64_en-US.msi
-          yapmod-x86_64-pc-windows-msvc-portable|yapmod_nightly_win64_portable.zip
-          yapmod-x86_64-unknown-linux-gnu-appimage|yapmod_nightly_amd64.AppImage
-          yapmod-x86_64-unknown-linux-gnu-deb|yapmod_nightly_amd64.deb
-          yapmod-x86_64-unknown-linux-gnu-rpm|yapmod_nightly-1.x86_64.rpm
-          yapmod-x86_64-unknown-linux-gnu-portable|yapmod_nightly_amd64_portable.tar.gz
-          yapmod-web-extension|yapmod_web_nightly_${WEB_VERSION}.zip
-          yapmod-web-loader|yapmod_web_loader_nightly_${WEB_VERSION}.zip
-          ARTIFACTS
-
-      - name: Read nightly revision
-        id: revision
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Write nightly channel metadata
-        env:
-          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
-          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
-        run: |
-          set -euo pipefail
-          jq -n \
-            --arg channel nightly \
-            --arg appVersion "$APP_VERSION" \
-            --arg commit "$NIGHTLY_SHA" \
-            '{channel:$channel,appVersion:$appVersion,commit:$commit}' \
-            > nightly-artifacts/yapmod-version.json
-
-      - name: Move rolling nightly tag to this commit
-        env:
-          NIGHTLY_SHA: ${{ steps.revision.outputs.sha }}
-        run: |
-          set -euo pipefail
-          git tag --force nightly "$NIGHTLY_SHA"
-          git push --force origin refs/tags/nightly
-
-      - name: Publish rolling nightly prerelease
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: nightly
-          name: Nightly v${{ needs.prepare.outputs.app_version }}
-          body: |
-            Automated nightly prerelease built from `main` at commit ${{ steps.revision.outputs.sha }}.
-
-            App version: `${{ needs.prepare.outputs.app_version }}`
-
-            Nightly builds may be unstable. They use the nightly update channel and never publish stable artifacts or stable client update metadata.
-          files: nightly-artifacts/*
-          overwrite_files: true
-          prerelease: true
-          make_latest: false
-
-      - name: Checkout the stable website
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: site
-
-      - name: Setup Node for updater manifests
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Generate Tauri updater manifests
-        env:
-          APP_VERSION: ${{ needs.prepare.outputs.app_version }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          node scripts/app-updates.mjs generate "$APP_VERSION" nightly-artifacts site/web/dist
-
-      - name: Upload Pages artifact with updater manifests
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/web/dist
-
-      - name: Deploy updater manifests
-        id: deployment
-        uses: actions/deploy-pages@v4
-
   client:
     needs: [prepare, build]
     if: >-
@@ -592,13 +435,11 @@ jobs:
       (needs.build.result == 'success' || needs.build.result == 'skipped') &&
       (
         (github.event_name == 'release' &&
-         github.event.release.prerelease == false &&
-         github.event.release.tag_name != 'nightly') ||
-        github.event_name == 'schedule' ||
+         github.event.release.prerelease == false) ||
         (github.event_name == 'workflow_dispatch' &&
          inputs.dry_run != true &&
          inputs.client != false &&
-         (inputs.channel == 'nightly' || inputs.app == false))
+         inputs.app == false)
       )
     runs-on: ubuntu-latest
     environment:
@@ -614,25 +455,15 @@ jobs:
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
           fetch-depth: 0
 
-      - name: Verify the channel matches main
-        env:
-          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
+      - name: Verify the client source is on main
         run: |
           set -euo pipefail
-
-          case "$CHANNEL" in
-            stable|nightly) ;;
-            *)
-              echo "Unknown update channel: $CHANNEL" >&2
-              exit 1
-              ;;
-          esac
 
           git fetch --no-tags origin main
           git merge-base --is-ancestor HEAD origin/main \
             || { echo "Client updates must be published from main or a tag on main" >&2; exit 1; }
 
-          echo "Publishing the $CHANNEL client from $(git rev-parse HEAD)"
+          echo "Publishing the client from $(git rev-parse HEAD)"
 
       - name: Checkout the stable website
         uses: actions/checkout@v4
@@ -659,29 +490,10 @@ jobs:
           pnpm --dir site/web install --frozen-lockfile --ignore-workspace
           pnpm --dir site/web build
 
-      - name: Preserve the other channel
-        env:
-          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
-          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'nightly' || (needs.prepare.outputs.channel == 'stable' && 'nightly' || 'stable') }}
-          CLIENT_ROOT: ${{ github.workspace }}
-          OUTPUT_DIR: site/web/dist
-        run: node scripts/client-updates.mjs preserve
-
-      - name: Preserve the other web channel
-        env:
-          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
-          SKIP_CHANNEL: ${{ github.event_name == 'release' && 'nightly' || (needs.prepare.outputs.channel == 'stable' && 'nightly' || 'stable') }}
-          CLIENT_ROOT: ${{ github.workspace }}
-          OUTPUT_DIR: site/web/dist
-          CLIENT_UPDATES_DIR: client-updates-web
-          CLIENT_UPDATES_URL: https://ilyeshdz.github.io/yapmod/client-updates-web
-        run: node scripts/client-updates.mjs preserve
-
       - name: Package and sign the client release
         id: manifest
         env:
-          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
-          MIN_APP_VERSION: ${{ inputs.min_app_version || (github.event_name != 'release' && needs.prepare.outputs.channel == 'nightly' && inputs.app != false && needs.prepare.outputs.app_version || '') }}
+          MIN_APP_VERSION: ${{ inputs.min_app_version || '' }}
           CLIENT_ROOT: ${{ github.workspace }}
           OUTPUT_DIR: site/web/dist
           CLIENT_UPDATE_SIGNING_KEY: ${{ secrets.CLIENT_UPDATE_SIGNING_KEY }}
@@ -699,7 +511,7 @@ jobs:
           echo "$prepare_output"
           eval "$prepare_output"
 
-          manifest_dir="site/web/dist/client-updates/$CHANNEL"
+          manifest_dir="site/web/dist/client-updates/stable"
           test -f "$manifest_dir/manifest.json" || { echo "The manifest was not generated"; exit 1; }
 
           umask 077
@@ -728,7 +540,6 @@ jobs:
 
       - name: Package and sign the web client release
         env:
-          CHANNEL: ${{ github.event_name == 'release' && 'stable' || needs.prepare.outputs.channel }}
           CLIENT_ROOT: ${{ github.workspace }}
           OUTPUT_DIR: site/web/dist
           CLIENT_UPDATES_DIR: client-updates-web
@@ -753,7 +564,7 @@ jobs:
           echo "$prepare_output"
           eval "$prepare_output"
 
-          manifest_dir="$OUTPUT_DIR/client-updates-web/$CHANNEL"
+          manifest_dir="$OUTPUT_DIR/client-updates-web/stable"
           test -f "$manifest_dir/manifest.json" || { echo "The web manifest was not generated"; exit 1; }
 
           umask 077
@@ -772,7 +583,6 @@ jobs:
             -sigfile "$RUNNER_TEMP/web-manifest.sig.raw" > /dev/null
 
       - name: Update the legacy stable aliases
-        if: (github.event_name == 'release' && github.event.release.prerelease == false) || inputs.channel == 'stable'
         run: |
           set -euo pipefail
           mkdir -p site/web/dist/client-updates

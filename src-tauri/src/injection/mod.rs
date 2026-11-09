@@ -5,8 +5,6 @@ pub mod release;
 
 use serde::{Deserialize, Serialize};
 
-use crate::channel::UpdateChannel;
-
 pub use postinject::postinject;
 pub use preinject::preinject;
 
@@ -19,7 +17,7 @@ pub struct ClientBundle {
     pub release_sequence: u64,
     pub bridge_api_version: u32,
     pub min_app_version: String,
-    pub channel: UpdateChannel,
+    pub channel: String,
     pub preinject: String,
     pub postinject: String,
     pub minimum_css: String,

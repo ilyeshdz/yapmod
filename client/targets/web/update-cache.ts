@@ -7,11 +7,6 @@
  * the bundle hash.
  */
 
-declare const __YAPMOD_UPDATE_CHANNEL__: string;
-
-/** The channel this build was compiled for. It never changes at runtime. */
-export const UPDATE_CHANNEL = __YAPMOD_UPDATE_CHANNEL__;
-
 export type CachedClientBundle = {
   clientVersion: string;
   releaseSequence: number;
@@ -27,8 +22,8 @@ export type CachedClientBundle = {
   attempts: number;
 };
 
-export function cacheKey(channel = UPDATE_CHANNEL): string {
-  return `yapmod:client-bundle:${channel}`;
+export function cacheKey(): string {
+  return "yapmod:client-bundle";
 }
 
 function isCachedClientBundle(value: unknown): value is CachedClientBundle {

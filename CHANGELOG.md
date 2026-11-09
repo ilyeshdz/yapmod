@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Picked plugin and theme folder paths now expire after 30 seconds and are cleared when the picker is cancelled, preventing stale paths from being used on subsequent install operations (#54).
 
+### Removed
+
+- The nightly release channel and its scheduled builds, nightly-only update feeds, version ordering, and release workflow plumbing. yapmod now ships a single stable channel, which also simplifies the signed client update feed and the web loader to one path and one cache key (#72).
+
 ## [0.7.0] - 2026-11-05
 
 ### Added
