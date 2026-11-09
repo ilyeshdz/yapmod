@@ -1,7 +1,7 @@
 ---
-// A fixed, full-viewport canvas that renders the halftone-style grid from the
-// banner art. The CSS gradient underneath doubles as the fallback when WebGL
-// is unavailable, so the page never loses its glow.
+// A canvas layered behind the hero that renders the halftone-style grid from
+// the banner art. The CSS gradient underneath doubles as the fallback when
+// WebGL is unavailable, so the hero never loses its glow.
 ---
 
 <div class="grid-bg" aria-hidden="true">
@@ -54,7 +54,7 @@
     }
 
     void main() {
-      float cell = max(14.0, 26.0 * u_dpr);
+      float cell = max(7.0, 10.0 * u_dpr);
       vec2 gridUv = (v_uv * u_resolution) / cell;
       vec2 cellId = floor(gridUv);
       vec2 cellUv = fract(gridUv) - 0.5;
@@ -76,9 +76,7 @@
       float pulse = 0.5 + 0.5 * sin(u_time * 0.55 + rnd * 6.2831 + field * 8.0);
       float density = smoothstep(0.38, 0.82, field * 0.68 + pulse * 0.32);
 
-      float heroAlpha = square * glow * density * 0.8;
-      float pageAlpha = square * smoothstep(0.52, 0.9, field) * 0.045;
-      float alpha = clamp((heroAlpha + pageAlpha) * u_intensity, 0.0, 1.0);
+      float alpha = clamp(square * glow * density * 0.42 * u_intensity, 0.0, 1.0);
 
       vec3 color = mix(u_color_a, u_color_b, clamp(rnd * 0.65 + field * 0.35, 0.0, 1.0));
 
@@ -188,7 +186,7 @@
       return {
         colorA: parseColor(styles.getPropertyValue("--accent"), [0.87, 0.35, 0.55]),
         colorB: parseColor(styles.getPropertyValue("--accent-2"), [0.91, 0.49, 0.65]),
-        intensity: isLight ? 0.5 : 1,
+        intensity: isLight ? 0.3 : 0.42,
       };
     }
 
@@ -202,8 +200,8 @@
 
     function resize() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = Math.max(1, Math.round(window.innerWidth * dpr));
-      const height = Math.max(1, Math.round(window.innerHeight * dpr));
+      const width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+      const height = Math.max(1, Math.round(canvas.clientHeight * dpr));
 
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
@@ -219,9 +217,9 @@
       const { colorA, colorB, intensity } = colors;
 
       // The glow sits behind the hero logo area on wide screens and in the
-      // middle on stacked layouts.
+      // middle of the stacked layout on narrow screens.
       const narrow = window.innerWidth < 900;
-      const glow: [number, number] = narrow ? [0.5, 0.26] : [0.72, 0.22];
+      const glow: [number, number] = narrow ? [0.5, 0.22] : [0.72, 0.46];
 
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
