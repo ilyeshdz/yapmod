@@ -3,11 +3,20 @@
   <p>A free and open-source desktop app for <a href="https://www.yapin.gg">Yapin</a> that lets you customize the way it looks and works.</p>
 
   <p>
-    <a href="https://github.com/ilyeshdz/yapmod/releases"><img src="https://img.shields.io/github/v/release/ilyeshdz/yapmod?include_prereleases&label=version&color=f67567" alt="Version" /></a>
-    <a href="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml"><img src="https://github.com/ilyeshdz/yapmod/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-GPL%20v3-blue" alt="License" /></a>
+    <img src="https://img.shields.io/badge/status-deprecated-e74c3c" alt="Deprecated" />
   </p>
 </div>
+
+---
+
+> ### ⚠️ This project is deprecated
+>
+> This repository contains the legacy version of Yapmod, which is no longer maintained. Yapmod has been rebuilt from scratch with a completely new architecture and philosophy.
+>
+> **To understand what changed, why, and what the future of Yapmod looks like, please read the blog post:** [A Fresh Start for Yapmod](https://yapmod.vercel.app/blog/welcome-to-yapmod)
+>
+> In short: the old desktop application and client modification software were combined in one codebase, which proved unsustainable. The new approach separates them — this legacy repo is the old combined version. The new client mod is the foundation, and a new desktop application will be built on top of it later.
 
 ---
 
